@@ -123,6 +123,17 @@ Keep enemy rules, unit statistics, unlock order, and the difficulty ceiling dete
 - Audio, ambience, extra visual effects, and broad content polish.
 - Large enemy roster, many levels, and wide upgrade trees.
 - Armor systems, elemental damage, status effects, and other advanced combat modifiers.
+- Procedural map generation and map-generation validation. Hearth Meadow is one authored map for now.
+- Pre-night readiness warnings or player-help checks. The player should learn from the outcome.
+- Combat telemetry dashboards. They are developer-only balance data, not a player-facing mechanic.
+- Cancelling or refunding unfinished blueprints. Materials remain committed once a blueprint is placed.
+
+## Current MVP implementation
+
+- Completed: untimed two-action days; End day; day-only Avery work; a hidden square board; authored animal trails; trees, boulders, wood, stone, and rubble.
+- Completed: building footprints, health/condition states, repairs, blueprints, completed barricades, closest-reachable-building targeting, four-direction cached paths, destruction, and retargeting.
+- Completed: Scout placement/range, data-driven raccoon and boar combat, fixed simulation ticks, bounded seeded waves, pause/1×/2× night controls, XP, the first three level unlocks, save/load, and deterministic action-log replays.
+- Verification: `node test-engine.js` exercises the engine without the browser; the browser remains the player-facing test surface.
 
 ## First implementation slice after this roadmap
 

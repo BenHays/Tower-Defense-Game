@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="A tiny top-down homestead defense prototype." />
-    <title>Wild Hearth — First Night</title>
+    <meta name="description" content="A deterministic, top-down homestead defense prototype." />
+    <title>Wild Hearth — Hearth Meadow</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -12,88 +12,96 @@
       <header class="game-header">
         <a class="brand" href="#top" aria-label="Restart Wild Hearth" id="brand-reset">
           <span class="brand-mark" aria-hidden="true">✦</span>
-          <span><span class="eyebrow">Wild Hearth</span><strong>First Night</strong></span>
+          <span><span class="eyebrow">Wild Hearth</span><strong>Hearth Meadow</strong></span>
         </a>
         <div class="phase-chip" id="phase-chip" aria-live="polite">
-          <span class="phase-dot"></span><span id="phase-label">Daylight</span><span class="phase-time" id="phase-time">00:30</span>
+          <span class="phase-dot"></span><span id="phase-label">Day planning</span><span class="phase-time" id="phase-detail">Untimed</span>
         </div>
-        <button class="quiet-button" id="reset-button" type="button">Reset level</button>
+        <div class="header-actions">
+          <span class="seed-pill">Seed <code id="seed-value">HEARTH-1042</code></span>
+          <button class="quiet-button" id="new-seed-button" type="button">New seed</button>
+          <button class="quiet-button" id="save-button" type="button">Save</button>
+          <button class="quiet-button" id="load-button" type="button">Load</button>
+          <button class="quiet-button" id="reset-button" type="button">Reset run</button>
+        </div>
       </header>
 
       <section class="topline" aria-label="Level brief and homestead status">
         <div>
-          <p class="eyebrow">Level 01 · day one</p>
-          <h1>A small home in a very big clearing.</h1>
-          <p class="subhead">Avery and Scout have only a hand-built branch teepee. The rest of the meadow is still theirs to grow into.</p>
+          <p class="eyebrow" id="level-label">Level 01 · first watch</p>
+          <h1 id="level-title">A hearth in a living forest.</h1>
+          <p class="subhead" id="level-copy">Trees press close around the teepee. Avery decides what to do with daylight; Scout holds what is in his range after dark.</p>
         </div>
         <dl class="resource-row">
-          <div><dt>Teepee</dt><dd><span id="teepee-health">2</span><small>/3</small></dd></div>
-          <div><dt>Scout</dt><dd class="dog-status" id="dog-status">At home</dd></div>
-          <div><dt>Night</dt><dd class="night-status">First watch</dd></div>
+          <div><dt>Actions</dt><dd id="action-points">2</dd></div>
+          <div><dt>Wood</dt><dd id="wood-value">4</dd></div>
+          <div><dt>Stone</dt><dd id="stone-value">0</dd></div>
+          <div><dt>Homestead XP</dt><dd id="xp-value">0</dd></div>
         </dl>
       </section>
 
-      <section class="game-board day-scene" id="game-board" aria-label="Top-down Wild Hearth meadow">
+      <section class="game-board day-scene" id="game-board" aria-label="Top-down Hearth Meadow">
         <div class="meadow-texture" aria-hidden="true"></div>
-        <div class="canopy canopy-north" aria-hidden="true"></div><div class="canopy canopy-north-east" aria-hidden="true"></div>
-        <div class="canopy canopy-east" aria-hidden="true"></div><div class="canopy canopy-south-east" aria-hidden="true"></div>
-        <div class="canopy canopy-south" aria-hidden="true"></div><div class="canopy canopy-south-west" aria-hidden="true"></div>
-        <div class="canopy canopy-west" aria-hidden="true"></div><div class="canopy canopy-north-west" aria-hidden="true"></div>
-        <div class="meadow-details" aria-hidden="true">
-          <span class="stone stone-one"></span><span class="stone stone-two"></span><span class="stone stone-three"></span><span class="stone stone-four"></span>
-          <span class="flower flower-one"></span><span class="flower flower-two"></span><span class="flower flower-three"></span><span class="flower flower-four"></span><span class="flower flower-five"></span>
-        </div>
-
-        <button class="teepee is-selected" id="teepee" type="button" aria-label="Select branch teepee">
-          <span class="teepee-shadow"></span><span class="teepee-hush"></span><span class="teepee-thatch"></span>
-          <span class="teepee-stick stick-a"></span><span class="teepee-stick stick-b"></span><span class="teepee-stick stick-c"></span><span class="teepee-stick stick-d"></span>
-          <span class="teepee-door"></span><span class="teepee-label">Branch teepee</span>
-        </button>
-        <div class="campfire" aria-label="Small campfire" role="img"><span class="fire-ring"></span><span class="fire-glow"></span><span class="fire-flame"></span></div>
-        <div class="human" aria-label="Avery, the homesteader" role="img">
-          <span class="human-shadow"></span><span class="human-pack"></span><span class="human-body"></span><span class="human-head"></span><span class="human-hat"></span><span class="unit-label">Avery</span>
-        </div>
-        <div class="dog" id="dog" aria-label="Scout, your dog" role="img">
-          <span class="dog-shadow"></span><span class="dog-tail"></span><span class="dog-body"></span><span class="dog-head"></span><span class="dog-ear"></span><span class="unit-label">Scout</span>
-        </div>
-        <div class="raccoon hidden" id="raccoon" aria-label="Raccoon invader" role="img">
-          <span class="raccoon-shadow"></span><span class="raccoon-tail"></span><span class="raccoon-body"></span><span class="raccoon-mask"></span><span class="raccoon-ear ear-left"></span><span class="raccoon-ear ear-right"></span>
-          <span class="enemy-bar"><i id="raccoon-health"></i></span>
-        </div>
-        <div class="board-caption" id="board-caption">The meadow is quiet. Scout keeps close to camp.</div>
+        <div class="board-grid" id="board-grid" aria-label="Hidden-square meadow board"></div>
+        <div class="entity-layer" id="entity-layer" aria-hidden="true"></div>
+        <div class="board-caption" id="board-caption">Avery has two daylight actions. The forest will wait until you choose End day.</div>
       </section>
 
-      <section class="control-panel" aria-label="Day and night controls">
-        <div class="selected-card">
-          <p class="eyebrow">Your home</p>
-          <h2>Branch teepee</h2>
-          <p id="selection-copy">A little shelter made by hand. It is enough for the first night, and it will be the heart of everything that follows.</p>
-          <div class="mini-meter" aria-hidden="true"><span id="selection-meter" style="width: 67%"></span></div>
-        </div>
-        <div class="action-card">
-          <p class="action-hint" id="action-hint">Use the daylight to mend the roof before you rest.</p>
-          <button class="primary-button" id="mend-button" type="button">Mend teepee <span>+1</span></button>
-          <button class="secondary-button" id="phase-button" type="button">Start night <span aria-hidden="true">→</span></button>
-        </div>
-        <aside class="tip-card">
-          <span class="tip-icon" aria-hidden="true">✦</span>
-          <p><strong>First watch:</strong> Scout can handle one raccoon on his own. Your job is simply to keep home ready.</p>
+      <section class="control-panel" aria-label="Day planning controls">
+        <section class="selected-card" aria-label="Selection details">
+          <p class="eyebrow">Selected</p>
+          <h2 id="selected-title">Branch teepee</h2>
+          <p id="selected-copy">Home · 10/12 health · repair costs 1 wood and one Avery action.</p>
+          <div class="mini-meter" aria-hidden="true"><span id="selection-meter" style="width: 83%"></span></div>
+          <p class="selection-footnote" id="selection-footnote">Scout begins inside the central clearing.</p>
+        </section>
+
+        <section class="action-card" aria-label="Avery actions">
+          <div class="action-heading"><div><p class="eyebrow">Avery’s daylight</p><p class="action-hint" id="action-hint">Choose a tool, then choose a cell. Blueprints reserve materials; finishing one uses an action.</p></div><strong id="action-badge">2 actions</strong></div>
+          <div class="tool-grid" id="tool-grid">
+            <button class="tool-button is-active" data-tool="inspect" type="button">Inspect<span>look</span></button>
+            <button class="tool-button" data-tool="clear" type="button">Clear<span>tree / rock</span></button>
+            <button class="tool-button" data-tool="scout" type="button">Place Scout<span>1 action</span></button>
+            <button class="tool-button" data-tool="barricade" id="barricade-tool" type="button">Barricade<span>2 wood</span></button>
+            <button class="tool-button" data-tool="finish" type="button">Finish<span>1 action</span></button>
+          </div>
+          <div class="action-row">
+            <button class="secondary-button" id="repair-button" type="button">Repair selected <span>1 wood · 1 action</span></button>
+            <button class="secondary-button" id="stonework-button" type="button">Stone brace <span>1 stone · 1 action</span></button>
+          </div>
+          <button class="primary-button wide" id="end-day-button" type="button">End day <span>Begin night watch →</span></button>
+        </section>
+
+        <aside class="planning-card" aria-label="Planning and night controls">
+          <p class="eyebrow">Plan the meadow</p>
+          <button class="secondary-button wide" id="overlay-button" type="button">Show planning overlay <span>range + routes</span></button>
+          <p class="preview-copy" id="preview-copy">Select Barricade and hover an open cell to preview its cost, Scout coverage, and its likely target effect.</p>
+          <div class="speed-controls" aria-label="Night speed">
+            <button class="speed-button" id="pause-button" type="button">Pause</button>
+            <button class="speed-button is-active" data-speed="1" type="button">1×</button>
+            <button class="speed-button" data-speed="2" type="button">2×</button>
+          </div>
         </aside>
       </section>
 
-      <section class="event-log" aria-label="Field notes" aria-live="polite"><p class="eyebrow">Field notes</p><p id="event-log">Avery checks the teepee’s lashings while Scout circles the campfire.</p></section>
+      <section class="event-log" aria-label="Field notes" aria-live="polite"><p class="eyebrow">Field notes</p><p id="event-log">Avery and Scout begin with two daylight actions. The meadow will wait until you choose End day.</p></section>
     </main>
 
     <div class="result-dialog hidden" id="result-dialog" role="dialog" aria-modal="true" aria-labelledby="result-title">
       <div class="result-card">
-        <span class="result-mark" aria-hidden="true">✦</span><p class="eyebrow">First watch complete</p>
-        <h2 id="result-title">The teepee is safe.</h2>
-        <p id="result-copy">Scout escorts the raccoon back to the trees. Tomorrow, this whole meadow is still waiting.</p>
+        <span class="result-mark" aria-hidden="true">✦</span><p class="eyebrow" id="result-kicker">Night resolved</p>
+        <h2 id="result-title">The meadow holds.</h2>
+        <p id="result-copy"></p>
         <div class="result-stats" id="result-stats"></div>
-        <button class="primary-button wide" id="play-again" type="button">Play level 1 again <span aria-hidden="true">↻</span></button>
+        <div class="result-actions">
+          <button class="primary-button wide" id="next-level-button" type="button">Next level <span aria-hidden="true">→</span></button>
+          <button class="secondary-button wide" id="replay-button" type="button">Run recorded replay <span aria-hidden="true">↻</span></button>
+          <button class="secondary-button wide" id="new-seed-result-button" type="button">Try a new seed <span aria-hidden="true">✦</span></button>
+        </div>
       </div>
     </div>
 
+    <script src="engine.js"></script>
     <script src="game.js"></script>
   </body>
 </html>
