@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="A tiny top-down homestead tower-defense prototype." />
-    <title>Wild Hearth — First Shelter</title>
+    <meta name="description" content="A tiny top-down homestead defense prototype." />
+    <title>Wild Hearth — First Night</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -12,127 +12,85 @@
       <header class="game-header">
         <a class="brand" href="#top" aria-label="Restart Wild Hearth" id="brand-reset">
           <span class="brand-mark" aria-hidden="true">✦</span>
-          <span>
-            <span class="eyebrow">Wild Hearth</span>
-            <strong>First Shelter</strong>
-          </span>
+          <span><span class="eyebrow">Wild Hearth</span><strong>First Night</strong></span>
         </a>
         <div class="phase-chip" id="phase-chip" aria-live="polite">
-          <span class="phase-dot"></span>
-          <span id="phase-label">Daylight</span>
-          <span class="phase-time" id="phase-time">00:32</span>
+          <span class="phase-dot"></span><span id="phase-label">Daylight</span><span class="phase-time" id="phase-time">00:30</span>
         </div>
         <button class="quiet-button" id="reset-button" type="button">Reset level</button>
       </header>
 
-      <section class="topline" aria-label="Level brief and resources">
+      <section class="topline" aria-label="Level brief and homestead status">
         <div>
-          <p class="eyebrow">Level 01 · first shelter</p>
-          <h1>Build a little safety from the middle.</h1>
-          <p class="subhead">Avery can weave a branch screen in any direction. Tonight’s rustle tells you where to begin.</p>
+          <p class="eyebrow">Level 01 · day one</p>
+          <h1>A small home in a very big clearing.</h1>
+          <p class="subhead">Avery and Scout have only a hand-built branch teepee. The rest of the meadow is still theirs to grow into.</p>
         </div>
         <dl class="resource-row">
-          <div>
-            <dt>Branches</dt>
-            <dd><span aria-hidden="true">⌇</span> <span id="branches">3</span></dd>
-          </div>
-          <div>
-            <dt>Teepee</dt>
-            <dd><span id="teepee-health">3</span><small>/3</small></dd>
-          </div>
-          <div>
-            <dt>Scout</dt>
-            <dd class="dog-status" id="dog-status">At home</dd>
-          </div>
-          <div>
-            <dt>Tonight</dt>
-            <dd class="threat-status" id="threat-direction">North woods</dd>
-          </div>
+          <div><dt>Teepee</dt><dd><span id="teepee-health">2</span><small>/3</small></dd></div>
+          <div><dt>Scout</dt><dd class="dog-status" id="dog-status">At home</dd></div>
+          <div><dt>Night</dt><dd class="night-status">First watch</dd></div>
         </dl>
       </section>
 
-      <section class="game-board day-scene" id="game-board" aria-label="Top-down Wild Hearth clearing">
-        <div class="forest-edge" aria-hidden="true"></div>
-        <div class="clearing-rings" aria-hidden="true"><span></span><span></span><span></span></div>
-        <div class="path-lines" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-        <div class="future-plots" aria-hidden="true">
-          <span class="plot plot-north"></span><span class="plot plot-east"></span>
-          <span class="plot plot-south"></span><span class="plot plot-west"></span>
+      <section class="game-board day-scene" id="game-board" aria-label="Top-down Wild Hearth meadow">
+        <div class="meadow-texture" aria-hidden="true"></div>
+        <div class="canopy canopy-north" aria-hidden="true"></div><div class="canopy canopy-north-east" aria-hidden="true"></div>
+        <div class="canopy canopy-east" aria-hidden="true"></div><div class="canopy canopy-south-east" aria-hidden="true"></div>
+        <div class="canopy canopy-south" aria-hidden="true"></div><div class="canopy canopy-south-west" aria-hidden="true"></div>
+        <div class="canopy canopy-west" aria-hidden="true"></div><div class="canopy canopy-north-west" aria-hidden="true"></div>
+        <div class="meadow-details" aria-hidden="true">
+          <span class="stone stone-one"></span><span class="stone stone-two"></span><span class="stone stone-three"></span><span class="stone stone-four"></span>
+          <span class="flower flower-one"></span><span class="flower flower-two"></span><span class="flower flower-three"></span><span class="flower flower-four"></span><span class="flower flower-five"></span>
         </div>
-
-        <div class="raid-marker" id="raid-marker" aria-hidden="true"><span>RUSTLE</span></div>
-
-        <button class="barrier barrier-north is-selected" data-barrier="0" type="button" aria-label="Select north build site">
-          <span class="barrier-stick one"></span><span class="barrier-stick two"></span><span class="barrier-stick three"></span>
-          <span class="barrier-health" id="barrier-health-0">Empty</span><span class="barrier-name">North</span>
-        </button>
-        <button class="barrier barrier-east" data-barrier="1" type="button" aria-label="Select east build site">
-          <span class="barrier-stick one"></span><span class="barrier-stick two"></span><span class="barrier-stick three"></span>
-          <span class="barrier-health" id="barrier-health-1">Empty</span><span class="barrier-name">East</span>
-        </button>
-        <button class="barrier barrier-south" data-barrier="2" type="button" aria-label="Select south build site">
-          <span class="barrier-stick one"></span><span class="barrier-stick two"></span><span class="barrier-stick three"></span>
-          <span class="barrier-health" id="barrier-health-2">Empty</span><span class="barrier-name">South</span>
-        </button>
-        <button class="barrier barrier-west" data-barrier="3" type="button" aria-label="Select west build site">
-          <span class="barrier-stick one"></span><span class="barrier-stick two"></span><span class="barrier-stick three"></span>
-          <span class="barrier-health" id="barrier-health-3">Empty</span><span class="barrier-name">West</span>
-        </button>
 
         <button class="teepee is-selected" id="teepee" type="button" aria-label="Select branch teepee">
-          <span class="teepee-shadow"></span><span class="teepee-cloth"></span>
-          <span class="teepee-stick stick-a"></span><span class="teepee-stick stick-b"></span><span class="teepee-stick stick-c"></span>
+          <span class="teepee-shadow"></span><span class="teepee-hush"></span><span class="teepee-thatch"></span>
+          <span class="teepee-stick stick-a"></span><span class="teepee-stick stick-b"></span><span class="teepee-stick stick-c"></span><span class="teepee-stick stick-d"></span>
           <span class="teepee-door"></span><span class="teepee-label">Branch teepee</span>
         </button>
-        <div class="human" id="human" aria-label="Avery, the builder" role="img">
-          <span class="human-basket"></span><span class="human-body"></span><span class="human-head"></span><span class="human-hat"></span>
-          <span class="unit-label">Avery · builder</span>
+        <div class="campfire" aria-label="Small campfire" role="img"><span class="fire-ring"></span><span class="fire-glow"></span><span class="fire-flame"></span></div>
+        <div class="human" aria-label="Avery, the homesteader" role="img">
+          <span class="human-shadow"></span><span class="human-pack"></span><span class="human-body"></span><span class="human-head"></span><span class="human-hat"></span><span class="unit-label">Avery</span>
         </div>
         <div class="dog" id="dog" aria-label="Scout, your dog" role="img">
-          <span class="dog-tail"></span><span class="dog-body"></span><span class="dog-head"></span><span class="dog-ear"></span>
-          <span class="unit-label">Scout</span>
+          <span class="dog-shadow"></span><span class="dog-tail"></span><span class="dog-body"></span><span class="dog-head"></span><span class="dog-ear"></span><span class="unit-label">Scout</span>
         </div>
         <div class="raccoon hidden" id="raccoon" aria-label="Raccoon invader" role="img">
-          <span class="raccoon-tail"></span><span class="raccoon-body"></span><span class="raccoon-mask"></span>
-          <span class="raccoon-ear ear-left"></span><span class="raccoon-ear ear-right"></span>
-          <span class="enemy-bar"><i id="raccoon-health"></i></span><span class="unit-label">Raccoon</span>
+          <span class="raccoon-shadow"></span><span class="raccoon-tail"></span><span class="raccoon-body"></span><span class="raccoon-mask"></span><span class="raccoon-ear ear-left"></span><span class="raccoon-ear ear-right"></span>
+          <span class="enemy-bar"><i id="raccoon-health"></i></span>
         </div>
-
-        <div class="board-caption" id="board-caption">Your first home is just branches, hands, and a brave dog.</div>
+        <div class="board-caption" id="board-caption">The meadow is quiet. Scout keeps close to camp.</div>
       </section>
 
-      <section class="control-panel" aria-label="Build and repair controls">
+      <section class="control-panel" aria-label="Day and night controls">
         <div class="selected-card">
-          <p class="eyebrow" id="selection-kicker">Build site</p>
-          <h2 id="selection-title">North screen</h2>
-          <p id="selection-copy">An open edge of the clearing. A stick screen here gives Scout a safer intercept.</p>
-          <div class="mini-meter" aria-hidden="true"><span id="selection-meter" style="width: 0%"></span></div>
+          <p class="eyebrow">Your home</p>
+          <h2>Branch teepee</h2>
+          <p id="selection-copy">A little shelter made by hand. It is enough for the first night, and it will be the heart of everything that follows.</p>
+          <div class="mini-meter" aria-hidden="true"><span id="selection-meter" style="width: 67%"></span></div>
         </div>
         <div class="action-card">
-          <p class="action-hint" id="action-hint">A stick screen costs 1 branch bundle.</p>
-          <button class="primary-button" id="build-button" type="button">Build stick screen <span>⌇ 1</span></button>
+          <p class="action-hint" id="action-hint">Use the daylight to mend the roof before you rest.</p>
+          <button class="primary-button" id="mend-button" type="button">Mend teepee <span>+1</span></button>
           <button class="secondary-button" id="phase-button" type="button">Start night <span aria-hidden="true">→</span></button>
         </div>
         <aside class="tip-card">
           <span class="tip-icon" aria-hidden="true">✦</span>
-          <p><strong>First shelter:</strong> the marked woods are quiet for now. Put one screen in that direction, then let Scout do the fighting.</p>
+          <p><strong>First watch:</strong> Scout can handle one raccoon on his own. Your job is simply to keep home ready.</p>
         </aside>
       </section>
 
-      <section class="event-log" aria-label="Field notes" aria-live="polite">
-        <p class="eyebrow">Field notes</p>
-        <p id="event-log">Avery has three bundles of branches and a clear view of the north woods.</p>
-      </section>
+      <section class="event-log" aria-label="Field notes" aria-live="polite"><p class="eyebrow">Field notes</p><p id="event-log">Avery checks the teepee’s lashings while Scout circles the campfire.</p></section>
     </main>
 
     <div class="result-dialog hidden" id="result-dialog" role="dialog" aria-modal="true" aria-labelledby="result-title">
       <div class="result-card">
-        <span class="result-mark" id="result-mark" aria-hidden="true">✦</span>
-        <p class="eyebrow" id="result-kicker">First shelter held</p>
+        <span class="result-mark" aria-hidden="true">✦</span><p class="eyebrow">First watch complete</p>
         <h2 id="result-title">The teepee is safe.</h2>
-        <p id="result-copy">Avery’s first screen gave Scout the moment he needed. The next shelter can grow from any side of this circle.</p>
+        <p id="result-copy">Scout escorts the raccoon back to the trees. Tomorrow, this whole meadow is still waiting.</p>
         <div class="result-stats" id="result-stats"></div>
-        <button class="primary-button wide" id="play-again" type="button">Try the next direction <span aria-hidden="true">↻</span></button>
+        <button class="primary-button wide" id="play-again" type="button">Play level 1 again <span aria-hidden="true">↻</span></button>
       </div>
     </div>
 

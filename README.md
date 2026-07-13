@@ -1,6 +1,6 @@
-# Wild Hearth: First Shelter
+# Wild Hearth: First Night
 
-A tiny browser MVP for a top-down homestead tower-defense game: build outward from a hand-built branch teepee by day, then let Scout defend it from a raccoon at night.
+A tiny browser MVP for a top-down homestead defense game: Avery and Scout protect a hand-built branch teepee in the middle of a quiet, expandable meadow.
 
 ## Setup
 
@@ -18,11 +18,10 @@ Open [http://localhost:4173](http://localhost:4173). You can also open `index.ht
 
 ## How to play
 
-1. During the short **day** phase, select one of four radial build sites around the branch teepee.
-2. Spend one branch bundle to build a two-strength stick screen in the announced raid direction.
-3. Press **Start night** whenever you are ready.
-4. At night, one raccoon comes directly through the marked woods. Scout automatically fights at a screen; without the right screen, the raccoon reaches the teepee.
-5. Survive the raid to complete Level 1. **Try the next direction** cycles the test raid north → east → south → west.
+1. During the short **day** phase, mend the teepee if it needs attention.
+2. Press **Start night** whenever you are ready.
+3. At night, one raccoon enters naturally from the forest edge. Scout automatically turns it away.
+4. Survive the raid to complete Level 1. Each replay uses a different perimeter approach, while keeping the test deterministic.
 
 ## Configuration
 
