@@ -1,36 +1,45 @@
 const LEVEL_ONE = {
-  daySeconds: 45,
-  nightSeconds: 30,
-  startingSupplies: 3,
-  startingCoopHealth: 8,
-  coopMaxHealth: 10,
+  daySeconds: 32,
+  nightSeconds: 24,
+  startingBranches: 3,
+  teepeeHealth: 3,
+  screenHealth: 2,
   raccoonHealth: 4,
-  dogDamage: 1,
-  dogAttackEvery: 1.2,
-  raccoonBiteEvery: 1.7,
-  raccoonSpeed: 7.6,
-  dogInterceptionPoint: 63,
-  coopPoint: 86,
+  raccoonSpeed: 0.22,
+  screenProgress: 0.45,
+  teepeeProgress: 0.94,
+  screenBiteEvery: 1.4,
+  teepeeBiteEvery: 0.8,
+  dogAttackEvery: 0.9,
 };
+
+const DIRECTIONS = [
+  { id: "north", name: "North woods", x: 0, y: -1, marker: { left: "46%", top: "7%" } },
+  { id: "east", name: "East woods", x: 1, y: 0, marker: { left: "88%", top: "46%" } },
+  { id: "south", name: "South woods", x: 0, y: 1, marker: { left: "46%", top: "88%" } },
+  { id: "west", name: "West woods", x: -1, y: 0, marker: { left: "5%", top: "46%" } },
+];
 
 const elements = {
   board: document.querySelector("#game-board"),
   phaseChip: document.querySelector("#phase-chip"),
   phaseLabel: document.querySelector("#phase-label"),
   phaseTime: document.querySelector("#phase-time"),
-  supplies: document.querySelector("#supplies"),
-  coopHealth: document.querySelector("#coop-health"),
+  branches: document.querySelector("#branches"),
+  teepeeHealth: document.querySelector("#teepee-health"),
   dogStatus: document.querySelector("#dog-status"),
+  threatDirection: document.querySelector("#threat-direction"),
+  raidMarker: document.querySelector("#raid-marker"),
+  teepee: document.querySelector("#teepee"),
   dog: document.querySelector("#dog"),
   raccoon: document.querySelector("#raccoon"),
   raccoonHealth: document.querySelector("#raccoon-health"),
-  coop: document.querySelector("#coop"),
-  fenceButtons: [...document.querySelectorAll(".fence")],
+  barrierButtons: [...document.querySelectorAll(".barrier")],
   selectionKicker: document.querySelector("#selection-kicker"),
   selectionTitle: document.querySelector("#selection-title"),
   selectionCopy: document.querySelector("#selection-copy"),
   selectionMeter: document.querySelector("#selection-meter"),
-  repairButton: document.querySelector("#repair-button"),
+  buildButton: document.querySelector("#build-button"),
   phaseButton: document.querySelector("#phase-button"),
   actionHint: document.querySelector("#action-hint"),
   boardCaption: document.querySelector("#board-caption"),
@@ -46,23 +55,22 @@ const elements = {
 let state;
 let previousFrame;
 let animationFrame;
+let raidIndex = 0;
 
 function freshState() {
+  const raidDirection = DIRECTIONS[raidIndex % DIRECTIONS.length];
   return {
     phase: "day",
     timeLeft: LEVEL_ONE.daySeconds,
-    supplies: LEVEL_ONE.startingSupplies,
-    coopHealth: LEVEL_ONE.startingCoopHealth,
-    fences: [
-      { name: "West fence", health: 1, max: 3, point: 36 },
-      { name: "Middle fence", health: 2, max: 3, point: 53 },
-      { name: "East fence", health: 3, max: 3, point: 68 },
-    ],
-    selection: { type: "fence", index: 0 },
+    branches: LEVEL_ONE.startingBranches,
+    teepeeHealth: LEVEL_ONE.teepeeHealth,
+    screens: DIRECTIONS.map((direction) => ({ ...direction, health: 0, max: LEVEL_ONE.screenHealth })),
+    raidDirection,
+    selection: { type: "screen", index: 0 },
     raccoon: null,
-    raccoonsStopped: 0,
-    fencesChewed: 0,
-    message: "Scout is patrolling near the chicken coop.",
+    screensBuilt: 0,
+    screensLost: 0,
+    message: `Avery has three bundles of branches and a clear view of the ${raidDirection.name.toLowerCase()}.`,
   };
 }
 
@@ -77,92 +85,139 @@ function setMessage(message) {
 }
 
 function selectedObject() {
-  if (state.selection.type === "coop") {
-    return { name: "Chicken coop", health: state.coopHealth, max: LEVEL_ONE.coopMaxHealth };
+  if (state.selection.type === "teepee") {
+    return { name: "Branch teepee", health: state.teepeeHealth, max: LEVEL_ONE.teepeeHealth };
   }
-  return state.fences[state.selection.index];
+  return state.screens[state.selection.index];
+}
+
+function screenForRaid() {
+  return state.screens.find((screen) => screen.id === state.raidDirection.id);
+}
+
+function setPosition(element, x, y) {
+  element.style.left = `${x}%`;
+  element.style.top = `${y}%`;
+}
+
+function raidPosition(progress, holdingAtScreen = false) {
+  const distance = holdingAtScreen
+    ? 42 * (1 - LEVEL_ONE.screenProgress)
+    : Math.max(5, 42 * (1 - progress));
+  return {
+    x: 50 + state.raidDirection.x * distance,
+    y: 50 + state.raidDirection.y * distance,
+  };
 }
 
 function renderSelection() {
   const selected = selectedObject();
-  const isCoop = state.selection.type === "coop";
+  const isTeepee = state.selection.type === "teepee";
+  const isEmpty = !isTeepee && selected.health === 0;
   const isFull = selected.health >= selected.max;
-  elements.selectionKicker.textContent = isCoop ? "Homestead" : "Selected barrier";
-  elements.selectionTitle.textContent = selected.name;
-  elements.selectionCopy.textContent = isCoop
-    ? "The raccoon’s target. Keep it standing through the night."
-    : selected.health === 0
-      ? "Broken. Rebuild it to make the path to the coop longer."
-      : "A barrier on the raccoon path. It buys Scout time to intercept.";
+  elements.selectionKicker.textContent = isTeepee ? "Your home" : "Build site";
+  elements.selectionTitle.textContent = isTeepee ? selected.name : `${selected.name.replace(" woods", "")} screen`;
+  elements.selectionCopy.textContent = isTeepee
+    ? "A hand-built shelter of branches. Upgrades come later; tonight, keep its first roof standing."
+    : isEmpty
+      ? `An open edge of the clearing. A stick screen here gives Scout a safer intercept.`
+      : `A woven stick screen. It holds the raccoon while Scout runs to this side.`;
   elements.selectionMeter.style.width = `${(selected.health / selected.max) * 100}%`;
-  elements.repairButton.disabled = state.phase !== "day" || isFull || state.supplies < 1;
-  elements.repairButton.innerHTML = isFull
-    ? "Fully repaired <span>✓</span>"
-    : `Repair +1 <span>◈ 1</span>`;
-  elements.actionHint.textContent = state.phase === "day"
-    ? isFull ? "This spot is ready for the night." : "Each repair costs 1 supply."
-    : "The homestead is locked down until dawn.";
+  elements.buildButton.disabled = state.phase !== "day" || isFull || state.branches < 1;
+  elements.buildButton.innerHTML = isFull
+    ? "Screen is ready <span>✓</span>"
+    : isEmpty
+      ? "Build stick screen <span>⌇ 1</span>"
+      : "Repair +1 <span>⌇ 1</span>";
+  elements.actionHint.textContent = state.phase !== "day"
+    ? "The clearing is locked down until dawn."
+    : isTeepee
+      ? isFull ? "The first shelter is as sound as it can be." : "One branch bundle repairs the teepee."
+      : isEmpty ? "A new screen arrives with 2 strength." : "One branch bundle restores 1 strength.";
 }
 
 function renderBoard() {
-  elements.board.classList.toggle("night-scene", state.phase === "night");
-  elements.board.classList.toggle("day-scene", state.phase !== "night");
-  elements.phaseChip.classList.toggle("is-night", state.phase === "night");
+  const night = state.phase === "night";
+  elements.board.classList.toggle("night-scene", night);
+  elements.phaseChip.classList.toggle("is-night", night);
   elements.phaseLabel.textContent = state.phase === "day" ? "Daylight" : "Night watch";
   elements.phaseTime.textContent = formatTime(state.timeLeft);
-  elements.supplies.textContent = state.supplies;
-  elements.coopHealth.textContent = state.coopHealth;
-  elements.dogStatus.textContent = state.raccoon?.intercepted ? "Defending" : state.phase === "night" ? "Watching path" : "On guard";
-  elements.dog.classList.toggle("is-fighting", Boolean(state.raccoon?.intercepted));
+  elements.branches.textContent = state.branches;
+  elements.teepeeHealth.textContent = state.teepeeHealth;
+  elements.threatDirection.textContent = state.raidDirection.name;
+  elements.dogStatus.textContent = state.raccoon?.mode === "screen"
+    ? "Fighting at screen"
+    : state.raccoon?.mode === "teepee"
+      ? "Defending teepee"
+      : night ? "Watching the edge" : "At home";
   elements.boardCaption.textContent = state.phase === "day"
-    ? "A quiet day to mend the homestead."
-    : state.raccoon?.intercepted
-      ? "Scout has the raccoon’s attention."
-      : "Listen closely — something is moving in the brush.";
+    ? `The ${state.raidDirection.name.toLowerCase()} are rustling. Your first screen can go anywhere.`
+    : state.raccoon?.mode === "screen"
+      ? "Scout has reached the stick screen."
+      : state.raccoon?.mode === "teepee"
+        ? "The raccoon reached the heart of the clearing!"
+        : "A raccoon is cutting straight through the open grass.";
   elements.eventLog.textContent = state.message;
+  elements.raidMarker.style.left = state.raidDirection.marker.left;
+  elements.raidMarker.style.top = state.raidDirection.marker.top;
 
-  elements.fenceButtons.forEach((button, index) => {
-    const fence = state.fences[index];
-    button.classList.toggle("is-selected", state.selection.type === "fence" && state.selection.index === index);
-    button.classList.toggle("is-broken", fence.health === 0);
-    button.querySelector(".fence-health").textContent = `${fence.health} / ${fence.max}`;
+  elements.barrierButtons.forEach((button, index) => {
+    const screen = state.screens[index];
+    button.classList.toggle("is-selected", state.selection.type === "screen" && state.selection.index === index);
+    button.classList.toggle("is-target", screen.id === state.raidDirection.id);
+    button.classList.toggle("is-empty", screen.health === 0);
+    button.classList.toggle("is-broken", screen.health === 0 && state.phase === "night" && screen.id === state.raidDirection.id);
+    button.querySelector(".barrier-health").textContent = screen.health === 0 ? "Empty" : `${screen.health} / ${screen.max}`;
   });
-  elements.coop.classList.toggle("is-selected", state.selection.type === "coop");
+  elements.teepee.classList.toggle("is-selected", state.selection.type === "teepee");
 
   const raccoon = state.raccoon;
   elements.raccoon.classList.toggle("hidden", !raccoon);
+  elements.dog.classList.toggle("is-fighting", Boolean(raccoon?.mode === "screen" || raccoon?.mode === "teepee"));
   if (raccoon) {
-    elements.raccoon.style.left = `${raccoon.position}%`;
+    const position = raidPosition(raccoon.progress, raccoon.mode === "screen");
+    setPosition(elements.raccoon, position.x, position.y);
     elements.raccoonHealth.style.width = `${(raccoon.health / LEVEL_ONE.raccoonHealth) * 100}%`;
+    if (raccoon.mode === "screen") setPosition(elements.dog, position.x + state.raidDirection.x * 4, position.y + state.raidDirection.y * 4);
+    if (raccoon.mode === "teepee") setPosition(elements.dog, 50 + state.raidDirection.x * 7, 50 + state.raidDirection.y * 7);
+  } else {
+    setPosition(elements.dog, 57, 59);
   }
   renderSelection();
 }
 
-function selectFence(index) {
+function selectScreen(index) {
   if (state.phase !== "day") return;
-  state.selection = { type: "fence", index };
-  setMessage(`${state.fences[index].name} selected. A repair restores one plank of strength.`);
+  state.selection = { type: "screen", index };
+  const screen = state.screens[index];
+  setMessage(`${screen.name} selected. Avery can build outward from the teepee in this direction.`);
   renderBoard();
 }
 
-function selectCoop() {
+function selectTeepee() {
   if (state.phase !== "day") return;
-  state.selection = { type: "coop" };
-  setMessage("Chicken coop selected. It is the one thing the raccoon wants to reach.");
+  state.selection = { type: "teepee" };
+  setMessage("Branch teepee selected. It is small now, but every future upgrade will begin from this center.");
   renderBoard();
 }
 
-function repairSelected() {
-  if (state.phase !== "day" || state.supplies < 1) return;
+function buildOrRepair() {
+  if (state.phase !== "day" || state.branches < 1) return;
   const target = selectedObject();
   if (target.health >= target.max) return;
-  if (state.selection.type === "coop") {
-    state.coopHealth += 1;
+  if (state.selection.type === "teepee") {
+    state.teepeeHealth += 1;
+    setMessage("Avery binds another branch into the teepee frame.");
   } else {
-    state.fences[state.selection.index].health += 1;
+    const screen = state.screens[state.selection.index];
+    const wasEmpty = screen.health === 0;
+    screen.health = wasEmpty ? screen.max : screen.health + 1;
+    if (wasEmpty) state.screensBuilt += 1;
+    setMessage(wasEmpty
+      ? `Avery weaves a new stick screen toward the ${screen.name.toLowerCase()}.`
+      : `Avery tightens the ${screen.name.toLowerCase()} screen.`);
   }
-  state.supplies -= 1;
-  setMessage(`${target.name} is sturdier. Scout gives an approving bark.`);
+  state.branches -= 1;
   renderBoard();
 }
 
@@ -170,67 +225,80 @@ function startNight() {
   if (state.phase !== "day") return;
   state.phase = "night";
   state.timeLeft = LEVEL_ONE.nightSeconds;
-  state.selection = { type: "fence", index: 0 };
-  state.raccoon = {
-    health: LEVEL_ONE.raccoonHealth,
-    position: 4,
-    biteClock: 0,
-    attackClock: 0,
-    intercepted: false,
-    targetFence: null,
-  };
+  state.raccoon = { health: LEVEL_ONE.raccoonHealth, progress: 0, mode: "approach", biteClock: 0, attackClock: 0 };
   elements.phaseButton.disabled = true;
   elements.phaseButton.innerHTML = "Night in progress <span>☾</span>";
-  setMessage("A raccoon slips out of the woods. Scout is watching the path.");
+  setMessage(`A raccoon slips out of the ${state.raidDirection.name.toLowerCase()}. Scout watches its line to the teepee.`);
   renderBoard();
 }
 
-function firstFenceAt(position) {
-  return state.fences.findIndex((fence) => fence.health > 0 && position >= fence.point - 0.7 && position <= fence.point + 0.7);
+function dogAttack(raccoon) {
+  if (raccoon.attackClock < LEVEL_ONE.dogAttackEvery) return false;
+  raccoon.attackClock = 0;
+  raccoon.health -= 1;
+  setMessage(raccoon.mode === "screen"
+    ? "Scout snaps at the raccoon from behind the stick screen."
+    : "Scout throws himself between the raccoon and the teepee.");
+  if (raccoon.health <= 0) {
+    completeLevel(true);
+    return true;
+  }
+  return false;
 }
 
 function updateNight(delta) {
   const raccoon = state.raccoon;
   if (!raccoon) return;
-
   state.timeLeft -= delta;
-  const fenceIndex = firstFenceAt(raccoon.position);
+  const targetScreen = screenForRaid();
 
-  if (fenceIndex !== -1 && !raccoon.intercepted) {
-    const fence = state.fences[fenceIndex];
-    raccoon.targetFence = fenceIndex;
-    raccoon.biteClock += delta;
-    if (raccoon.biteClock >= LEVEL_ONE.raccoonBiteEvery) {
-      raccoon.biteClock = 0;
-      fence.health -= 1;
-      setMessage(`The raccoon chews through ${fence.name.toLowerCase()}.`);
-      if (fence.health === 0) {
-        state.fencesChewed += 1;
-        setMessage(`${fence.name} is down — but it bought Scout valuable time.`);
-      }
+  if (raccoon.mode === "approach") {
+    raccoon.progress += LEVEL_ONE.raccoonSpeed * delta;
+    if (targetScreen.health > 0 && raccoon.progress >= LEVEL_ONE.screenProgress) {
+      raccoon.progress = LEVEL_ONE.screenProgress;
+      raccoon.mode = "screen";
+      setMessage(`The raccoon hits the ${targetScreen.name.toLowerCase()} screen. Scout races across the clearing.`);
+    } else if (raccoon.progress >= LEVEL_ONE.teepeeProgress) {
+      raccoon.progress = LEVEL_ONE.teepeeProgress;
+      raccoon.mode = "teepee";
+      setMessage("The raccoon reaches the branch teepee. Scout finally catches up!");
     }
-  } else if (!raccoon.intercepted && raccoon.position < LEVEL_ONE.coopPoint) {
-    raccoon.position += LEVEL_ONE.raccoonSpeed * delta;
   }
 
-  if (raccoon.position >= LEVEL_ONE.dogInterceptionPoint || raccoon.intercepted) {
-    raccoon.intercepted = true;
+  if (raccoon.mode === "screen") {
+    raccoon.biteClock += delta;
     raccoon.attackClock += delta;
-    if (raccoon.attackClock >= LEVEL_ONE.dogAttackEvery) {
-      raccoon.attackClock = 0;
-      raccoon.health -= LEVEL_ONE.dogDamage;
-      setMessage("Scout rushes in and drives the raccoon away from the coop.");
-      if (raccoon.health <= 0) {
-        state.raccoonsStopped += 1;
-        completeLevel(true);
+    if (raccoon.biteClock >= LEVEL_ONE.screenBiteEvery) {
+      raccoon.biteClock = 0;
+      targetScreen.health -= 1;
+      if (targetScreen.health === 0) {
+        state.screensLost += 1;
+        setMessage("The stick screen falls, but Scout is already in the fight.");
+      } else {
+        setMessage("The raccoon gnaws at the screen while Scout closes in.");
+      }
+    }
+    if (dogAttack(raccoon)) return;
+  }
+
+  if (raccoon.mode === "teepee") {
+    raccoon.biteClock += delta;
+    raccoon.attackClock += delta;
+    if (raccoon.biteClock >= LEVEL_ONE.teepeeBiteEvery) {
+      raccoon.biteClock = 0;
+      state.teepeeHealth -= 1;
+      elements.teepee.classList.add("hit");
+      setTimeout(() => elements.teepee.classList.remove("hit"), 420);
+      setMessage("The raccoon tears at the teepee’s branch frame.");
+      if (state.teepeeHealth <= 0) {
+        completeLevel(false);
         return;
       }
     }
+    if (dogAttack(raccoon)) return;
   }
 
-  if (state.timeLeft <= 0) {
-    completeLevel(state.coopHealth > 0);
-  }
+  if (state.timeLeft <= 0) completeLevel(state.teepeeHealth > 0 && raccoon.health <= 0);
 }
 
 function completeLevel(won) {
@@ -239,15 +307,15 @@ function completeLevel(won) {
   elements.raccoon.classList.add("hidden");
   elements.dog.classList.remove("is-fighting");
   elements.resultMark.textContent = won ? "✦" : "!";
-  elements.resultKicker.textContent = won ? "First watch complete" : "The coop was raided";
-  elements.resultTitle.textContent = won ? "The coop is safe." : "Try a sturdier path.";
+  elements.resultKicker.textContent = won ? "First shelter held" : "The first shelter fell";
+  elements.resultTitle.textContent = won ? "The teepee is safe." : "Start from the marked edge.";
   elements.resultCopy.textContent = won
-    ? "Scout sent the raccoon back to the woods. You just played the complete level-one loop: prepare by day, then watch your plan hold at night."
-    : "The raccoon made it to the coop. Spend more daylight supplies on the fence line, then try the night again.";
+    ? "Avery’s first screen gave Scout the moment he needed. The next shelter can grow outward from any side of this circle."
+    : `The ${state.raidDirection.name.toLowerCase()} were the danger. Place one stick screen there before starting the night, then let Scout meet the raid early.`;
   elements.resultStats.innerHTML = [
-    `<span>Coop ${state.coopHealth}/10</span>`,
-    `<span>${state.raccoonsStopped} raccoon stopped</span>`,
-    `<span>${state.fencesChewed} fence${state.fencesChewed === 1 ? "" : "s"} lost</span>`,
+    `<span>Teepee ${state.teepeeHealth}/3</span>`,
+    `<span>${state.screensBuilt} screen${state.screensBuilt === 1 ? "" : "s"} built</span>`,
+    `<span>${state.screensLost} screen${state.screensLost === 1 ? "" : "s"} lost</span>`,
   ].join("");
   elements.resultDialog.classList.remove("hidden");
 }
@@ -256,22 +324,19 @@ function tick(timestamp) {
   if (!previousFrame) previousFrame = timestamp;
   const delta = Math.min((timestamp - previousFrame) / 1000, 0.1);
   previousFrame = timestamp;
-
   if (state.phase === "day") {
     state.timeLeft -= delta;
     if (state.timeLeft <= 0) startNight();
   } else if (state.phase === "night") {
     updateNight(delta);
   }
-
   renderBoard();
-  if (state.phase === "day" || state.phase === "night") {
-    animationFrame = requestAnimationFrame(tick);
-  }
+  if (state.phase === "day" || state.phase === "night") animationFrame = requestAnimationFrame(tick);
 }
 
-function resetGame() {
+function resetGame(advanceRaid = false) {
   cancelAnimationFrame(animationFrame);
+  if (advanceRaid) raidIndex += 1;
   previousFrame = undefined;
   state = freshState();
   elements.resultDialog.classList.add("hidden");
@@ -281,12 +346,12 @@ function resetGame() {
   animationFrame = requestAnimationFrame(tick);
 }
 
-elements.fenceButtons.forEach((button, index) => button.addEventListener("click", () => selectFence(index)));
-elements.coop.addEventListener("click", selectCoop);
-elements.repairButton.addEventListener("click", repairSelected);
+elements.barrierButtons.forEach((button, index) => button.addEventListener("click", () => selectScreen(index)));
+elements.teepee.addEventListener("click", selectTeepee);
+elements.buildButton.addEventListener("click", buildOrRepair);
 elements.phaseButton.addEventListener("click", startNight);
-document.querySelector("#reset-button").addEventListener("click", resetGame);
-document.querySelector("#brand-reset").addEventListener("click", (event) => { event.preventDefault(); resetGame(); });
-document.querySelector("#play-again").addEventListener("click", resetGame);
+document.querySelector("#reset-button").addEventListener("click", () => resetGame(false));
+document.querySelector("#brand-reset").addEventListener("click", (event) => { event.preventDefault(); resetGame(false); });
+document.querySelector("#play-again").addEventListener("click", () => resetGame(true));
 
 resetGame();

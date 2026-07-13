@@ -1,6 +1,6 @@
-# Mossy Nook: First Watch
+# Wild Hearth: First Shelter
 
-A tiny browser MVP for a homestead tower-defense game: prepare fences and the chicken coop by day, then let a loyal dog defend it from one raccoon at night.
+A tiny browser MVP for a top-down homestead tower-defense game: build outward from a hand-built branch teepee by day, then let Scout defend it from a raccoon at night.
 
 ## Setup
 
@@ -18,10 +18,11 @@ Open [http://localhost:4173](http://localhost:4173). You can also open `index.ht
 
 ## How to play
 
-1. During the short **day** phase, select a fence or the coop and spend supplies to repair it.
-2. Press **Start night** whenever you are ready.
-3. At night, one raccoon follows the path to the coop. The dog automatically intercepts it; fences buy time.
-4. Survive the raid to complete Level 1. Use **Play again** to reset the test loop.
+1. During the short **day** phase, select one of four radial build sites around the branch teepee.
+2. Spend one branch bundle to build a two-strength stick screen in the announced raid direction.
+3. Press **Start night** whenever you are ready.
+4. At night, one raccoon comes directly through the marked woods. Scout automatically fights at a screen; without the right screen, the raccoon reaches the teepee.
+5. Survive the raid to complete Level 1. **Try the next direction** cycles the test raid north → east → south → west.
 
 ## Configuration
 
