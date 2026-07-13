@@ -1,0 +1,9 @@
+# Local tooling and operating-system files
+.DS_Store
+.vscode/
+.idea/
+
+# JavaScript tooling (not currently required, but keep generated files out of Git)
+node_modules/
+dist/
+coverage/

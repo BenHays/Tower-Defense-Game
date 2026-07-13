@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="A tiny day-build, night-defense homestead tower-defense prototype."
+    />
+    <title>Mossy Nook — First Watch</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <header class="game-header">
+        <a class="brand" href="#top" aria-label="Restart Mossy Nook" id="brand-reset">
+          <span class="brand-mark" aria-hidden="true">✦</span>
+          <span>
+            <span class="eyebrow">Mossy Nook</span>
+            <strong>First Watch</strong>
+          </span>
+        </a>
+        <div class="phase-chip" id="phase-chip" aria-live="polite">
+          <span class="phase-dot"></span>
+          <span id="phase-label">Daylight</span>
+          <span class="phase-time" id="phase-time">00:45</span>
+        </div>
+        <button class="quiet-button" id="reset-button" type="button">Reset level</button>
+      </header>
+
+      <section class="topline" aria-label="Level brief and resources">
+        <div>
+          <p class="eyebrow">Level 01 · a hungry visitor</p>
+          <h1>Keep the coop safe until dawn.</h1>
+        </div>
+        <dl class="resource-row">
+          <div>
+            <dt>Supplies</dt>
+            <dd><span aria-hidden="true">◈</span> <span id="supplies">3</span></dd>
+          </div>
+          <div>
+            <dt>Coop health</dt>
+            <dd><span id="coop-health">8</span><small>/10</small></dd>
+          </div>
+          <div>
+            <dt>Dog</dt>
+            <dd class="dog-status" id="dog-status">On guard</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="game-board day-scene" id="game-board" aria-label="Mossy Nook homestead">
+        <div class="sky-elements" aria-hidden="true">
+          <div class="sun-or-moon" id="sun-or-moon"></div>
+          <div class="cloud cloud-one"></div>
+          <div class="cloud cloud-two"></div>
+          <div class="stars">✦ &nbsp; · &nbsp; ✧ &nbsp;&nbsp; · &nbsp; ✦</div>
+        </div>
+        <div class="hill hill-back" aria-hidden="true"></div>
+        <div class="hill hill-front" aria-hidden="true"></div>
+        <div class="pines" aria-hidden="true"><span>♠</span><span>♠</span><span>♠</span><span>♠</span></div>
+        <div class="meadow-specks" aria-hidden="true">✿ &nbsp; ✦ &nbsp; ✿ &nbsp; ✦ &nbsp; ✿</div>
+
+        <div class="path" aria-hidden="true"><span class="path-label">the raccoon path</span></div>
+
+        <button class="fence fence-0 selected" data-fence="0" type="button" aria-label="Select west fence">
+          <span class="fence-post post-one"></span><span class="fence-post post-two"></span>
+          <span class="fence-rail rail-one"></span><span class="fence-rail rail-two"></span>
+          <span class="fence-health" id="fence-health-0">1 / 3</span>
+          <span class="fence-name">West fence</span>
+        </button>
+        <button class="fence fence-1" data-fence="1" type="button" aria-label="Select middle fence">
+          <span class="fence-post post-one"></span><span class="fence-post post-two"></span>
+          <span class="fence-rail rail-one"></span><span class="fence-rail rail-two"></span>
+          <span class="fence-health" id="fence-health-1">2 / 3</span>
+          <span class="fence-name">Middle fence</span>
+        </button>
+        <button class="fence fence-2" data-fence="2" type="button" aria-label="Select east fence">
+          <span class="fence-post post-one"></span><span class="fence-post post-two"></span>
+          <span class="fence-rail rail-one"></span><span class="fence-rail rail-two"></span>
+          <span class="fence-health" id="fence-health-2">3 / 3</span>
+          <span class="fence-name">East fence</span>
+        </button>
+
+        <button class="coop selected-target" id="coop" type="button" aria-label="Select chicken coop">
+          <span class="coop-roof"></span><span class="coop-wall"></span><span class="coop-door"></span>
+          <span class="coop-sign">COOP</span>
+          <span class="coop-label">Chicken coop</span>
+        </button>
+
+        <div class="dog" id="dog" aria-label="Your dog, Scout" role="img">
+          <span class="dog-tail"></span><span class="dog-body"></span><span class="dog-head"></span><span class="dog-ear"></span>
+          <span class="dog-label">Scout</span>
+        </div>
+        <div class="raccoon hidden" id="raccoon" aria-label="Raccoon invader" role="img">
+          <span class="raccoon-tail"></span><span class="raccoon-body"></span><span class="raccoon-mask"></span><span class="raccoon-ear ear-left"></span><span class="raccoon-ear ear-right"></span>
+          <span class="enemy-bar"><i id="raccoon-health"></i></span>
+          <span class="raccoon-label">Raccoon</span>
+        </div>
+
+        <div class="board-caption" id="board-caption">A quiet day to mend the homestead.</div>
+      </section>
+
+      <section class="control-panel" aria-label="Build and repair controls">
+        <div class="selected-card">
+          <p class="eyebrow" id="selection-kicker">Selected</p>
+          <h2 id="selection-title">West fence</h2>
+          <p id="selection-copy">A weak outer barrier. Restore it to buy Scout more time.</p>
+          <div class="mini-meter" aria-hidden="true"><span id="selection-meter" style="width: 33%"></span></div>
+        </div>
+        <div class="action-card">
+          <p class="action-hint" id="action-hint">Each repair costs 1 supply.</p>
+          <button class="primary-button" id="repair-button" type="button">Repair +1 <span>◈ 1</span></button>
+          <button class="secondary-button" id="phase-button" type="button">Start night <span aria-hidden="true">→</span></button>
+        </div>
+        <aside class="tip-card" id="tip-card">
+          <span class="tip-icon" aria-hidden="true">✦</span>
+          <p><strong>First watch:</strong> One raccoon is coming. Scout handles the fighting automatically.</p>
+        </aside>
+      </section>
+
+      <section class="event-log" aria-label="Field notes" aria-live="polite">
+        <p class="eyebrow">Field notes</p>
+        <p id="event-log">Scout is patrolling near the chicken coop.</p>
+      </section>
+    </main>
+
+    <div class="result-dialog hidden" id="result-dialog" role="dialog" aria-modal="true" aria-labelledby="result-title">
+      <div class="result-card">
+        <span class="result-mark" id="result-mark" aria-hidden="true">✦</span>
+        <p class="eyebrow" id="result-kicker">First watch complete</p>
+        <h2 id="result-title">The coop is safe.</h2>
+        <p id="result-copy">Scout sent the raccoon back to the woods. This is the whole level-one loop: prepare by day, then see the plan play out at night.</p>
+        <div class="result-stats" id="result-stats"></div>
+        <button class="primary-button wide" id="play-again" type="button">Play level 1 again <span aria-hidden="true">↻</span></button>
+      </div>
+    </div>
+
+    <script src="game.js"></script>
+  </body>
+</html>
