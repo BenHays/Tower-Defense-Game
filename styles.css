@@ -141,6 +141,16 @@ button[hidden], [hidden] { display: none !important; }
 /* Shared SVG talent art uses one 48 x 48 canvas, so every icon centers by geometry instead of font metrics. */
 .tech-branch[data-branch="hunting"] { --tech-color: #a96526; --tech-tint: #f6e7d0; }.tech-branch[data-branch="farming"] { --tech-color: #477a47; --tech-tint: #e2efdc; }.tech-branch[data-branch="building"] { --tech-color: #4c6f91; --tech-tint: #deebf4; }.tech-branch[data-branch="nurturing"] { --tech-color: #9a5f62; --tech-tint: #f6e1df; }.tech-branch[data-branch="scouting"] { --tech-color: #765276; --tech-tint: #f0e2f2; }.tech-connection.hunting { stroke: rgba(169,101,38,.66); }.tech-connection.farming { stroke: rgba(71,122,71,.66); }.tech-connection.building { stroke: rgba(76,111,145,.66); }.tech-connection.nurturing { stroke: rgba(154,95,98,.66); }.tech-connection.scouting { stroke: rgba(118,82,118,.66); }.tech-dialog .tech-node .tech-node-icon { display: grid; place-items: center; width: 68px; height: 68px; color: currentColor; font-size: initial; line-height: 0; text-shadow: none; }.tech-dialog .tech-node .tech-node-icon svg,.tech-detail-icon > svg { display: block; width: 100%; height: 100%; overflow: visible; transform: translateY(var(--icon-optical-y,0)); }.tech-detail-icon > svg { width: 54px; height: 54px; }
 
+/* Icons remain dominant, while every node states its concrete outcome at a glance. */
+.tech-node-track { grid-template-columns: repeat(var(--tech-depth),110px); grid-template-rows: repeat(var(--tech-row-count),110px); gap: 30px 76px; }
+.tech-dialog .tech-node { width: 110px; min-height: 110px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 7px 5px 6px; }
+.tech-dialog .tech-node .tech-node-icon { flex: 0 0 62px; width: 62px; height: 62px; }
+.tech-node-effect { position: relative; z-index: 2; display: grid; place-items: center; min-height: 21px; max-width: 94px; color: currentColor; font-size: .46rem; font-style: normal; font-weight: 950; letter-spacing: .035em; line-height: 1.1; text-align: center; text-transform: uppercase; }
+.tech-node-cost { top: -8px; right: -8px; bottom: auto; }
+.tech-detail #tech-effect { grid-column: 2; align-self: start; justify-self: start; min-height: 22px; margin: 0; padding: 4px 7px; border: 1px solid rgba(53,108,82,.35); border-radius: 99px; color: var(--moss-dark); background: rgba(232,201,112,.25); font-size: .6rem; font-weight: 950; letter-spacing: .04em; line-height: 1.1; text-transform: uppercase; }
+.tech-detail #tech-copy { grid-column: 1 / -1; margin-top: 3px!important; }
+@media(max-width:860px) { .tech-node-track { grid-template-columns: repeat(var(--tech-depth),96px); grid-template-rows: repeat(var(--tech-row-count),96px); gap: 24px 58px; }.tech-dialog .tech-node { width:96px; min-height:96px; padding:6px 4px; }.tech-dialog .tech-node .tech-node-icon { flex-basis:56px; width:56px; height:56px; }.tech-node-effect { max-width:84px; font-size:.42rem; } }
+
 /* Generated tower art uses the same silhouettes in the meadow and Build strip. */
 .building.stickLauncher,
 .building.potatoGun {

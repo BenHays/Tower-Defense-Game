@@ -7,7 +7,7 @@
 - [`talent-icons.js`](../../talent-icons.js) is the one icon catalog. Each entry uses a normalized SVG viewBox, so node art stays centered; [`talent-icons.html`](../../talent-icons.html) is its viewable gallery.
 - A branch's first, second, third, and fourth purchases cost 1, 2, 4, and 8 Skill Points. Branches price independently.
 - The five player-facing branches are **Hunting**, **Farming**, **Building**, **Nurturing**, and **Scouting**.
-- Learning a Talent costs Skill Points only, never a day action. Nodes appear in an icon-first horizontal canvas; selecting one reveals its precise effect and prerequisites in the detail pane.
+- Learning a Talent costs Skill Points only, never a day action. Nodes appear in an icon-first horizontal canvas with a concise mechanical tag (for example, `+1 Launcher DMG`); selecting one repeats its precise effect and prerequisites in the detail pane.
 
 ## Collaboration
 

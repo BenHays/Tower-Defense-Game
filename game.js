@@ -51,6 +51,7 @@ const elements = {
   techDialogSubtitle: document.querySelector("#tech-dialog-subtitle"),
   techDetailIcon: document.querySelector("#tech-detail-icon"),
   techTitle: document.querySelector("#tech-title"),
+  techEffect: document.querySelector("#tech-effect"),
   techCopy: document.querySelector("#tech-copy"),
   techBranches: document.querySelector("#tech-branches"),
   researchButton: document.querySelector("#research-button"),
@@ -614,6 +615,8 @@ function renderTechnology() {
     elements.techBranches.replaceChildren(createNode("p", "tech-empty", "The first talent reveals after you survive Level 1."));
     elements.techTitle.textContent = "Talents unlock soon";
     elements.techDetailIcon.replaceChildren(talentIconSvg("scoutTraining"));
+    elements.techEffect.hidden = true;
+    elements.techEffect.textContent = "";
     elements.techCopy.textContent = "Clear the first watch. Your first Skill Point arrives at 10 XP.";
     setButtonContent(elements.researchButton, "Talent unavailable", "next level");
     elements.researchButton.disabled = true;
@@ -655,15 +658,17 @@ function renderTechnology() {
       tierRows.set(node.tier, row);
       const check = Engine.techAvailability(state, node.id);
       const researched = Engine.hasResearch(state, node.id);
+      const effectSummary = techEffectSummary(node);
       const button = createNode("button", `tech-node${node.id === activeTechId ? " is-selected" : ""}${researched ? " is-researched" : ""}${check.available ? " is-available" : " is-locked"}`);
       button.type = "button";
       button.dataset.tech = node.id;
       button.style.setProperty("--tech-column", String(node.tier));
       button.style.setProperty("--tech-row", String(row));
-      button.title = check.reason;
-      button.setAttribute("aria-label", `${node.label}: ${techEffectSummary(node)}. ${researched ? "Learned." : check.reason}`);
+      button.title = `${effectSummary} · ${researched ? "Learned" : check.reason}`;
+      button.setAttribute("aria-label", `${node.label}: ${effectSummary}. ${researched ? "Learned." : check.reason}`);
       button.append(
         talentIconFrame(node.icon, "tech-node-icon"),
+        createNode("span", "tech-node-effect", effectSummary),
         createNode("em", "tech-node-cost", researched ? "✓" : `${check.costSkillPoints} SP`),
       );
       track.append(button);
@@ -679,6 +684,8 @@ function renderTechnology() {
   queueTechConnections();
   elements.techDetailIcon.replaceChildren(talentIconSvg(selectedNode.icon));
   elements.techTitle.textContent = selectedNode.label;
+  elements.techEffect.hidden = false;
+  elements.techEffect.textContent = techEffectSummary(selectedNode);
   elements.techDialogSubtitle.textContent = state.phase === "day"
     ? `Level ${level} · ${state.skillPoints} Skill Point${state.skillPoints === 1 ? "" : "s"} ready · ${state.xp}/${Engine.nextSkillPointThreshold(state)} XP to next · no action.`
     : `Level ${level} · ${state.skillPoints} Skill Point${state.skillPoints === 1 ? "" : "s"} ready · planning is read-only during the night.`;

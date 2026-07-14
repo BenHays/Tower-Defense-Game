@@ -29,6 +29,7 @@
 - Model cleared forest as its own terrain value rather than generic open ground. It preserves the harvested-tree visual and faster movement while both terrain values remain valid grass for building placement.
 - A survival aid cannot be free by default: introduce the teepee through a forced zero-cost, full-day Level 1 shelter action, and defer fire until it is an XP-researched, wood-built safety net with one clear purpose.
 - Keep `talent-tree.js` declarative and apply typed effects against immutable unit/building recipes at combat time; this keeps stacked upgrades, saves, and replay deterministic. Use the separate `talent-icons.js` registry for normalized SVG art and stable icon ids. A 1/2/4/8 branch makes an intended early unlock its branch's first purchase, so Arrowcraft is the direct 1-SP Level 3 Hunting node.
+- Keep Talent Tree icons visually dominant, but never make players infer their mechanics from art alone: every node needs a compact typed-effect label and the selected detail must repeat it.
 - Never replace interactive grid cells during hover rendering. Keep the grid mounted and patch classes so one armed tool click followed by one map click is reliable.
 - Record a compact per-night telemetry report and replay checkpoint at settlement; use it to validate balance plans before changing pressure or stats.
 - Rotate deterministic wave edges before repeats and stagger units within a group. It produces all-angle pressure without sacrificing readability.
