@@ -101,9 +101,12 @@ action(sameSeedHideRun, { type: "endDay" });
 settleToNextDay(sameSeedHideRun);
 assert.equal(sameSeedHideRun.resources.hides, run.resources.hides, "hide rolls are stable for the same seed and enemy id");
 
-// Playback speed is a run preference: it can be chosen in daylight and persists into the next watch and dawn.
+// Playback speed is a run preference: every UI speed is accepted and 5× persists into the next watch and dawn.
 action(run, { type: "speed", speed: 2 });
 assert.equal(run.speed, 2);
+action(run, { type: "speed", speed: 5 });
+assert.equal(run.speed, 5);
+assert.equal(Engine.dispatch(run, { type: "speed", speed: 3 }).ok, false, "only listed playback speeds are valid");
 
 // Level 2 permits a clear and a launcher in the same day: each uses one action.
 const unaffordableLauncher = Engine.toolPreview(run, "stickLauncher", centralBuildSite.x, centralBuildSite.y);
@@ -167,8 +170,8 @@ assert.equal(Engine.BUILDINGS.stickLauncher.attackRange, 1.75, "the basic launch
 assert.equal(Engine.dispatch(run, { type: "finish", id: "not-a-step" }).ok, false, "Finish is not part of the MVP loop");
 action(run, { type: "endDay" });
 settleToNextDay(run);
-assert.equal(run.speed, 2, "chosen 2× speed survives the completed turn");
-assert.equal(Engine.hydrate(Engine.serialize(run)).speed, 2, "chosen 2× speed survives save/load");
+assert.equal(run.speed, 5, "chosen 5× speed survives the completed turn");
+assert.equal(Engine.hydrate(Engine.serialize(run)).speed, 5, "chosen 5× speed survives save/load");
 assert.ok(run.unlocks.includes("potatoPatch"), "holding Level 2 unlocks the Potato Patch for Level 3 planning");
 assert.equal(run.unlocks.includes("potatoGun"), false, "the heavy launcher stays locked until the growing path is complete");
 assert.equal(Engine.BUILDINGS.potatoGun.damage, 3);

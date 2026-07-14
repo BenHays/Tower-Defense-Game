@@ -8,7 +8,7 @@
 - Level 1 begins with a clickable stick and rock in the starting clearing. Both pickups are free. **Craft axe** becomes available after both are collected and uses one action; **Place shelter** then uses the second action on any unoccupied grass cell. The guided pair unlocks every normal control. **End day** stays disabled until the teepee exists.
 - If actions remain, the first End Day click that day asks the player whether to keep planning or begin the night anyway; the reminder appears only once per day. Night combat is automatic and Scout returns before the next day begins.
 - Every resolved night creates a deterministic replay checkpoint and a compact Night Record for balance testing. The dawn report summarizes enemies stopped, hides earned, structure damage, and any recovery.
-- Playback speed is a persistent 1×/2× run preference that can be changed any time after shelter construction; it only changes the pacing of automatic night simulation.
+- Playback speed is a persistent 1×/2×/5× run preference that can be changed any time after shelter construction; it only changes the pacing of automatic night simulation.
 - Once Hearthkeeping I is learned, each surviving targetable building recovers 1 HP at dawn, capped at maximum health. A destroyed building stays destroyed.
 
 ## Proposed next

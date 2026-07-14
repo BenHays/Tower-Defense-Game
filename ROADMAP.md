@@ -53,7 +53,7 @@ Later difficulty modes will multiply this budget: Easy 0.8×, Medium 1.0×, Hard
 
 - Dependency-free, fixed-tick browser simulation with deterministic seeds, save/load, replay checkpoints, night telemetry, and a headless test runner.
 - Hidden square board, weighted forest movement, route-cost placement preview, shortest reachable-building targeting, building destruction, and rubble.
-- Day-only actions, automatic Scout combat, a persistent 1×/2× playback preference, optional building/enemy health bars, and no end-of-night popup.
+- Day-only actions, automatic Scout combat, a persistent 1×/2×/5× playback preference, optional building/enemy health bars, and no end-of-night popup.
 - Stable one-click map input, outline-only placement feedback, selected unit/building combat stats, and no Scout health UI.
 - Visible projectiles, recoil, hit flashes, brief defeat remains, and deterministic raccoon pacing: staggered groups rotate across seeded forest edges.
 - A DOM-free, data-driven `talent-tree.js` module with five player-facing branches: Hunting, Farming, Building, Nurturing, and Scouting. The first Skill Point arrives at 10 XP, then total-XP thresholds double; each branch's purchases cost 1, 2, 4, 8 Skill Points independently. **Scout Training I** adds +1 Scout damage, while **Arrowcraft** unlocks an individual tower upgrade.

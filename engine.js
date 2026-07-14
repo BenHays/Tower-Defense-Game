@@ -13,6 +13,7 @@
   if (!TechTree) throw new Error("Wild Hearth Talent Tree did not load.");
   const SAVE_VERSION = 14;
   const TICK_RATE = 20;
+  const SPEED_OPTIONS = [1, 2, 5];
   const FIRST_SKILL_POINT_XP = 10;
   const BOARD = { id: "hearth-meadow", label: "Hearth Meadow", width: 15, height: 15 };
   const STARTING_ACTIONS = 2;
@@ -1158,7 +1159,7 @@
     }
 
     if (action.type === "speed") {
-      if (!["day", "night", "aftermath"].includes(state.phase) || ![1, 2].includes(action.speed)) return result(state, false, "Simulation speed can only be set to 1× or 2× during an active run.");
+      if (!["day", "night", "aftermath"].includes(state.phase) || !SPEED_OPTIONS.includes(action.speed)) return result(state, false, "Simulation speed can only be set to 1×, 2×, or 5× during an active run.");
       state.speed = action.speed;
       return result(state, true, `Simulation speed set to ${action.speed}×.`, null, false);
     }
@@ -1642,7 +1643,7 @@
     if (!Array.isArray(state.terrain) || state.terrain.length !== BOARD.width * BOARD.height) throw new Error("This save has an invalid meadow.");
     if (typeof state.hatchetCrafted !== "boolean" || typeof state.shelterBuilt !== "boolean" || !Array.isArray(state.buildings)) throw new Error("This save has an invalid shelter state.");
     if (!Array.isArray(state.openingPickups) || !OPENING_PICKUPS.every((definition) => state.openingPickups.some((pickup) => pickup.id === definition.id && pickup.type === definition.type && pickup.x === definition.x && pickup.y === definition.y && typeof pickup.collected === "boolean"))) throw new Error("This save has invalid starter materials.");
-    if (![1, 2].includes(state.speed)) throw new Error("This save has an invalid speed setting.");
+    if (!SPEED_OPTIONS.includes(state.speed)) throw new Error("This save has an invalid speed setting.");
     if (!state.resources || !Number.isFinite(state.resources.wood) || !Number.isFinite(state.resources.hides) || !Number.isFinite(state.xp) || !Number.isInteger(state.skillPoints) || !Number.isInteger(state.skillPointsEarned)) throw new Error("This save has an invalid progression state.");
     if (!state.telemetry || !state.telemetry.total || !Array.isArray(state.telemetry.nightReports) || !Array.isArray(state.replaySnapshots) || !Array.isArray(state.remains)) throw new Error("This save has an invalid night record.");
     if (!state.buildings.every((building) => buildingRecipe(building.type) && Array.isArray(building.refits || []) && buildingRefits(building).every((refitId) => refitDefinition(building.type, refitId)))) throw new Error("This save has an invalid building refit.");

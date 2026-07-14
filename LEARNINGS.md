@@ -47,6 +47,7 @@
 - Start enemy and building health bars on, and keep their toggle visible in both phases. Persist only an explicit player choice, so old saved preferences from the former off-by-default state migrate to visible bars; Scout remains bar-free.
 - Position building health bars above the sprite silhouette, not on its roof. The generated shelter and tower art needs a negative bar offset so the bar stays readable at a glance.
 - Keep End Day decisive but safe: one concise warning per day catches an accidental early watch; after that the player can end the day without repeated interruption.
+- Speed is a renderer pacing preference, not simulation math: keep fixed ticks and raise the per-frame catch-up cap enough for the fastest supported setting.
 - Use each generated tower portrait in both its meadow entity and Build-strip tile. This keeps purchase decisions visually connected to their placed defense while projectile and firing state stay CSS-driven.
 
 ## Progression and occupancy

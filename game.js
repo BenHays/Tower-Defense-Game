@@ -7,6 +7,8 @@ if (!TalentIcons) throw new Error("Wild Hearth talent icons did not load.");
 const SAVE_KEY = "wild-hearth-save-v14";
 const LEGACY_SAVE_KEYS = ["wild-hearth-save-v13", "wild-hearth-save-v12", "wild-hearth-save-v11", "wild-hearth-save-v10"];
 const SETTINGS_KEY = "wild-hearth-settings-v1";
+const SPEED_OPTIONS = [1, 2, 5];
+const MAX_SIMULATION_STEPS_PER_FRAME = 30;
 const elements = {
   board: document.querySelector("#game-board"),
   grid: document.querySelector("#board-grid"),
@@ -105,7 +107,7 @@ const BUILD_CARD_ICONS = {
 try {
   const settings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
   showHealthBars = settings.healthBarsPreferenceSet ? Boolean(settings.showHealthBars) : true;
-  preferredSpeed = [1, 2].includes(settings.preferredSpeed) ? settings.preferredSpeed : 1;
+  preferredSpeed = SPEED_OPTIONS.includes(settings.preferredSpeed) ? settings.preferredSpeed : 1;
   toolbarSize = TOOLBAR_SIZES.includes(settings.toolbarSize) ? settings.toolbarSize : "compact";
 } catch (error) {
   showHealthBars = true;
@@ -298,7 +300,7 @@ function showSkillPointNotice() {
 }
 
 function setPreferredSpeed(speed) {
-  if (![1, 2].includes(speed) || needsShelter()) return;
+  if (!SPEED_OPTIONS.includes(speed) || needsShelter()) return;
   preferredSpeed = speed;
   saveSettings();
   dispatch({ type: "speed", speed });
@@ -1152,7 +1154,7 @@ function frame(timestamp) {
   if (["night", "aftermath"].includes(state.phase) && !state.paused) {
     accumulator += (elapsed / 1000) * Engine.TICK_RATE * state.speed;
     let steps = 0;
-    while (accumulator >= 1 && steps < 12 && ["night", "aftermath"].includes(state.phase)) {
+    while (accumulator >= 1 && steps < MAX_SIMULATION_STEPS_PER_FRAME && ["night", "aftermath"].includes(state.phase)) {
       Engine.advanceTick(state);
       accumulator -= 1;
       steps += 1;
