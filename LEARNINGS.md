@@ -57,3 +57,4 @@
 - Use a non-targetable, non-blocking Potato Patch to reserve a future tower site. Dawn-counted growth keeps the conversion timing deterministic for saves, replays, and the Level 5 Boar counter.
 - Render the hatchet swing as a short UI-only overlay after the deterministic harvest resolves; the feedback stays satisfying without becoming simulation state.
 - Use one click listener per grid cell. Combining pointer-down and click activation can spend two day actions for one physical land click after the renderer updates.
+- Keep harvest feedback renderer-only: a single 760ms wind-up, swing, impact, and stump reveal can play above the already-resolved terrain without changing saves, replays, or action cost.

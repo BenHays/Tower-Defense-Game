@@ -82,6 +82,7 @@ let toolbarSize = "compact";
 let buildListSignature = "";
 let harvestEffect = null;
 let harvestTimer = null;
+const HARVEST_EFFECT_MS = 760;
 const BUILD_CARD_ICONS = {
   stickLauncher: "stick-launcher-icon",
   potatoPatch: "potato-patch-icon",
@@ -231,12 +232,12 @@ function clearHarvestEffect() {
 
 function startHarvestEffect(x, y) {
   clearHarvestEffect();
-  harvestEffect = { x, y, tone: (x * 7 + y * 3) % 3 };
+  harvestEffect = { x, y, tone: (x * 7 + y * 3) % 6 };
   harvestTimer = window.setTimeout(() => {
     harvestEffect = null;
     harvestTimer = null;
     render();
-  }, 650);
+  }, window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 80 : HARVEST_EFFECT_MS);
 }
 
 function openTechnology() {
@@ -398,7 +399,8 @@ function renderEntities() {
   if (harvestEffect) {
     const effect = createNode("div", `entity harvest-effect tone-${harvestEffect.tone}`);
     effect.append(
-      createNode("span", "harvest-canopy"),
+      createNode("span", "harvest-canopy tree-canopy"),
+      createNode("span", "harvest-swoosh"),
       createNode("span", "harvest-hatchet"),
       createNode("span", "harvest-chips"),
     );
@@ -893,6 +895,7 @@ function loadGame() {
 }
 
 elements.grid.addEventListener("pointermove", (event) => {
+  if (harvestEffect) return;
   const cell = event.target.closest(".cell");
   if (!cell) return;
   const next = { x: Number(cell.dataset.x), y: Number(cell.dataset.y) };
@@ -903,6 +906,7 @@ elements.grid.addEventListener("pointermove", (event) => {
   }
 });
 elements.grid.addEventListener("pointerleave", () => {
+  if (harvestEffect) return;
   if (hoverCell) { hoverCell = null; gridSignature = ""; render(); }
 });
 function selectTool(event) {
