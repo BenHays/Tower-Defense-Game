@@ -65,10 +65,10 @@
       id: "boar",
       label: "Boar",
       threat: 5,
-      health: 10,
+      health: 12,
       damage: 2,
       attackSpeed: 0.72,
-      moveSpeed: 0.76,
+      moveSpeed: 1.2,
       attackRange: 0.82,
       collisionRadius: 0.44,
       targetRule: "closest-reachable-building",
@@ -108,7 +108,7 @@
       tags: ["defense", "first-line"],
       damage: 1,
       attackSpeed: 0.5,
-      attackRange: 2.25,
+      attackRange: 1.75,
       projectile: { type: "stick", speed: 4.5 },
       targetRule: "nearest-enemy-in-range",
       repairAmount: 3,
@@ -125,7 +125,7 @@
       tags: ["defense", "first-line", "arrowcraft"],
       damage: 1.5,
       attackSpeed: 0.75,
-      attackRange: 3.375,
+      attackRange: 2.625,
       projectile: { type: "arrow", speed: 6.5 },
       targetRule: "nearest-enemy-in-range",
       repairAmount: 3,
@@ -538,6 +538,31 @@
     return candidates[0] || null;
   }
 
+  function closestReachableRubble(state, entity, recipeOverride) {
+    const recipe = recipeOverride || (entity?.type ? enemyRecipe(entity.type) : ENEMIES.raccoon);
+    const candidates = [];
+    state.rubble.forEach((rubble) => {
+      const approaches = [
+        { x: rubble.x, y: rubble.y - 1 },
+        { x: rubble.x + 1, y: rubble.y },
+        { x: rubble.x, y: rubble.y + 1 },
+        { x: rubble.x - 1, y: rubble.y },
+      ].filter((cell) => isPassable(state, cell.x, cell.y));
+      approaches.forEach((approach) => {
+        const path = findPath(state, entity, approach, recipe);
+        if (!path) return;
+        const cost = path.slice(1).reduce((sum, cell) => sum + travelCost(state, cell.x, cell.y, recipe), 0);
+        candidates.push({ rubble, approach, path, cost });
+      });
+    });
+    candidates.sort((left, right) => left.cost - right.cost
+      || left.rubble.y - right.rubble.y
+      || left.rubble.x - right.rubble.x
+      || left.approach.y - right.approach.y
+      || left.approach.x - right.approach.x);
+    return candidates[0] || null;
+  }
+
   function hasResources(state, cost) {
     return Object.entries(cost).every(([resource, amount]) => (state.resources[resource] || 0) >= amount);
   }
@@ -862,9 +887,12 @@
     let lastEdge = null;
     let cursor = 0;
     let spawnTick = 18 + rng.int(0, 8);
+    const latePressure = level.number >= 7;
     while (cursor < units.length) {
       const remainingUnits = units.length - cursor;
-      const groupSize = Math.min(remainingUnits, remainingUnits >= 3 && rng.next() > 0.48 ? 2 : 1);
+      const groupSize = latePressure
+        ? Math.min(remainingUnits, remainingUnits >= 3 && rng.next() > 0.25 ? 3 : remainingUnits >= 2 ? 2 : 1)
+        : Math.min(remainingUnits, remainingUnits >= 3 && rng.next() > 0.48 ? 2 : 1);
       if (!edgeBag.length) {
         edgeBag = shuffled(["north", "east", "south", "west"], rng);
         if (edgeBag[0] === lastEdge) edgeBag.push(edgeBag.shift());
@@ -884,7 +912,7 @@
         spawned: false,
       });
       cursor += groupSize;
-      spawnTick += rng.int(42, 66);
+      spawnTick += latePressure ? rng.int(24, 38) : rng.int(42, 66);
     }
     return {
       threatBudget: level.threatBudget,
@@ -1173,11 +1201,23 @@
       captureReplaySnapshot(state, "lost");
       return;
     }
-    buildingCells(building).forEach((cell) => state.rubble.push({ x: cell.x, y: cell.y }));
+    buildingCells(building).forEach((cell) => state.rubble.push({ x: cell.x, y: cell.y, health: 1 }));
     const report = currentNightTelemetry(state);
     if (report) report.buildingsLost += 1;
     invalidatePaths(state);
     state.lastEvent = `The ${buildingRecipe(building.type).label.toLowerCase()} becomes rubble and blocks the ground.`;
+  }
+
+  function damageRubble(state, rubble, amount, source) {
+    const remainingHealth = (rubble.health ?? 1) - amount;
+    rubble.health = remainingHealth;
+    if (remainingHealth > 0) {
+      state.lastEvent = `${enemyRecipe(source.type).label} tears at the rubble.`;
+      return;
+    }
+    state.rubble = state.rubble.filter((item) => item !== rubble);
+    invalidatePaths(state);
+    state.lastEvent = `${enemyRecipe(source.type).label} breaks through the rubble.`;
   }
 
   function defeatEnemy(state, enemy, source) {
@@ -1403,23 +1443,25 @@
       enemy.intent = "sneaking";
       return;
     }
-    const target = closestReachableBuilding(state, enemy);
+    const target = closestReachableBuilding(state, enemy) || closestReachableRubble(state, enemy);
     if (!target) {
       enemy.intent = "searching";
       return;
     }
-    enemy.targetId = target.building.id;
+    const targetId = target.building?.id || `rubble-${target.rubble.x}-${target.rubble.y}`;
+    enemy.targetId = targetId;
     const closeEnough = distance(enemy, target.approach) <= recipe.attackRange;
     if (closeEnough) {
-      enemy.intent = `attacking-${target.building.id}`;
+      enemy.intent = `attacking-${targetId}`;
       enemy.cooldown = Math.max(0, enemy.cooldown - 1);
       if (enemy.cooldown === 0) {
         enemy.cooldown = Math.max(1, Math.round(TICK_RATE / recipe.attackSpeed));
-        damageBuilding(state, target.building, recipe.damage, enemy);
+        if (target.building) damageBuilding(state, target.building, recipe.damage, enemy);
+        else damageRubble(state, target.rubble, recipe.damage, enemy);
       }
       return;
     }
-    enemy.intent = `moving-${target.building.id}`;
+    enemy.intent = `moving-${targetId}`;
     const nextStep = target.path.length > 1 ? target.path[1] : target.approach;
     const stepCost = travelCost(state, nextStep.x, nextStep.y, recipe);
     enemy.inWarmth = false;
@@ -1714,6 +1756,7 @@
     buildPreview,
     toolPreview,
     closestReachableBuilding,
+    closestReachableRubble,
     conditionFor,
     unitStats,
     buildingCombatStats,

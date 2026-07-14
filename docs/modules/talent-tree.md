@@ -16,7 +16,7 @@
 
 ## Current paths
 
-- Hunting: Stick Launcher damage/range, Arrow Shooter conversion and refit, Potato slow.
+- Hunting: Arrow Shooter conversion as the first Level 3 choice, then optional Stick Launcher damage/range, refit, and Potato slow.
 - Farming: more wood per harvested tree and stronger repairs.
 - Building: maximum HP and armor for targetable structures.
 - Nurturing: dawn recovery for standing structures; later homestead, animal, and plant care belong here.

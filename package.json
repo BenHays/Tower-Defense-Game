@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "node build-site.js",
-    "test": "node test-engine.js",
+    "test": "node test-engine.js && node balance-sim.js --matrix",
     "check": "node --check talent-icons.js && node --check talent-tree.js && node --check engine.js && node --check game.js && node --check simulate.js && node --check build-site.js"
   }
 }

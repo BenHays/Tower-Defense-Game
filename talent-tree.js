@@ -25,26 +25,26 @@
   };
 
   const NODES = {
-    hardwoodThrows: {
-      id: "hardwoodThrows", label: "Hardwood Throws", branch: "hunting", tier: 1, icon: "launcherDamage", requiredLevel: 2,
+    arrowcraft: {
+      id: "arrowcraft", label: "Arrowcraft", branch: "hunting", tier: 1, icon: "arrowcraft", requiredLevel: 3,
       requiresNodes: [], requiresUnlocks: ["stickLauncher"],
+      effects: [{ kind: "unlockBuildingUpgrade", from: "stickLauncher", to: "arrowShooter" }],
+      copy: "Learn to turn a built Stick Launcher into an Arrow Shooter.", completeCopy: "Stick Launchers can become Arrow Shooters.",
+    },
+    hardwoodThrows: {
+      id: "hardwoodThrows", label: "Hardwood Throws", branch: "hunting", tier: 2, icon: "launcherDamage", requiredLevel: 3,
+      requiresNodes: ["arrowcraft"], requiresUnlocks: [],
       effects: [{ kind: "stat", target: "building", id: "stickLauncher", stat: "damage", operation: "add", value: 1 }],
       copy: "Select straighter, heavier branches for every Stick Launcher.", completeCopy: "Stick Launcher damage rises from 1 to 2.",
     },
     launcherRange: {
       id: "launcherRange", label: "Longer Arm", branch: "hunting", tier: 2, icon: "launcherRange", requiredLevel: 3,
-      requiresNodes: ["hardwoodThrows"], requiresUnlocks: [],
+      requiresNodes: ["arrowcraft"], requiresUnlocks: [],
       effects: [{ kind: "stat", target: "building", id: "stickLauncher", stat: "attackRange", operation: "add", value: 0.5 }],
       copy: "Lengthen the launcher arm for a slightly wider first line.", completeCopy: "Stick Launcher range increases by 0.5 cells.",
     },
-    arrowcraft: {
-      id: "arrowcraft", label: "Arrowcraft", branch: "hunting", tier: 3, icon: "arrowcraft", requiredLevel: 3,
-      requiresNodes: ["launcherRange"], requiresUnlocks: [],
-      effects: [{ kind: "unlockBuildingUpgrade", from: "stickLauncher", to: "arrowShooter" }],
-      copy: "Learn to turn a built Stick Launcher into an Arrow Shooter.", completeCopy: "Stick Launchers can become Arrow Shooters.",
-    },
     quickcord: {
-      id: "quickcord", label: "Quickcord", branch: "hunting", tier: 4, icon: "quickcord", requiredLevel: 4,
+      id: "quickcord", label: "Quickcord", branch: "hunting", tier: 3, icon: "quickcord", requiredLevel: 4,
       requiresNodes: ["arrowcraft"], requiresUnlocks: [],
       effects: [{ kind: "unlockBuildingRefit", building: "arrowShooter", refit: "quickcord" }],
       copy: "Learn a taut bowcord refit for one selected Arrow Shooter.", completeCopy: "Arrow Shooters can receive the Quickcord attack-speed refit.",

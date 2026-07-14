@@ -23,9 +23,9 @@ This is the collaboration sheet for the Talent Tree. Add ideas to **Proposal que
 
 | Talent | Branch | Level | Requires | Player gets | Icon id |
 | --- | --- | ---: | --- | --- | --- |
-| Hardwood Throws | Hunting | 2 | Stick Launcher | +1 Stick Launcher damage | `launcherDamage` |
-| Longer Arm | Hunting | 3 | Hardwood Throws | +0.5 launcher range | `launcherRange` |
-| Arrowcraft | Hunting | 3 | Longer Arm | Unlock Arrow Shooter refit | `arrowcraft` |
+| Arrowcraft | Hunting | 3 | Stick Launcher | Unlock Arrow Shooter refit | `arrowcraft` |
+| Hardwood Throws | Hunting | 3 | Arrowcraft | +1 Stick Launcher damage | `launcherDamage` |
+| Longer Arm | Hunting | 3 | Arrowcraft | +0.5 launcher range | `launcherRange` |
 | Quickcord | Hunting | 4 | Arrowcraft | Unlock Arrow Shooter speed refit | `quickcord` |
 | Potato Packing | Hunting | 4 | Potato Gun | Potato hits slow enemies | `potatoPacking` |
 | Woodland Yield | Farming | 2 | — | +1 wood per harvested tree | `woodlandYield` |

@@ -163,7 +163,7 @@ assert.equal(migratedV13.version, 14, "v13 saves migrate into the renamed Talent
 assert.deepEqual(migratedV13.research, ["woodlandYield"], "a migrated v13 save keeps its learned talents");
 assert.equal(run.resources.wood, 0, "building still spends the whole first wood bundle");
 assert.equal(run.actionPoints, 0);
-assert.equal(Engine.BUILDINGS.stickLauncher.attackRange, 2.25);
+assert.equal(Engine.BUILDINGS.stickLauncher.attackRange, 1.75, "the basic launcher starts with a deliberately short range");
 assert.equal(Engine.dispatch(run, { type: "finish", id: "not-a-step" }).ok, false, "Finish is not part of the MVP loop");
 action(run, { type: "endDay" });
 settleToNextDay(run);
@@ -210,15 +210,16 @@ branchCostRun.unlocks.push("stickLauncher", "potatoGun");
 branchCostRun.xp = 640;
 branchCostRun.skillPoints = 7;
 branchCostRun.skillPointsEarned = 7;
-assert.equal(Engine.techAvailability(branchCostRun, "hardwoodThrows").costSkillPoints, 1, "the first Hunting purchase costs 1 Skill Point");
+assert.equal(Engine.techAvailability(branchCostRun, "arrowcraft").costSkillPoints, 1, "the first Hunting purchase costs 1 Skill Point");
 assert.equal(Engine.techAvailability(branchCostRun, "scoutTraining1").costSkillPoints, 1, "a different branch still starts at 1 Skill Point");
-action(branchCostRun, { type: "research", nodeId: "hardwoodThrows" });
-assert.equal(Engine.techAvailability(branchCostRun, "launcherRange").costSkillPoints, 2, "the second Hunting purchase costs 2 Skill Points");
+action(branchCostRun, { type: "research", nodeId: "arrowcraft" });
+assert.equal(Engine.techAvailability(branchCostRun, "hardwoodThrows").costSkillPoints, 2, "the second Hunting purchase costs 2 Skill Points");
+assert.equal(Engine.techAvailability(branchCostRun, "launcherRange").costSkillPoints, 2, "parallel Hunting nodes share the second purchase cost");
 assert.equal(Engine.techAvailability(branchCostRun, "potatoPacking").costSkillPoints, 2, "side nodes share their branch's escalating cost");
-action(branchCostRun, { type: "research", nodeId: "potatoPacking" });
+action(branchCostRun, { type: "research", nodeId: "hardwoodThrows" });
 assert.equal(Engine.techAvailability(branchCostRun, "launcherRange").costSkillPoints, 4, "the third Hunting purchase costs 4 Skill Points");
 action(branchCostRun, { type: "research", nodeId: "launcherRange" });
-assert.equal(Engine.techAvailability(branchCostRun, "arrowcraft").costSkillPoints, 8, "the fourth Hunting purchase costs 8 Skill Points");
+assert.equal(Engine.techAvailability(branchCostRun, "quickcord").costSkillPoints, 8, "the fourth Hunting purchase costs 8 Skill Points");
 
 // Scout's day post reserves one grass cell, while structures reserve their own cells.
 const occupancyRun = Engine.createRun("TEST-SCOUT-OCCUPANCY");
@@ -274,11 +275,11 @@ action(towerRun, { type: "clear", x: 1, y: 3 });
 action(towerRun, { type: "build", buildingType: "stickLauncher", x: 1, y: 3 });
 towerRun.phase = "night";
 towerRun.encounter = { waves: [{ spawned: true }], spawned: 1 };
-towerRun.enemies = [{ id: "e-launcher", type: "raccoon", x: 1, y: 0.5, health: 5, maxHealth: 5, cooldown: 4, approachDelay: 0 }];
+towerRun.enemies = [{ id: "e-launcher", type: "raccoon", x: 1, y: 1.5, health: 5, maxHealth: 5, cooldown: 4, approachDelay: 0 }];
 Engine.advanceTick(towerRun);
 assert.equal(towerRun.projectiles.length, 1, "tower should launch a projectile before damage applies");
 assert.equal(towerRun.enemies[0].health, 5);
-Engine.advanceTicks(towerRun, 12);
+Engine.advanceTicks(towerRun, 8);
 assert.equal(towerRun.enemies[0].health, 4, "the branch should deal damage on impact");
 assert.ok(towerRun.impacts.length > 0, "an impact is exposed for the renderer");
 assert.ok(towerRun.enemies[0].hitTicks > 0, "hits expose a brief readable reaction");
@@ -345,20 +346,18 @@ Engine.advanceTick(slowRun);
 Engine.advanceTicks(slowRun, 16);
 assert.equal(slowRun.enemies[0].statuses.movementSlow.sources.potatoPacking.movementMultiplier, 0.55, "Potato Packing applies its brief movement slow");
 
-// Arrowcraft uses Skill Points only; launcher upgrades use one day action.
+// Arrowcraft is the first Hunting purchase so it is a real Level 3 choice; launcher upgrades still use one day action.
 const upgradeRun = Engine.createRun("TEST-ARROWCRAFT");
 constructShelter(upgradeRun);
 upgradeRun.levelIndex = 2;
 upgradeRun.unlocks.push("stickLauncher");
-upgradeRun.xp = 640;
-upgradeRun.skillPoints = 7;
-upgradeRun.skillPointsEarned = 7;
-action(upgradeRun, { type: "research", nodeId: "hardwoodThrows" });
-action(upgradeRun, { type: "research", nodeId: "launcherRange" });
-assert.equal(Engine.techAvailability(upgradeRun, "arrowcraft").available, true, "Arrowcraft appears after its Hunting dependencies");
+upgradeRun.xp = 10;
+upgradeRun.skillPoints = 1;
+upgradeRun.skillPointsEarned = 1;
+assert.equal(Engine.techAvailability(upgradeRun, "arrowcraft").available, true, "Arrowcraft is available as the first Level 3 Hunting choice");
 const researchActions = upgradeRun.actionPoints;
 action(upgradeRun, { type: "research", nodeId: "arrowcraft" });
-assert.equal(upgradeRun.xp, 640);
+assert.equal(upgradeRun.xp, 10);
 assert.equal(upgradeRun.skillPoints, 0);
 assert.ok(upgradeRun.research.includes("arrowcraft"));
 assert.equal(upgradeRun.actionPoints, researchActions, "research costs Skill Points but no day action");
@@ -375,7 +374,7 @@ assert.equal(upgradeRun.resources.wood, 0);
 assert.equal(upgradeRun.actionPoints, 0);
 assert.deepEqual(
   [Engine.BUILDINGS.arrowShooter.damage, Engine.BUILDINGS.arrowShooter.attackSpeed, Engine.BUILDINGS.arrowShooter.attackRange],
-  [1.5, 0.75, 3.375],
+  [1.5, 0.75, 2.625],
 );
 
 // Later research remains declarative: Scout can watch farther, Arrow Shooters can receive a faster refit, and buildings recover at dawn.
@@ -404,8 +403,6 @@ quickcordRun.unlocks.push("stickLauncher");
 quickcordRun.xp = 163840;
 quickcordRun.skillPoints = 15;
 quickcordRun.skillPointsEarned = 15;
-action(quickcordRun, { type: "research", nodeId: "hardwoodThrows" });
-action(quickcordRun, { type: "research", nodeId: "launcherRange" });
 action(quickcordRun, { type: "research", nodeId: "arrowcraft" });
 action(quickcordRun, { type: "research", nodeId: "quickcord" });
 quickcordRun.resources.wood = 6;
@@ -431,6 +428,42 @@ guardianRun.enemies = [{ id: "e-guardian", type: "raccoon", x: guardianRun.scout
 Engine.advanceTick(guardianRun);
 assert.equal(guardianRun.scout.mode, "chasing");
 assert.ok(guardianRun.scout.x > guardianRun.scout.postX);
+
+// Rubble stays a hard blocker, but an enemy that cannot reach any live structure breaks the nearest reachable rubble instead of searching forever.
+const rubbleFallbackRun = Engine.createRun("TEST-RUBBLE-FALLBACK");
+constructShelter(rubbleFallbackRun);
+rubbleFallbackRun.rubble.push(
+  { x: Engine.SHELTER_SITE.x, y: Engine.SHELTER_SITE.y - 1 },
+  { x: Engine.SHELTER_SITE.x + 1, y: Engine.SHELTER_SITE.y },
+  { x: Engine.SHELTER_SITE.x, y: Engine.SHELTER_SITE.y + 1 },
+  { x: Engine.SHELTER_SITE.x - 1, y: Engine.SHELTER_SITE.y },
+);
+rubbleFallbackRun.phase = "night";
+rubbleFallbackRun.encounter = { waves: [{ spawned: true }], spawned: 1 };
+rubbleFallbackRun.enemies = [{ id: "e-rubble", type: "boar", x: 0, y: 0, health: 10, maxHealth: 10, cooldown: 0, approachDelay: 0, statuses: {} }];
+assert.equal(Engine.closestReachableBuilding(rubbleFallbackRun, rubbleFallbackRun.enemies[0]), null, "a complete rubble ring has no direct building approach");
+assert.ok(Engine.closestReachableRubble(rubbleFallbackRun, rubbleFallbackRun.enemies[0]), "sealed rubble becomes the enemy's reachable fallback target");
+let rubbleGuard = 4000;
+while (["night", "aftermath"].includes(rubbleFallbackRun.phase) && rubbleGuard > 0) {
+  Engine.advanceTick(rubbleFallbackRun);
+  rubbleGuard -= 1;
+}
+assert.notEqual(rubbleGuard, 0, "breaking a legacy rubble entry always lets the night settle");
+assert.ok(rubbleFallbackRun.rubble.length < 4, "the enemy removes a health-less legacy rubble entry when it seals every structure");
+
+const rubblePriorityRun = Engine.createRun("TEST-RUBBLE-PRIORITY");
+constructShelter(rubblePriorityRun);
+rubblePriorityRun.unlocks.push("stickLauncher");
+rubblePriorityRun.resources.wood = 2;
+rubblePriorityRun.actionPoints = 2;
+action(rubblePriorityRun, { type: "build", buildingType: "stickLauncher", ...centralBuildSite });
+const priorityTower = rubblePriorityRun.buildings.find((building) => building.type === "stickLauncher");
+rubblePriorityRun.rubble.push({ x: 0, y: 1 });
+rubblePriorityRun.phase = "night";
+rubblePriorityRun.encounter = { waves: [{ spawned: true }], spawned: 1 };
+rubblePriorityRun.enemies = [{ id: "e-priority", type: "raccoon", x: 0, y: 0, health: 5, maxHealth: 5, cooldown: 4, approachDelay: 0, statuses: {} }];
+Engine.advanceTick(rubblePriorityRun);
+assert.equal(rubblePriorityRun.enemies[0].targetId, priorityTower.id, "live structures remain a higher-priority target than nearby rubble");
 
 // Defeats leave a short renderer-only marker instead of vanishing with no feedback.
 const remainsRun = Engine.createRun("TEST-REMAINS");
@@ -463,6 +496,8 @@ action(multiWaveRun, { type: "endDay" });
 const earlyEdges = multiWaveRun.encounter.waves.slice(0, 4).map((wave) => wave.entry.edge);
 assert.equal(new Set(earlyEdges).size, earlyEdges.length, "early waves rotate through different forest edges");
 assert.ok(multiWaveRun.encounter.waves.every((wave) => wave.entries.length === wave.units.length && wave.staggerTicks.length === wave.units.length));
+assert.ok(multiWaveRun.encounter.waves.some((wave) => wave.units.length === 3), "Level 7 pressure can group three enemies together");
+assert.ok(multiWaveRun.encounter.waves.slice(1).every((wave, index) => wave.spawnTick - multiWaveRun.encounter.waves[index].spawnTick <= 38), "Level 7 groups arrive on the tighter late-pressure cadence");
 
 // New enemy families get an authored showcase before seeded mixes use them.
 const boarIntroRun = Engine.createRun("FIRST-BOAR");
@@ -470,6 +505,7 @@ constructShelter(boarIntroRun);
 boarIntroRun.levelIndex = 4;
 action(boarIntroRun, { type: "endDay" });
 assert.deepEqual(boarIntroRun.encounter.units, ["boar"], "Level 5 guarantees a single Boar introduction");
+assert.deepEqual([Engine.ENEMIES.boar.health, Engine.ENEMIES.boar.moveSpeed], [12, 1.2], "the Boar is a durable, faster heavy target for the Potato Gun showcase");
 const boarMixRun = Engine.createRun("BOAR-MIX");
 constructShelter(boarMixRun);
 boarMixRun.levelIndex = 5;
