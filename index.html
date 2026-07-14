@@ -30,7 +30,7 @@
         <div>
           <p class="eyebrow" id="level-label">Level 01 · first watch</p>
           <h1 id="level-title">A hearth in a living forest.</h1>
-          <p class="subhead" id="level-copy">Trees press close around the teepee. Avery decides what to do with daylight; Scout holds what is in his range after dark.</p>
+          <p class="subhead" id="level-copy">Trees press close around the teepee. Avery decides what to do with daylight; Scout holds his watch radius after dark.</p>
         </div>
         <dl class="resource-row">
           <div><dt>Actions</dt><dd id="action-points">2</dd></div>
@@ -81,25 +81,14 @@
             <button class="speed-button is-active" data-speed="1" type="button">1×</button>
             <button class="speed-button" data-speed="2" type="button">2×</button>
           </div>
+          <label class="setting-toggle" for="health-bars-toggle"><input id="health-bars-toggle" type="checkbox" /> <span>Show health bars</span></label>
+          <p class="dawn-note" id="dawn-note" aria-live="polite"></p>
+          <button class="primary-button wide hidden" id="continue-button" type="button">Continue <span aria-hidden="true">→</span></button>
         </aside>
       </section>
 
       <section class="event-log" aria-label="Field notes" aria-live="polite"><p class="eyebrow">Field notes</p><p id="event-log">Avery and Scout begin with two daylight actions. The meadow will wait until you choose End day.</p></section>
     </main>
-
-    <div class="result-dialog hidden" id="result-dialog" role="dialog" aria-modal="true" aria-labelledby="result-title">
-      <div class="result-card">
-        <span class="result-mark" aria-hidden="true">✦</span><p class="eyebrow" id="result-kicker">Night resolved</p>
-        <h2 id="result-title">The meadow holds.</h2>
-        <p id="result-copy"></p>
-        <div class="result-stats" id="result-stats"></div>
-        <div class="result-actions">
-          <button class="primary-button wide" id="next-level-button" type="button">Next level <span aria-hidden="true">→</span></button>
-          <button class="secondary-button wide" id="replay-button" type="button">Run recorded replay <span aria-hidden="true">↻</span></button>
-          <button class="secondary-button wide" id="new-seed-result-button" type="button">Try a new seed <span aria-hidden="true">✦</span></button>
-        </div>
-      </div>
-    </div>
 
     <script src="engine.js"></script>
     <script src="game.js"></script>

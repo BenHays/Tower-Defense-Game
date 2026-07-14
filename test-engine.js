@@ -8,7 +8,7 @@ function action(state, payload) {
 
 function settleNight(state) {
   let guard = 14000;
-  while (state.phase === "night" && guard > 0) {
+  while (["night", "aftermath"].includes(state.phase) && guard > 0) {
     Engine.advanceTick(state);
     guard -= 1;
   }
@@ -27,6 +27,10 @@ assert.equal(Engine.terrainAt(idleRun, 1, 3), "open");
 assert.equal(idleRun.resources.wood, 5);
 assert.equal(idleRun.actionPoints, 1);
 
+// Dense trees remain visible but are walkable at a higher travel cost, so every edge can be a legal entry.
+assert.equal(Engine.isPassable(Engine.createRun("FOREST-PATH"), 0, 0), true);
+assert.ok(Engine.SPAWN_CELLS.length >= 44, "all usable perimeter cells are eligible spawns");
+
 const terrainRun = Engine.createRun("TEST-TERRAIN");
 action(terrainRun, { type: "clear", x: 3, y: 5 });
 assert.equal(Engine.terrainAt(terrainRun, 3, 5), "open");
@@ -36,6 +40,15 @@ const scoutRun = Engine.createRun("TEST-SCOUT");
 action(scoutRun, { type: "scout", x: 4, y: 6 });
 assert.deepEqual({ x: scoutRun.scout.x, y: scoutRun.scout.y }, { x: 4, y: 6 });
 assert.equal(scoutRun.actionPoints, 1);
+
+// Scout leaves the post to bite inside the guard radius, then the aftermath brings him home before dawn.
+const guardianRun = Engine.createRun("TEST-GUARDIAN");
+guardianRun.phase = "night";
+guardianRun.encounter = { waves: [{ spawned: true }], spawned: 1 };
+guardianRun.enemies = [{ id: "e-guardian", type: "raccoon", x: 7.3, y: 7, health: 4, maxHealth: 4, cooldown: 4 }];
+Engine.advanceTick(guardianRun);
+assert.equal(guardianRun.scout.mode, "chasing");
+assert.ok(guardianRun.scout.x > guardianRun.scout.postX, "Scout should run from the post toward an intruder");
 
 // The authored map never changes by seed, while legal encounter waves do.
 const encounterOne = Engine.createRun("SAME-SEED");
@@ -50,7 +63,7 @@ const run = Engine.createRun("HEARTH-1042");
 action(run, { type: "endDay" });
 assert.equal(Engine.dispatch(run, { type: "clear", x: 1, y: 3 }).ok, false, "day actions must lock at night");
 settleNight(run);
-assert.equal(run.phase, "complete");
+assert.equal(run.phase, "dawn");
 assert.ok(run.unlocks.includes("barricade"));
 assert.equal(run.kills, 1);
 
@@ -103,7 +116,7 @@ action(run, { type: "stonework" });
 assert.ok(run.upgrades.includes("stonework"));
 action(run, { type: "endDay" });
 settleNight(run);
-assert.equal(run.phase, "complete");
+assert.equal(run.phase, "dawn");
 assert.ok(run.unlocks.includes("replay"));
 
 // Versioned saves preserve the full current run state, including the fixed authored map.

@@ -5,7 +5,7 @@ const state = Engine.createRun(seed);
 Engine.dispatch(state, { type: "endDay" });
 
 let guard = 14000;
-while (state.phase === "night" && guard > 0) {
+while (["night", "aftermath"].includes(state.phase) && guard > 0) {
   Engine.advanceTick(state);
   guard -= 1;
 }

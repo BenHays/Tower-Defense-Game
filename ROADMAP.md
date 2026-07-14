@@ -8,7 +8,8 @@ This roadmap keeps the first release focused on a readable, top-down homestead d
 - **Day actions:** Avery may repair, clear terrain, build, and position Scout during the day. Avery returns inside the teepee at night.
 - **Enemy targeting:** every enemy attacks the closest *reachable* building. The teepee is currently the only building; later placed buildings can intentionally attract or protect against enemies.
 - **World shape:** use a hidden **square-cell grid**. Do not draw a grid on the meadow. Organic terrain, tree clusters, and building art should conceal the cells while the engine gets simple placement, range, and pathfinding.
-- **Starting terrain:** trees cover the map except for a small circular clearing around the teepee. Clearing one tree consumes an Avery action, grants wood, and makes that cell buildable.
+- **Starting terrain:** trees cover the map except for a small circular clearing around the teepee. Trees remain walkable but are slower than cleared ground; clearing one consumes an Avery action, grants wood, and makes that cell buildable.
+- **Invasion entries:** enemies can spawn from any usable perimeter forest cell. The encounter seed chooses edge, cluster, composition, and timing; the authored map itself stays fixed.
 - **Wood:** the first resource. It pays for repairs and construction.
 - **Scout:** can be placed on a cell during the day and automatically attacks in range at night. He uses health, damage, attack speed, move speed, and attack radius.
 - **Human:** no direct night combat and no Scout command button. The player’s night preparation is placement and construction.
@@ -76,12 +77,12 @@ These improvements come after the core day / terrain / combat loop. They deepen 
 
 17. Add a **blueprint preview** before building: footprint, material cost, valid cells, Scout-range overlap, and whether it would become an enemy's nearest target.
 18. Split construction into **blueprint** and **finished building** states. Placing a blueprint is cheap; finishing it spends an Avery action. This creates a real repair-versus-construction decision.
-19. Treat forest as path-shaping terrain. Trees block movement, so clearing creates routes and chokepoints instead of merely making empty build space.
+19. Treat forest as path-shaping terrain. Trees are walkable at a higher traversal cost, so clearing makes faster routes and build space while keeping the forest visually dense.
 20. Give buildings readable roles such as `home`, `blocker`, `utility`, and `bait`. The closest-building rule remains universal, while the player understands each building's intended use.
 21. Leave **rubble** after a building is destroyed. Rubble blocks its cells until Avery spends an action to clear it, so destruction changes the battlefield.
 22. Add night **pause, 1x, and 2x speed** controls. They do not create combat commands; they let the player inspect or accelerate an automatic defense.
 23. Add a day-only **planning overlay** for valid cells, building health, Scout ranges, predicted routes, and current targets. Keep the meadow uncluttered at night.
-24. Give buildings visible condition states—intact, worn, damaged, and near-collapse—before adding permanent health bars everywhere.
+24. Give buildings visible condition states—intact, worn, damaged, and near-collapse—alongside an optional UI health-bar toggle for buildings, Scout, and enemies.
 25. Stage a night's arrivals into small, bounded groups with gaps between them. This creates readable beats and avoids visual noise as difficulty rises.
 26. Add a deterministic **replay/simulation mode** that records the map seed, player actions, placements, and outcome. It supports balance testing, bug reproduction, and shareable challenge runs.
 
@@ -130,9 +131,9 @@ Keep enemy rules, unit statistics, unlock order, and the difficulty ceiling dete
 
 ## Current MVP implementation
 
-- Completed: untimed two-action days; End day; day-only Avery work; a hidden square board; authored animal trails; trees, boulders, wood, stone, and rubble.
+- Completed: untimed two-action days; End day; day-only Avery work; a hidden square board; dense walkable forest, all-perimeter spawning, trees, boulders, wood, stone, and rubble.
 - Completed: building footprints, health/condition states, repairs, blueprints, completed barricades, closest-reachable-building targeting, four-direction cached paths, destruction, and retargeting.
-- Completed: Scout placement/range, data-driven raccoon and boar combat, fixed simulation ticks, bounded seeded waves, pause/1×/2× night controls, XP, the first three level unlocks, save/load, and deterministic action-log replays.
+- Completed: Scout placement/range, chase/bite/return behavior, data-driven raccoon and boar combat with approach attributes, fixed simulation ticks, bounded seeded waves, pause/1×/2× night controls, optional health bars, a visible aftermath before dawn continuation, XP, the first three level unlocks, save/load, and deterministic action-log replays.
 - Verification: `node test-engine.js` exercises the engine without the browser; the browser remains the player-facing test surface.
 
 ## First implementation slice after this roadmap

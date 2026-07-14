@@ -3,6 +3,7 @@ const Engine = window.WildHearthEngine;
 if (!Engine) throw new Error("Wild Hearth engine did not load.");
 
 const SAVE_KEY = "wild-hearth-save-v1";
+const SETTINGS_KEY = "wild-hearth-settings-v1";
 const elements = {
   board: document.querySelector("#game-board"),
   grid: document.querySelector("#board-grid"),
@@ -33,14 +34,10 @@ const elements = {
   previewCopy: document.querySelector("#preview-copy"),
   pauseButton: document.querySelector("#pause-button"),
   speedButtons: [...document.querySelectorAll("[data-speed]")],
+  healthBarsToggle: document.querySelector("#health-bars-toggle"),
+  dawnNote: document.querySelector("#dawn-note"),
+  continueButton: document.querySelector("#continue-button"),
   eventLog: document.querySelector("#event-log"),
-  resultDialog: document.querySelector("#result-dialog"),
-  resultKicker: document.querySelector("#result-kicker"),
-  resultTitle: document.querySelector("#result-title"),
-  resultCopy: document.querySelector("#result-copy"),
-  resultStats: document.querySelector("#result-stats"),
-  nextLevelButton: document.querySelector("#next-level-button"),
-  replayButton: document.querySelector("#replay-button"),
 };
 
 let state = Engine.createRun(Engine.DEFAULT_SEED);
@@ -51,6 +48,13 @@ let planning = false;
 let lastFrame = 0;
 let accumulator = 0;
 let gridSignature = "";
+let showHealthBars = false;
+
+try {
+  showHealthBars = Boolean(JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}").showHealthBars);
+} catch (error) {
+  showHealthBars = false;
+}
 
 function createNode(tag, className, text) {
   const node = document.createElement(tag);
@@ -66,6 +70,15 @@ function setButtonContent(button, label, detail) {
 function place(node, x, y) {
   node.style.left = `${((x + 0.5) / Engine.BOARD.width) * 100}%`;
   node.style.top = `${((y + 0.5) / Engine.BOARD.height) * 100}%`;
+}
+
+function addHealthBar(node, entity, tone) {
+  if (!showHealthBars) return;
+  const health = createNode("span", `health-bar ${tone || ""}`);
+  const fill = createNode("span");
+  fill.style.width = `${Math.max(0, (entity.health / entity.maxHealth) * 100)}%`;
+  health.append(fill);
+  node.append(health);
 }
 
 function currentLevel() { return Engine.levelFor(state); }
@@ -150,7 +163,7 @@ function renderEntities() {
     const diameter = ((state.scout.attackRange * 2 + 1) / Engine.BOARD.width) * 100;
     ring.style.width = `${diameter}%`;
     ring.style.height = `${diameter}%`;
-    place(ring, state.scout.x, state.scout.y);
+    place(ring, state.scout.postX, state.scout.postY);
     fragment.append(ring);
   }
 
@@ -165,6 +178,7 @@ function renderEntities() {
     const node = createNode("div", `entity building ${building.type} ${Engine.conditionFor(building)}`);
     if (building.type === "teepee" && state.upgrades.includes("stonework")) node.classList.add("has-stonework");
     place(node, building.x, building.y);
+    addHealthBar(node, building, "building-health");
     addLabel(node, recipe.label);
     fragment.append(node);
   });
@@ -177,26 +191,21 @@ function renderEntities() {
 
   const teepee = state.buildings.find((building) => building.type === "teepee" && !building.destroyed);
   if (teepee) {
-    const human = createNode("div", `entity human${state.phase !== "day" ? " sleeping" : ""}`);
+    const human = createNode("div", `entity human${!["day", "dawn"].includes(state.phase) ? " sleeping" : ""}`);
     place(human, teepee.x - 0.5, teepee.y + 0.55);
     addLabel(human, "Avery");
     fragment.append(human);
   }
 
-  const scout = createNode("div", "entity scout");
-  const enemyInRange = state.enemies.some((enemy) => Math.hypot(enemy.x - state.scout.x, enemy.y - state.scout.y) <= state.scout.attackRange + Engine.ENEMIES[enemy.type].collisionRadius);
-  if (enemyInRange && state.phase === "night") scout.classList.add("is-attacking");
+  const scout = createNode("div", `entity scout is-${state.scout.mode || "idle"}`);
   place(scout, state.scout.x, state.scout.y);
+  addHealthBar(scout, state.scout, "scout-health");
   addLabel(scout, "Scout");
   fragment.append(scout);
 
   state.enemies.forEach((enemy) => {
     const node = createNode("div", `entity enemy ${enemy.type}`);
-    const health = createNode("span", "enemy-bar");
-    const fill = createNode("span");
-    fill.style.width = `${Math.max(0, (enemy.health / enemy.maxHealth) * 100)}%`;
-    health.append(fill);
-    node.append(health);
+    addHealthBar(node, enemy, "enemy-health");
     place(node, enemy.x, enemy.y);
     fragment.append(node);
   });
@@ -212,7 +221,7 @@ function renderSelection() {
     elements.selectedTitle.textContent = recipe.label;
     elements.selectedCopy.textContent = `${recipe.role} · ${building.health}/${building.maxHealth} health · ${condition}. Repair costs ${recipe.repairCost.wood || 0} wood and one Avery action.`;
     elements.selectionMeter.style.width = `${(building.health / building.maxHealth) * 100}%`;
-    elements.selectionFootnote.textContent = recipe.tags.includes("boar-counter") ? "A boar follows the closest reachable building. Put this near a trail." : "The teepee is the heart of the clearing.";
+    elements.selectionFootnote.textContent = recipe.tags.includes("boar-counter") ? "A boar follows the closest reachable building. Put this between the forest and the teepee." : "The teepee is the heart of the clearing.";
     return;
   }
   if (blueprint) {
@@ -233,14 +242,14 @@ function renderSelection() {
   elements.selectedTitle.textContent = toolCopy[activeTool][0];
   elements.selectedCopy.textContent = toolCopy[activeTool][1];
   elements.selectionMeter.style.width = "0%";
-  elements.selectionFootnote.textContent = "The square grid is deliberate engine structure, but never drawn over the meadow.";
+  elements.selectionFootnote.textContent = "The square grid is deliberate engine structure, but never drawn over the forest.";
 }
 
 function renderPreview() {
   const preview = currentPreview();
   if (!preview) {
     elements.previewCopy.textContent = planning
-      ? "Overlay active: Scout’s medium range is visible. Select Barricade and hover an open cell to see a predicted route."
+      ? "Overlay active: Scout’s medium watch radius is visible. Select Barricade and hover an open cell to see a predicted route."
       : "Select Barricade and hover an open cell to preview its cost, Scout coverage, and its likely target effect.";
     return;
   }
@@ -261,6 +270,8 @@ function renderControls() {
   const level = currentLevel();
   const day = state.phase === "day";
   const night = state.phase === "night";
+  const dawn = state.phase === "dawn";
+  const lost = state.phase === "lost";
   const building = selectedBuilding();
   elements.barricadeTool.disabled = !state.unlocks.includes("barricade") || !day;
   elements.toolGrid.querySelectorAll("[data-tool]").forEach((button) => {
@@ -279,6 +290,7 @@ function renderControls() {
     button.disabled = !night;
     button.classList.toggle("is-active", Number(button.dataset.speed) === state.speed);
   });
+  elements.healthBarsToggle.checked = showHealthBars;
   elements.actionBadge.textContent = day ? `${state.actionPoints} action${state.actionPoints === 1 ? "" : "s"}` : "Avery is inside";
   elements.actionHint.textContent = day
     ? "Choose a tool, then choose a cell. Blueprints reserve materials; finishing one uses an action."
@@ -287,44 +299,47 @@ function renderControls() {
   elements.levelTitle.textContent = day ? "A hearth in a living forest." : `${level.title} is underway.`;
   elements.levelCopy.textContent = day
     ? "The day has no timer. Avery has two actions, then you decide when the night begins."
-    : `Difficulty budget: ${state.encounter?.difficulty || level.difficulty}. Enemy groups arrive through the fixed animal trails.`;
+    : night
+      ? `Difficulty budget: ${state.encounter?.difficulty || level.difficulty}. Enemies can arrive from any forest edge and slow down in dense trees.`
+      : dawn
+        ? "Morning returns after Scout has made it safely back to his post. Review the meadow, then continue when ready."
+        : "The homestead needs a new plan before another night.";
+  const canAdvance = dawn && state.levelIndex < Engine.LEVELS.length - 1;
+  elements.continueButton.classList.toggle("hidden", !(dawn || lost));
+  elements.continueButton.disabled = !(dawn || lost);
+  setButtonContent(
+    elements.continueButton,
+    lost ? "Reset this run" : canAdvance ? "Continue to next level" : "Try a new seed",
+    lost ? "Plan again" : canAdvance ? "Daylight returns →" : "New meadow →",
+  );
+  if (dawn) {
+    elements.dawnNote.textContent = state.outcome?.copy || "The meadow held through the night.";
+  } else if (state.phase === "aftermath") {
+    elements.dawnNote.textContent = "Scout is returning to his post. The meadow stays visible while the night settles.";
+  } else if (lost) {
+    elements.dawnNote.textContent = state.outcome?.copy || "The teepee fell.";
+  } else {
+    elements.dawnNote.textContent = "";
+  }
 }
 
 function renderHeader() {
   const day = state.phase === "day";
   const night = state.phase === "night";
+  const aftermath = state.phase === "aftermath";
+  const dawn = state.phase === "dawn";
   elements.seed.textContent = state.seed;
-  elements.phaseChip.classList.toggle("is-night", night);
+  elements.phaseChip.classList.toggle("is-night", night || aftermath);
   elements.phaseChip.classList.toggle("is-result", !day && !night);
-  elements.board.classList.toggle("night-scene", night);
-  elements.phaseLabel.textContent = day ? "Day planning" : night ? state.paused ? "Night paused" : "Night watch" : state.phase === "lost" ? "Homestead lost" : "Night complete";
-  elements.phaseDetail.textContent = day ? "Untimed" : night ? `${state.speed}× fixed tick` : "Seed recorded";
+  elements.board.classList.toggle("night-scene", night || aftermath);
+  elements.board.classList.toggle("dawn-scene", dawn);
+  elements.phaseLabel.textContent = day ? "Day planning" : night ? state.paused ? "Night paused" : "Night watch" : aftermath ? "Night settling" : state.phase === "lost" ? "Homestead lost" : "Dawn held";
+  elements.phaseDetail.textContent = day ? "Untimed" : night ? `${state.speed}× fixed tick` : aftermath ? "Scout returning" : "Seed recorded";
   elements.actionPoints.textContent = state.actionPoints;
   elements.wood.textContent = state.resources.wood;
   elements.stone.textContent = state.resources.stone;
   elements.xp.textContent = state.xp;
   elements.eventLog.textContent = state.lastEvent;
-}
-
-function renderResult() {
-  const show = state.phase === "complete" || state.phase === "lost";
-  elements.resultDialog.classList.toggle("hidden", !show);
-  if (!show) return;
-  const level = currentLevel();
-  const outcome = state.outcome || {};
-  elements.resultKicker.textContent = state.phase === "lost" ? "Night lost" : `Level ${level.number} complete`;
-  elements.resultTitle.textContent = outcome.title || "Night resolved.";
-  elements.resultCopy.textContent = outcome.copy || "";
-  const stats = [
-    `Scout: ${state.kills} ${state.kills === 1 ? "enemy" : "enemies"} turned away`,
-    `Homestead XP ${state.xp}`,
-    `Seed ${state.seed}`,
-  ];
-  elements.resultStats.replaceChildren(...stats.map((stat) => createNode("span", "", stat)));
-  const canAdvance = state.phase === "complete" && state.levelIndex < Engine.LEVELS.length - 1;
-  elements.nextLevelButton.disabled = !canAdvance;
-  elements.nextLevelButton.textContent = canAdvance ? "Next level" : state.phase === "complete" ? "Current meadow complete" : "Reset this run";
-  elements.replayButton.disabled = !state.unlocks.includes("replay");
 }
 
 function render() {
@@ -334,7 +349,6 @@ function render() {
   renderSelection();
   renderPreview();
   renderControls();
-  renderResult();
 }
 
 function clickCell(x, y) {
@@ -395,13 +409,6 @@ function loadGame() {
   }
 }
 
-function runRecordedReplay() {
-  const replayed = Engine.replay(state.seed, state.actionLog);
-  const matches = Engine.checksum(replayed) === Engine.checksum(state);
-  setEvent(matches ? "Recorded replay matched this run exactly." : "Replay diverged; inspect the action log before trusting this seed.");
-  render();
-}
-
 elements.grid.addEventListener("pointermove", (event) => {
   const cell = event.target.closest(".cell");
   if (!cell) return;
@@ -437,26 +444,28 @@ elements.endDayButton.addEventListener("click", () => dispatch({ type: "endDay" 
 elements.overlayButton.addEventListener("click", () => { planning = !planning; gridSignature = ""; render(); });
 elements.pauseButton.addEventListener("click", () => dispatch({ type: "pause" }));
 elements.speedButtons.forEach((button) => button.addEventListener("click", () => dispatch({ type: "speed", speed: Number(button.dataset.speed) })));
+elements.healthBarsToggle.addEventListener("change", () => {
+  showHealthBars = elements.healthBarsToggle.checked;
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ showHealthBars })); } catch (error) { /* The setting still works for this session. */ }
+  render();
+});
+elements.continueButton.addEventListener("click", () => {
+  if (state.phase === "dawn" && state.levelIndex < Engine.LEVELS.length - 1) dispatch({ type: "nextLevel" });
+  else resetRun(Engine.nextSeed(state.seed));
+});
 document.querySelector("#save-button").addEventListener("click", saveGame);
 document.querySelector("#load-button").addEventListener("click", loadGame);
 document.querySelector("#new-seed-button").addEventListener("click", () => resetRun(Engine.nextSeed(state.seed)));
 document.querySelector("#reset-button").addEventListener("click", () => resetRun(state.seed));
 document.querySelector("#brand-reset").addEventListener("click", (event) => { event.preventDefault(); resetRun(state.seed); });
-document.querySelector("#next-level-button").addEventListener("click", () => {
-  if (state.phase === "complete" && state.levelIndex < Engine.LEVELS.length - 1) dispatch({ type: "nextLevel" });
-  else resetRun(state.seed);
-});
-document.querySelector("#replay-button").addEventListener("click", runRecordedReplay);
-document.querySelector("#new-seed-result-button").addEventListener("click", () => resetRun(Engine.nextSeed(state.seed)));
-
 function frame(timestamp) {
   if (!lastFrame) lastFrame = timestamp;
   const elapsed = Math.min(timestamp - lastFrame, 250);
   lastFrame = timestamp;
-  if (state.phase === "night" && !state.paused) {
+  if (["night", "aftermath"].includes(state.phase) && !state.paused) {
     accumulator += (elapsed / 1000) * Engine.TICK_RATE * state.speed;
     let steps = 0;
-    while (accumulator >= 1 && steps < 12 && state.phase === "night") {
+    while (accumulator >= 1 && steps < 12 && ["night", "aftermath"].includes(state.phase)) {
       Engine.advanceTick(state);
       accumulator -= 1;
       steps += 1;

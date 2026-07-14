@@ -9,7 +9,7 @@
   if (typeof module !== "undefined" && module.exports) module.exports = engine;
   root.WildHearthEngine = engine;
 }(typeof globalThis !== "undefined" ? globalThis : this, function buildEngine() {
-  const SAVE_VERSION = 1;
+  const SAVE_VERSION = 2;
   const TICK_RATE = 20;
   const BOARD = { id: "hearth-meadow", label: "Hearth Meadow", width: 13, height: 13 };
   const STARTING_ACTIONS = 2;
@@ -23,8 +23,9 @@
       health: 9,
       damage: 2,
       attackSpeed: 1.7,
-      moveSpeed: 0,
+      moveSpeed: 2.7,
       attackRange: 3.3,
+      attackReach: 0.76,
       collisionRadius: 0.34,
       targetRule: "nearest-enemy-in-range",
       targetType: "enemy",
@@ -44,6 +45,8 @@
       collisionRadius: 0.28,
       targetRule: "closest-reachable-building",
       targetType: "building",
+      approach: "sneak",
+      forestMoveCost: 1.32,
       xp: 1,
     },
     boar: {
@@ -58,6 +61,8 @@
       collisionRadius: 0.44,
       targetRule: "closest-reachable-building",
       targetType: "building",
+      approach: "trudge",
+      forestMoveCost: 1.82,
       xp: 3,
     },
   };
@@ -115,7 +120,7 @@
       survivalXp: 2,
       unlock: "barricade",
       unlockLabel: "Wooden barricade",
-      unlockCopy: "Build it close to the animal trail so a boar has something else to smash first.",
+      unlockCopy: "Build it between the forest and teepee so a boar has something else to smash first.",
     },
     {
       id: "boar-at-dusk",
@@ -145,32 +150,34 @@
     },
   ];
 
-  const SPAWN_CELLS = [
-    { x: 5, y: 0, edge: "north" }, { x: 6, y: 0, edge: "north" },
-    { x: 12, y: 5, edge: "east" }, { x: 12, y: 6, edge: "east" },
-    { x: 6, y: 12, edge: "south" }, { x: 7, y: 12, edge: "south" },
-    { x: 0, y: 6, edge: "west" }, { x: 0, y: 7, edge: "west" },
-  ];
-
   function makeFixedTerrain() {
     const terrain = Array.from({ length: BOARD.width * BOARD.height }, () => "tree");
     const set = (x, y, type) => { terrain[y * BOARD.width + x] = type; };
     const open = (x, y) => set(x, y, "open");
 
-    for (let y = 0; y <= 5; y += 1) { open(5, y); open(6, y); }
-    for (let y = 7; y < BOARD.height; y += 1) { open(6, y); open(7, y); }
-    for (let x = 0; x <= 5; x += 1) { open(x, 6); open(x, 7); }
-    for (let x = 7; x < BOARD.width; x += 1) { open(x, 5); open(x, 6); }
-    for (let y = 4; y <= 8; y += 1) {
-      for (let x = 4; x <= 8; x += 1) {
-        if (Math.hypot(x - 6, y - 6) <= 2.45) open(x, y);
+    for (let y = 3; y <= 9; y += 1) {
+      for (let x = 3; x <= 9; x += 1) {
+        if (Math.hypot(x - 6, y - 6) <= 2.28) open(x, y);
       }
     }
-    [[3, 5], [9, 7], [3, 9], [9, 3]].forEach(([x, y]) => set(x, y, "boulder"));
+    [[3, 5], [9, 7], [3, 9], [9, 3], [8, 10]].forEach(([x, y]) => set(x, y, "boulder"));
     return terrain;
   }
 
   const FIXED_TERRAIN = makeFixedTerrain();
+
+  function perimeterSpawnCells() {
+    const cells = [];
+    for (let x = 0; x < BOARD.width; x += 1) {
+      cells.push({ x, y: 0, edge: "north" }, { x, y: BOARD.height - 1, edge: "south" });
+    }
+    for (let y = 1; y < BOARD.height - 1; y += 1) {
+      cells.push({ x: 0, y, edge: "west" }, { x: BOARD.width - 1, y, edge: "east" });
+    }
+    return cells.filter((cell) => FIXED_TERRAIN[indexOf(cell.x, cell.y)] !== "boulder");
+  }
+
+  const SPAWN_CELLS = perimeterSpawnCells();
 
   function hashSeed(value) {
     let hash = 2166136261;
@@ -238,8 +245,13 @@
   }
 
   function isPassable(state, x, y) {
-    if (!inBounds(x, y) || terrainAt(state, x, y) !== "open" || hasRubble(state, x, y)) return false;
+    if (!inBounds(x, y) || !["open", "tree"].includes(terrainAt(state, x, y)) || hasRubble(state, x, y)) return false;
     return !buildingAt(state, x, y, false);
+  }
+
+  function travelCost(state, x, y, recipe) {
+    if (terrainAt(state, x, y) === "tree") return recipe?.forestMoveCost || 1.5;
+    return 1;
   }
 
   function invalidatePaths(state) {
@@ -257,38 +269,40 @@
     return cache;
   }
 
-  function findPath(state, start, goal) {
+  function findPath(state, start, goal, recipe) {
     if (!isPassable(state, goal.x, goal.y)) return null;
     const source = { x: Math.round(start.x), y: Math.round(start.y) };
     if (!inBounds(source.x, source.y)) return null;
-    const key = `${state.topologyVersion}|${source.x},${source.y}|${goal.x},${goal.y}`;
+    const terrainProfile = recipe?.id || recipe?.forestMoveCost || "default";
+    const key = `${state.topologyVersion}|${terrainProfile}|${source.x},${source.y}|${goal.x},${goal.y}`;
     const cache = getPathCache(state);
     if (cache.paths.has(key)) return clone(cache.paths.get(key));
     if (source.x === goal.x && source.y === goal.y) return [{ x: source.x, y: source.y }];
 
-    const queue = [source];
-    const visited = new Set([cellKey(source.x, source.y)]);
+    const frontier = [{ cell: source, cost: 0 }];
+    const costs = new Map([[cellKey(source.x, source.y), 0]]);
     const previous = new Map();
     const directions = [{ x: 0, y: -1 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }];
-    let cursor = 0;
-    let found = false;
 
-    while (cursor < queue.length) {
-      const current = queue[cursor];
-      cursor += 1;
+    while (frontier.length) {
+      frontier.sort((left, right) => left.cost - right.cost || left.cell.y - right.cell.y || left.cell.x - right.cell.x);
+      const current = frontier.shift();
+      const currentKey = cellKey(current.cell.x, current.cell.y);
+      if (current.cost !== costs.get(currentKey)) continue;
+      if (current.cell.x === goal.x && current.cell.y === goal.y) break;
       for (const direction of directions) {
-        const next = { x: current.x + direction.x, y: current.y + direction.y };
+        const next = { x: current.cell.x + direction.x, y: current.cell.y + direction.y };
         const nextKey = cellKey(next.x, next.y);
-        if (visited.has(nextKey) || !isPassable(state, next.x, next.y)) continue;
-        visited.add(nextKey);
-        previous.set(nextKey, current);
-        if (next.x === goal.x && next.y === goal.y) { found = true; break; }
-        queue.push(next);
+        if (!isPassable(state, next.x, next.y)) continue;
+        const nextCost = current.cost + travelCost(state, next.x, next.y, recipe);
+        if (nextCost >= (costs.get(nextKey) ?? Infinity)) continue;
+        costs.set(nextKey, nextCost);
+        previous.set(nextKey, current.cell);
+        frontier.push({ cell: next, cost: nextCost });
       }
-      if (found) break;
     }
 
-    if (!found) return null;
+    if (!costs.has(cellKey(goal.x, goal.y))) return null;
     const path = [goal];
     let current = goal;
     while (!(current.x === source.x && current.y === source.y)) {
@@ -312,17 +326,19 @@
     return candidates;
   }
 
-  function closestReachableBuilding(state, entity, extraBuilding) {
+  function closestReachableBuilding(state, entity, extraBuilding, recipeOverride) {
     const buildings = state.buildings.filter((building) => !building.destroyed).concat(extraBuilding ? [extraBuilding] : []);
+    const recipe = recipeOverride || (entity?.type ? enemyRecipe(entity.type) : ENEMIES.raccoon);
     const candidates = [];
     for (const building of buildings) {
       for (const approach of approachCells(state, building)) {
-        const path = findPath(state, entity, approach);
+        const path = findPath(state, entity, approach, recipe);
         if (!path) continue;
-        candidates.push({ building, approach, path, distance: path.length - 1 });
+        const cost = path.slice(1).reduce((sum, cell) => sum + travelCost(state, cell.x, cell.y, recipe), 0);
+        candidates.push({ building, approach, path, cost });
       }
     }
-    candidates.sort((left, right) => left.distance - right.distance
+    candidates.sort((left, right) => left.cost - right.cost
       || String(left.building.id).localeCompare(String(right.building.id))
       || left.approach.y - right.approach.y
       || left.approach.x - right.approach.x);
@@ -380,7 +396,16 @@
       buildings: [teepee],
       blueprints: [],
       rubble: [],
-      scout: { ...clone(UNITS.scout), x: 5, y: 7, cooldown: 0 },
+      scout: {
+        ...clone(UNITS.scout),
+        x: 5,
+        y: 7,
+        postX: 5,
+        postY: 7,
+        cooldown: 0,
+        targetId: null,
+        mode: "idle",
+      },
       enemies: [],
       encounter: null,
       topologyVersion: 0,
@@ -389,6 +414,7 @@
       actionLog: [],
       lastEvent: "Avery and Scout begin with two daylight actions. The meadow will wait until you choose End day.",
       outcome: null,
+      aftermathTicks: 0,
       paused: false,
       speed: 1,
       upgrades: [],
@@ -474,8 +500,8 @@
     const candidate = { id: "preview", type, x, y };
     const level = levelFor(state);
     const encounter = buildEncounter(state);
-    const target = closestReachableBuilding(state, encounter.waves[0].entry, candidate);
-    const coverage = distance(state.scout, { x, y }) <= state.scout.attackRange + 0.5;
+    const target = closestReachableBuilding(state, encounter.waves[0].entry, candidate, ENEMIES.raccoon);
+    const coverage = distance({ x: state.scout.postX, y: state.scout.postY }, { x, y }) <= state.scout.attackRange + 0.5;
     return {
       valid,
       affordable,
@@ -493,7 +519,7 @@
     if (!action || !action.type) return result(state, false, "That action is not understood.");
 
     if (action.type === "nextLevel") {
-      if (state.phase !== "complete") return result(state, false, "Finish the current night first.");
+      if (state.phase !== "dawn") return result(state, false, "Let the night settle before continuing.");
       if (state.levelIndex >= LEVELS.length - 1) return result(state, false, "The current meadow story is complete. Try a new seed.");
       state.levelIndex += 1;
       state.phase = "day";
@@ -504,6 +530,7 @@
       state.paused = false;
       state.speed = 1;
       state.outcome = null;
+      state.aftermathTicks = 0;
       state.lastEvent = `Level ${levelFor(state).number}: ${levelFor(state).title}. Avery has two actions before dusk.`;
       return result(state, true, state.lastEvent, action, shouldRecord);
     }
@@ -530,7 +557,7 @@
       }
       state.rubble = state.rubble.filter((rubble) => !(rubble.x === action.x && rubble.y === action.y));
       invalidatePaths(state);
-      return result(state, true, "Avery clears the rubble. The trail is open again.", action, shouldRecord);
+      return result(state, true, "Avery clears the rubble. That ground is open again.", action, shouldRecord);
     }
 
     if (action.type === "repair") {
@@ -550,6 +577,10 @@
       if (!consumeAction(state)) return result(state, false, "Avery has used both daylight actions.");
       state.scout.x = action.x;
       state.scout.y = action.y;
+      state.scout.postX = action.x;
+      state.scout.postY = action.y;
+      state.scout.targetId = null;
+      state.scout.mode = "idle";
       return result(state, true, "Scout settles into a new watch position.", action, shouldRecord);
     }
 
@@ -628,7 +659,7 @@
         wave.units.forEach((type) => state.enemies.push(createEnemy(state, type, wave.entry)));
         state.encounter.spawned += wave.units.length;
         const names = wave.units.map((type) => enemyRecipe(type).label.toLowerCase()).join(" and ");
-        state.lastEvent = `A ${names} enters from the ${wave.entry.edge} trail.`;
+        state.lastEvent = `A ${names} enters from the ${wave.entry.edge} forest.`;
       }
     }
   }
@@ -646,23 +677,48 @@
     }
     buildingCells(building).forEach((cell) => state.rubble.push({ x: cell.x, y: cell.y }));
     invalidatePaths(state);
-    state.lastEvent = `The ${buildingRecipe(building.type).label.toLowerCase()} becomes rubble and blocks the trail.`;
+    state.lastEvent = `The ${buildingRecipe(building.type).label.toLowerCase()} becomes rubble and blocks the ground.`;
   }
 
   function updateScout(state) {
     const scout = state.scout;
     scout.cooldown = Math.max(0, scout.cooldown - 1);
-    const enemies = state.enemies.filter((enemy) => distance(scout, enemy) <= scout.attackRange + enemyRecipe(enemy.type).collisionRadius)
-      .sort((left, right) => distance(scout, left) - distance(scout, right) || String(left.id).localeCompare(String(right.id)));
-    if (!enemies.length || scout.cooldown > 0) return;
-    const target = enemies[0];
+    const post = { x: scout.postX, y: scout.postY };
+    const targets = state.enemies.filter((enemy) => distance(post, enemy) <= scout.attackRange + enemyRecipe(enemy.type).collisionRadius)
+      .sort((left, right) => distance(post, left) - distance(post, right) || String(left.id).localeCompare(String(right.id)));
+    const target = targets[0];
+
+    if (!target) {
+      scout.targetId = null;
+      if (distance(scout, post) > 0.03) {
+        scout.mode = "returning";
+        moveTowards(scout, post, scout.moveSpeed / TICK_RATE);
+      } else {
+        scout.mode = "idle";
+        scout.x = post.x;
+        scout.y = post.y;
+      }
+      return;
+    }
+
+    scout.targetId = target.id;
+    const reach = scout.attackReach + enemyRecipe(target.type).collisionRadius;
+    if (distance(scout, target) > reach) {
+      scout.mode = "chasing";
+      moveTowards(scout, target, scout.moveSpeed / TICK_RATE);
+      return;
+    }
+
+    scout.mode = "attacking";
+    if (scout.cooldown > 0) return;
     target.health = Math.max(0, target.health - scout.damage);
     scout.cooldown = Math.max(1, Math.round(TICK_RATE / scout.attackSpeed));
-    state.lastEvent = `Scout keeps the ${enemyRecipe(target.type).label.toLowerCase()} inside his watch radius.`;
+    state.lastEvent = `Scout lunges at the ${enemyRecipe(target.type).label.toLowerCase()} inside his watch radius.`;
     if (target.health === 0) {
       state.kills += 1;
       state.xp += enemyRecipe(target.type).xp;
       state.enemies = state.enemies.filter((enemy) => enemy.id !== target.id);
+      scout.targetId = null;
       state.lastEvent = `Scout turns away the ${enemyRecipe(target.type).label.toLowerCase()}: +${enemyRecipe(target.type).xp} XP.`;
     }
   }
@@ -700,15 +756,22 @@
     }
     enemy.intent = `moving-${target.building.id}`;
     const nextStep = target.path.length > 1 ? target.path[1] : target.approach;
-    moveTowards(enemy, nextStep, recipe.moveSpeed / TICK_RATE);
+    const stepCost = travelCost(state, nextStep.x, nextStep.y, recipe);
+    moveTowards(enemy, nextStep, recipe.moveSpeed / TICK_RATE / stepCost);
   }
 
-  function finishNight(state) {
+  function beginAftermath(state) {
+    state.phase = "aftermath";
+    state.aftermathTicks = 0;
+    state.lastEvent = "The forest goes quiet. Scout makes his way back to the watch post.";
+  }
+
+  function settleAftermath(state) {
     const level = levelFor(state);
     state.xp += level.survivalXp;
     const unlockedNow = !hasUnlock(state, level.unlock);
     addUnlock(state, level.unlock);
-    state.phase = "complete";
+    state.phase = "dawn";
     state.outcome = {
       victory: true,
       title: `${level.title} held.`,
@@ -718,12 +781,19 @@
       survivalXp: level.survivalXp,
     };
     state.history.push({ level: level.id, result: "victory", seed: state.seed, kills: state.kills });
-    state.lastEvent = `${level.title} complete: +${level.survivalXp} survival XP.`;
+    state.lastEvent = `${level.title} held: +${level.survivalXp} survival XP. ${state.outcome.copy}`;
   }
 
   function advanceTick(state) {
-    if (state.phase !== "night" || state.paused) return state;
+    if (!["night", "aftermath"].includes(state.phase) || state.paused) return state;
     state.tick += 1;
+    if (state.phase === "aftermath") {
+      state.aftermathTicks += 1;
+      updateScout(state);
+      const home = { x: state.scout.postX, y: state.scout.postY };
+      if (state.aftermathTicks >= 40 && distance(state.scout, home) <= 0.04) settleAftermath(state);
+      return state;
+    }
     state.nightTick += 1;
     spawnWaves(state);
     updateScout(state);
@@ -731,12 +801,12 @@
     [...state.enemies].forEach((enemy) => {
       if (state.phase === "night" && state.enemies.some((item) => item.id === enemy.id)) updateEnemy(state, enemy);
     });
-    if (state.phase === "night" && state.encounter.waves.every((wave) => wave.spawned) && state.enemies.length === 0) finishNight(state);
+    if (state.phase === "night" && state.encounter.waves.every((wave) => wave.spawned) && state.enemies.length === 0) beginAftermath(state);
     return state;
   }
 
   function advanceTicks(state, count) {
-    for (let index = 0; index < count && state.phase === "night"; index += 1) advanceTick(state);
+    for (let index = 0; index < count && ["night", "aftermath"].includes(state.phase); index += 1) advanceTick(state);
     return state;
   }
 
@@ -771,7 +841,7 @@
       dispatch(state, action, { record: false });
       if (action.type === "endDay") {
         let guard = 14000;
-        while (state.phase === "night" && guard > 0) { advanceTick(state); guard -= 1; }
+        while (["night", "aftermath"].includes(state.phase) && guard > 0) { advanceTick(state); guard -= 1; }
       }
     }
     return state;
@@ -789,6 +859,13 @@
       buildings: state.buildings.map((building) => ({ id: building.id, type: building.type, x: building.x, y: building.y, health: building.health, maxHealth: building.maxHealth, destroyed: building.destroyed })),
       rubble: state.rubble,
       outcome: state.outcome,
+      scout: {
+        x: state.scout.x,
+        y: state.scout.y,
+        postX: state.scout.postX,
+        postY: state.scout.postY,
+        mode: state.scout.mode,
+      },
     });
   }
 
@@ -809,6 +886,7 @@
     LEVELS,
     STARTING_ACTIONS,
     DEFAULT_SEED,
+    SPAWN_CELLS,
     createRun,
     createRng,
     nextSeed,
