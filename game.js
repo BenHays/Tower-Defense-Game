@@ -18,6 +18,10 @@ const elements = {
   actionPoints: document.querySelector("#action-points"),
   wood: document.querySelector("#wood-value"),
   xp: document.querySelector("#xp-value"),
+  controlPanel: document.querySelector("#control-panel"),
+  selectedCard: document.querySelector("#selected-card"),
+  actionCard: document.querySelector("#action-card"),
+  planningCard: document.querySelector("#planning-card"),
   selectedTitle: document.querySelector("#selected-title"),
   selectedCopy: document.querySelector("#selected-copy"),
   selectionMeter: document.querySelector("#selection-meter"),
@@ -26,6 +30,7 @@ const elements = {
   actionHint: document.querySelector("#action-hint"),
   actionBadge: document.querySelector("#action-badge"),
   toolGrid: document.querySelector("#tool-grid"),
+  actionRow: document.querySelector("#action-row"),
   shelterButton: document.querySelector("#shelter-button"),
   repairButton: document.querySelector("#repair-button"),
   upgradeButton: document.querySelector("#upgrade-button"),
@@ -42,10 +47,12 @@ const elements = {
   techBranches: document.querySelector("#tech-branches"),
   researchButton: document.querySelector("#research-button"),
   dawnReport: document.querySelector("#dawn-report"),
+  utilityLabel: document.querySelector("#utility-label"),
   pauseButton: document.querySelector("#pause-button"),
   speedButtons: [...document.querySelectorAll("[data-speed]")],
   speedControls: document.querySelector("#speed-controls"),
   healthBarsToggle: document.querySelector("#health-bars-toggle"),
+  eventLogWrap: document.querySelector("#event-log-wrap"),
   eventLog: document.querySelector("#event-log"),
 };
 
@@ -303,14 +310,12 @@ function renderEntities() {
     addHealthBar(node, building, "building-health");
     const condition = Engine.conditionFor(building);
     if (condition !== "intact") node.append(createNode("span", `condition-tag ${condition}`, condition.replace("-", " ")));
-    addLabel(node, recipe.label);
     fragment.append(node);
   });
 
   const scout = createNode("div", `entity scout is-${state.scout.mode || "idle"}`);
   if (selectedScout()) scout.classList.add("is-selected");
   place(scout, state.scout.x, state.scout.y);
-  addLabel(scout, "Scout");
   fragment.append(scout);
 
   state.enemies.forEach((enemy) => {
@@ -439,6 +444,7 @@ function renderSelection() {
 
 function renderPreview() {
   const preview = currentPreview();
+  elements.previewCopy.hidden = !preview && !planning;
   if (!preview) {
     elements.previewCopy.textContent = planning
       ? "Scout’s watch and the selected tower’s reach are visible."
@@ -542,21 +548,32 @@ function renderControls() {
   const refit = availableRefit(building);
   const arrowUpgradeReady = building && building.type === "stickLauncher" && Engine.hasBuildingUpgrade(state, "stickLauncher", "arrowShooter");
   const opening = needsShelter();
+  const hasInspector = opening || selected.kind !== "none" || activeTool !== "none";
+  const hasPlanningTarget = Boolean(selectedScout() || towerRecipe(building?.type));
+  elements.controlPanel.classList.toggle("is-day", day);
+  elements.controlPanel.classList.toggle("is-night", night);
+  elements.controlPanel.classList.toggle("is-aftermath", state.phase === "aftermath");
+  elements.selectedCard.hidden = !hasInspector || (!day && !opening);
+  elements.actionCard.hidden = !day;
+  elements.planningCard.hidden = opening;
   elements.shelterButton.hidden = !opening;
   elements.shelterButton.disabled = !day || !opening;
   elements.toolGrid.querySelectorAll("[data-tool]").forEach((button) => {
     const tool = button.dataset.tool;
     button.classList.toggle("is-active", tool === activeTool);
+    button.hidden = !opening && isBuildTool(tool) && !state.unlocks.includes(tool);
     button.disabled = opening || !day || state.actionPoints <= 0 || (isBuildTool(tool) && !state.unlocks.includes(tool));
   });
   elements.repairButton.disabled = opening || !day || !building || building.health >= building.maxHealth || state.resources.wood < 1 || state.actionPoints <= 0;
   const upgradeCost = arrowUpgradeReady ? 4 : refit?.cost?.wood || 0;
   elements.upgradeButton.disabled = opening || !day || (!arrowUpgradeReady && !refit) || state.resources.wood < upgradeCost || state.actionPoints <= 0;
+  elements.actionRow.hidden = !building;
   if (arrowUpgradeReady) setButtonContent(elements.upgradeButton, "Upgrade selected", "Arrowcraft · 4 wood · 1 action");
   else if (refit) setButtonContent(elements.upgradeButton, `Refit ${refit.label}`, `${upgradeCost} wood · 1 action · full HP`);
   else setButtonContent(elements.upgradeButton, "Upgrade selected", "Arrowcraft · 4 wood · 1 action");
   elements.endDayButton.disabled = opening || !day;
   setButtonContent(elements.endDayButton, day ? "End day" : "Night in progress", day ? "Begin night watch →" : "Scout is on watch");
+  elements.overlayButton.hidden = !day || !hasPlanningTarget;
   elements.overlayButton.disabled = opening || !day;
   elements.overlayButton.textContent = planning ? "Hide planning overlay" : "Show planning overlay";
   elements.pauseButton.disabled = !night;
@@ -565,14 +582,15 @@ function renderControls() {
     button.disabled = opening;
     button.classList.toggle("is-active", Number(button.dataset.speed) === preferredSpeed);
   });
-  elements.speedControls.hidden = opening;
+  elements.speedControls.hidden = opening || state.phase === "aftermath";
   elements.healthBarsToggle.checked = showHealthBars;
   elements.actionBadge.textContent = day ? `${state.actionPoints} action${state.actionPoints === 1 ? "" : "s"}` : "Scout on watch";
   elements.actionHint.textContent = day
     ? opening
-      ? "Build the free shelter. Everything else unlocks afterward."
-      : "Clear, build, repair, upgrade, and place Scout each use 1 action. Research uses XP only."
-    : "No night actions. Scout is the final line at the hearth.";
+      ? "Required to begin the first watch."
+      : "Choose an action, then select the meadow."
+    : "Scout is defending the hearth.";
+  elements.utilityLabel.textContent = night ? "Night watch" : state.phase === "aftermath" ? "Dawn" : "Tools";
   elements.levelLabel.textContent = `Level ${String(level.number).padStart(2, "0")} · ${level.title}`;
   elements.levelCopy.textContent = day
     ? opening
@@ -607,7 +625,10 @@ function renderHeader() {
   elements.actionPoints.textContent = state.actionPoints;
   elements.wood.textContent = state.resources.wood;
   elements.xp.textContent = state.xp;
-  elements.eventLog.textContent = state.lastEvent;
+  const event = state.lastEvent || "";
+  const duplicateContext = event === elements.levelCopy.textContent;
+  elements.eventLogWrap.hidden = !event || duplicateContext || needsShelter();
+  elements.eventLog.textContent = event;
   elements.boardCaption.textContent = day
     ? elements.levelCopy.textContent
     : night

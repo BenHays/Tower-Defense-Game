@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="A deterministic, top-down homestead defense prototype." />
     <title>Wild Hearth — Hearth Meadow</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=quiet-ui-1" />
   </head>
   <body>
     <main class="game-shell" id="top">
@@ -27,15 +27,15 @@
         </div>
       </header>
 
-      <section class="topline" aria-label="Level progress and homestead status">
+      <section class="topline" aria-label="Current objective and homestead status">
         <div class="level-strip">
           <p class="eyebrow" id="level-label">Level 01 · first watch</p>
           <p class="level-objective" id="level-copy">Build a shelter before the first watch.</p>
         </div>
         <dl class="resource-row">
-          <div><dt>Actions</dt><dd id="action-points">2</dd></div>
-          <div><dt>Wood</dt><dd id="wood-value">0</dd></div>
-          <div><dt>Homestead XP</dt><dd id="xp-value">0</dd></div>
+          <div><dt><span aria-hidden="true">◌</span><span class="sr-only">Actions</span></dt><dd id="action-points">2</dd></div>
+          <div><dt><span aria-hidden="true">◆</span><span class="sr-only">Wood</span></dt><dd id="wood-value">0</dd></div>
+          <div><dt><span aria-hidden="true">✦</span><span class="sr-only">Homestead experience</span></dt><dd id="xp-value">0</dd></div>
         </dl>
       </section>
 
@@ -46,33 +46,33 @@
         <div class="board-caption" id="board-caption">Build a shelter before the first watch.</div>
       </section>
 
-      <section class="control-panel" aria-label="Day planning controls">
-        <section class="selected-card" aria-label="Selection details">
-          <p class="eyebrow">Selected</p>
+      <section class="control-panel" id="control-panel" aria-label="Game controls">
+        <section class="selected-card" id="selected-card" aria-label="Selection details">
           <h2 id="selected-title">Shelter site</h2>
           <p id="selected-copy">Build the branch teepee before the first watch.</p>
           <div class="mini-meter" id="selection-meter-wrap" aria-hidden="true"><span id="selection-meter" style="width: 100%"></span></div>
           <p class="selection-footnote" id="selection-footnote">Click terrain or a building to inspect it.</p>
         </section>
 
-        <section class="action-card" aria-label="Day actions">
-          <div class="action-heading"><div><p class="eyebrow">Day actions</p><p class="action-hint" id="action-hint">Trees and buildings use the whole day.</p></div><strong id="action-badge">2 actions</strong></div>
+        <section class="action-card" id="action-card" aria-label="Day actions">
+          <div class="action-heading"><p class="eyebrow">Build</p><strong id="action-badge">2 actions</strong></div>
+          <p class="action-hint" id="action-hint">Choose one action, then select a map cell.</p>
           <div class="tool-grid" id="tool-grid">
-            <button class="tool-button shelter-button" id="shelter-button" type="button">Construct shelter<span>required · free · full day</span></button>
-            <button class="tool-button" data-tool="clear" type="button">Clear<span>tree · 1 action · +2 wood</span></button>
-            <button class="tool-button" data-tool="scout" type="button">Place Scout<span>1 action</span></button>
-            <button class="tool-button" data-tool="stickLauncher" id="stick-launcher-tool" type="button">Stick launcher<span>2 wood · 1 action</span></button>
-            <button class="tool-button" data-tool="potatoGun" id="potato-gun-tool" type="button">Potato gun<span>3 wood · 1 action</span></button>
+            <button class="tool-button shelter-button" id="shelter-button" type="button"><span class="tool-icon" aria-hidden="true">⌂</span><span class="tool-copy"><strong>Construct shelter</strong><small>Free · first day</small></span></button>
+            <button class="tool-button" data-tool="clear" type="button"><span class="tool-icon" aria-hidden="true">✂</span><span class="tool-copy"><strong>Clear tree</strong><small>+2 wood</small></span></button>
+            <button class="tool-button" data-tool="scout" type="button"><span class="tool-icon" aria-hidden="true">●</span><span class="tool-copy"><strong>Place Scout</strong><small>1 action</small></span></button>
+            <button class="tool-button" data-tool="stickLauncher" id="stick-launcher-tool" type="button"><span class="tool-icon" aria-hidden="true">╱</span><span class="tool-copy"><strong>Stick launcher</strong><small>2 wood</small></span></button>
+            <button class="tool-button" data-tool="potatoGun" id="potato-gun-tool" type="button"><span class="tool-icon" aria-hidden="true">◉</span><span class="tool-copy"><strong>Potato gun</strong><small>3 wood</small></span></button>
           </div>
-          <div class="action-row">
+          <div class="action-row" id="action-row">
             <button class="secondary-button" id="repair-button" type="button">Repair selected <span>1 wood · 1 action</span></button>
             <button class="secondary-button" id="upgrade-button" type="button">Upgrade selected <span>Arrowcraft · 4 wood · 1 action</span></button>
           </div>
           <button class="primary-button wide" id="end-day-button" type="button">End day <span>Begin night watch →</span></button>
         </section>
 
-        <aside class="planning-card" aria-label="Planning and night controls">
-          <p class="eyebrow">Planning</p>
+        <aside class="planning-card" id="planning-card" aria-label="Planning and night controls">
+          <p class="eyebrow" id="utility-label">Tools</p>
           <button class="secondary-button wide" id="overlay-button" type="button">Show planning overlay <span>range + routes</span></button>
           <p class="preview-copy" id="preview-copy">Choose a tool, then select unoccupied grass.</p>
           <p class="dawn-report" id="dawn-report" hidden></p>
@@ -85,7 +85,7 @@
         </aside>
       </section>
 
-      <section class="event-log" aria-label="Current status" aria-live="polite"><p id="event-log">Build a shelter before the first watch.</p></section>
+      <section class="event-log" id="event-log-wrap" aria-label="Game update" aria-live="polite" hidden><p id="event-log"></p></section>
     </main>
 
     <div class="tech-dialog" id="tech-dialog" hidden>
@@ -110,8 +110,8 @@
       </section>
     </div>
 
-    <script src="tech-tree.js"></script>
-    <script src="engine.js"></script>
-    <script src="game.js"></script>
+    <script src="tech-tree.js?v=quiet-ui-1"></script>
+    <script src="engine.js?v=quiet-ui-1"></script>
+    <script src="game.js?v=quiet-ui-1"></script>
   </body>
 </html>
