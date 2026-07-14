@@ -55,6 +55,10 @@ const elements = {
   techCopy: document.querySelector("#tech-copy"),
   techBranches: document.querySelector("#tech-branches"),
   researchButton: document.querySelector("#research-button"),
+  earlyEndDialog: document.querySelector("#early-end-dialog"),
+  earlyEndDialogCopy: document.querySelector("#early-end-dialog-copy"),
+  earlyEndCancel: document.querySelector("#early-end-cancel"),
+  earlyEndConfirm: document.querySelector("#early-end-confirm"),
   skillPointDialog: document.querySelector("#skill-point-dialog"),
   skillPointLater: document.querySelector("#skill-point-later"),
   skillPointTech: document.querySelector("#skill-point-tech"),
@@ -83,7 +87,9 @@ const gridCells = new Map();
 let techSignature = "";
 let preferredSpeed = 1;
 let lastFocusedElement = null;
+let lastEarlyEndFocusedElement = null;
 let lastSkillPointFocusedElement = null;
+let earlyEndWarningDay = null;
 const TOOLBAR_SIZES = ["compact", "standard", "large"];
 let toolbarSize = "compact";
 let buildListSignature = "";
@@ -306,7 +312,37 @@ function endDayNow() {
   }
 }
 
+function earlyEndDayKey() {
+  return `${state.seed}:${state.levelIndex}`;
+}
+
+function closeEarlyEndWarning(options = {}) {
+  if (elements.earlyEndDialog.hidden) return;
+  elements.earlyEndDialog.hidden = true;
+  document.body.classList.remove("early-end-dialog-open");
+  if (options.restoreFocus !== false && lastEarlyEndFocusedElement instanceof HTMLElement) lastEarlyEndFocusedElement.focus();
+  lastEarlyEndFocusedElement = null;
+}
+
+function openEarlyEndWarning() {
+  const unusedActions = state.actionPoints;
+  earlyEndWarningDay = earlyEndDayKey();
+  lastEarlyEndFocusedElement = document.activeElement;
+  elements.earlyEndDialogCopy.textContent = `You still have ${unusedActions} unused ${unusedActions === 1 ? "action" : "actions"}. Are you sure you want to begin the night watch?`;
+  elements.earlyEndDialog.hidden = false;
+  document.body.classList.add("early-end-dialog-open");
+  requestAnimationFrame(() => elements.earlyEndCancel.focus());
+}
+
 function beginNight() {
+  const shouldWarn = state.phase === "day"
+    && state.shelterBuilt
+    && state.actionPoints > 0
+    && earlyEndWarningDay !== earlyEndDayKey();
+  if (shouldWarn) {
+    openEarlyEndWarning();
+    return;
+  }
   endDayNow();
 }
 
@@ -930,6 +966,7 @@ function clickCell(x, y) {
 function resetRun(seed) {
   clearHarvestEffect();
   state = Engine.createRun(seed || state.seed);
+  earlyEndWarningDay = null;
   state.speed = preferredSpeed;
   activeTool = "none";
   hoverCell = null;
@@ -956,6 +993,7 @@ function loadGame() {
     const saved = localStorage.getItem(SAVE_KEY) || LEGACY_SAVE_KEYS.map((key) => localStorage.getItem(key)).find(Boolean);
     if (!saved) { setEvent("No saved meadow is available in this browser."); return; }
     state = Engine.hydrate(saved);
+    earlyEndWarningDay = null;
     localStorage.setItem(SAVE_KEY, Engine.serialize(state));
     preferredSpeed = state.speed;
     saveSettings();
@@ -1040,6 +1078,14 @@ elements.researchButton.addEventListener("click", () => {
 elements.techButton.addEventListener("click", openTechnology);
 elements.techCloseButton.addEventListener("click", () => closeTechnology());
 elements.endDayButton.addEventListener("click", beginNight);
+elements.earlyEndCancel.addEventListener("click", () => closeEarlyEndWarning());
+elements.earlyEndConfirm.addEventListener("click", () => {
+  closeEarlyEndWarning({ restoreFocus: false });
+  endDayNow();
+});
+elements.earlyEndDialog.addEventListener("click", (event) => {
+  if (event.target === elements.earlyEndDialog) closeEarlyEndWarning();
+});
 elements.skillPointLater.addEventListener("click", () => closeSkillPointNotice());
 elements.skillPointTech.addEventListener("click", () => {
   closeSkillPointNotice({ restoreFocus: false });
@@ -1057,6 +1103,13 @@ elements.healthBarsToggle.addEventListener("change", () => {
   render();
 });
 document.addEventListener("keydown", (event) => {
+  if (!elements.earlyEndDialog.hidden) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeEarlyEndWarning();
+    }
+    return;
+  }
   if (!elements.skillPointDialog.hidden) {
     if (event.key === "Escape") {
       event.preventDefault();

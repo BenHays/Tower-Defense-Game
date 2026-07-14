@@ -131,9 +131,22 @@
       </section>
     </div>
 
+    <div class="early-end-dialog" id="early-end-dialog" hidden>
+      <section class="early-end-dialog-panel" role="dialog" aria-modal="true" aria-labelledby="early-end-dialog-title" aria-describedby="early-end-dialog-copy" tabindex="-1">
+        <p class="eyebrow">Unused actions</p>
+        <h2 id="early-end-dialog-title">End the day early?</h2>
+        <p id="early-end-dialog-copy">You still have actions available.</p>
+        <p class="early-end-dialog-note">This reminder appears once each day.</p>
+        <div class="early-end-dialog-actions">
+          <button class="secondary-button" id="early-end-cancel" type="button">Keep planning</button>
+          <button class="primary-button" id="early-end-confirm" type="button">End day anyway</button>
+        </div>
+      </section>
+    </div>
+
     <script src="talent-icons.js?v=talent-workbench-1"></script>
     <script src="talent-tree.js?v=balance-pathing-1"></script>
     <script src="engine.js?v=balance-pathing-1"></script>
-    <script src="game.js?v=talent-effect-labels-1"></script>
+    <script src="game.js?v=early-end-warning-2"></script>
   </body>
 </html>

@@ -6,7 +6,7 @@
 - Harvesting a tree, building a defense, converting a mature patch, repairing, and placing Scout each use one action.
 - XP is permanent progress: the first Skill Point arrives at 10 XP, then thresholds double to 20, 40, 80, and beyond. Talent learning spends Skill Points and does not use a day action.
 - Level 1 begins with a clickable stick and rock in the starting clearing. Both pickups are free. **Craft axe** becomes available after both are collected and uses one action; **Place shelter** then uses the second action on any unoccupied grass cell. The guided pair unlocks every normal control. **End day** stays disabled until the teepee exists.
-- The player ends the day with one click; unused actions do not create a confirmation. Night combat is automatic and Scout returns before the next day begins.
+- If actions remain, the first End Day click that day asks the player whether to keep planning or begin the night anyway; the reminder appears only once per day. Night combat is automatic and Scout returns before the next day begins.
 - Every resolved night creates a deterministic replay checkpoint and a compact Night Record for balance testing. The dawn report summarizes enemies stopped, hides earned, structure damage, and any recovery.
 - Playback speed is a persistent 1×/2× run preference that can be changed any time after shelter construction; it only changes the pacing of automatic night simulation.
 - Once Hearthkeeping I is learned, each surviving targetable building recovers 1 HP at dawn, capped at maximum health. A destroyed building stays destroyed.
