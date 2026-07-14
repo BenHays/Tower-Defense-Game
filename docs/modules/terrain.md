@@ -3,7 +3,7 @@
 ## Live now
 
 - Trees cover the map outside the central clearing. They slow enemies but are walkable.
-- Clearing a tree spends one action, grants 1 wood, and changes it into cleared grass.
+- Clearing a tree spends one action, grants 2 wood, and changes it into cleared grass.
 - Both original meadow grass and cleared grass can hold defenses when unoccupied. Cleared ground is faster; trees remain a wood source and slower route.
 - There is no fire in the current build. Fire remains an earned future research path.
 

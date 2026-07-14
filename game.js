@@ -294,7 +294,7 @@ function renderSelection() {
     elements.selectedCopy.textContent = rubble
       ? "Clear rubble with one day action to reopen the grass."
       : terrain === "tree"
-        ? "Clear for 1 wood. This takes 1 day action."
+        ? "Clear for 2 wood. This takes 1 day action."
         : terrain === "cleared"
           ? "Open grass: a defense can be built here."
           : "Unoccupied grass can hold a defense.";
@@ -304,9 +304,9 @@ function renderSelection() {
   }
   const toolCopy = {
     none: ["Hearth Meadow", "Select a tree, grass, or building."],
-    clear: ["Clear tree", "1 action · gain 1 wood · open grass."],
+    clear: ["Clear tree", "1 action · gain 2 wood · open grass."],
     scout: ["Place Scout", "Spend one action to set Scout’s night watch post."],
-    stickLauncher: ["Stick launcher", "1 wood · 1 action · steady protection."],
+    stickLauncher: ["Stick launcher", "2 wood · 1 action · steady protection."],
     potatoGun: ["Potato gun", "3 wood · 1 action · heavy knockback shot."],
   };
   elements.selectedTitle.textContent = toolCopy[activeTool][0];

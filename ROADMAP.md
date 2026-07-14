@@ -13,8 +13,8 @@ This roadmap protects the core loop: use the day to shape a small homestead, the
 
 ### Level 2 — First line
 
-1. Clear a tree for **1 wood and one action**.
-2. Build a Stick Launcher for **1 wood and one action**. It completes immediately; there are no blueprints or Finish step.
+1. Clear a tree for **2 wood and one action**.
+2. Build a Stick Launcher for **2 wood and one action**. It completes immediately; there are no blueprints or Finish step.
 3. The launcher fires outward while Scout catches leaks near the teepee.
 4. Each completed night automatically becomes the next untimed day after Scout returns home.
 
@@ -25,7 +25,7 @@ This roadmap protects the core loop: use the day to shape a small homestead, the
 - **Grass placement:** any unoccupied `open` or `cleared` grass cell can hold a defense. Trees, water, rubble, and buildings block placement by default. Clearing a tree earns wood and opens its grass cell; it is not a prerequisite for every defense.
 - **All-angle invasion:** enemies can spawn from any usable perimeter cell.
 - **Scout:** a mobile melee final line. His watch radius stays centered on the daytime post; he chases, bites, and returns automatically.
-- **Stick Launcher:** the first fixed tower. It costs 1 wood and one action, has 6 health, short 2.25-cell reach, 1 damage, and fires once every 2 seconds at the nearest enemy in range.
+- **Stick Launcher:** the first fixed tower. It costs 2 wood and one action, has 6 health, short 2.25-cell reach, 1 damage, and fires once every 2 seconds at the nearest enemy in range.
 - **XP only:** enemies and cleared nights award XP. Research spends XP but no day action. There are no meat, pelt, food, or Scout-health maintenance systems.
 - **No barricade yet:** boars and their dedicated counter remain deferred until the first tower loop is proven.
 - **No blueprint state:** selecting Build creates a finished structure immediately when the site, materials, and action are valid.
@@ -106,9 +106,10 @@ Its job is not crowd control or a universal replacement for launchers. It gives 
 
 ## Delivered challenge and stat reset
 
-The old opening produced too much early tower capacity: a cleared tree granted 2 wood while a launcher cost 1, and launchers could be placed in the original clearing. The live loop now rebalances around outward expansion:
+The current opening pairs its first resource decision exactly: a cleared tree grants 2 wood, and a basic launcher costs 2 wood. Clearing for the first tower therefore uses the full normal day without producing surplus tower capacity:
 
-- A cleared tree grants **1 wood**.
+- A cleared tree grants **2 wood**.
+- A Stick Launcher costs **2 wood**.
 - New defensive buildings require **unoccupied grass**. Clearing trees is still valuable for wood, room, and faster paths.
 - Tree clear, new building, and tower upgrade each cost one action.
 - Basic launcher projectiles are larger and slower with a short impact flash; initial reach is reduced so its fire is visible and local.

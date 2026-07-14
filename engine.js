@@ -89,7 +89,7 @@
       label: "Stick launcher",
       footprint: { width: 1, height: 1 },
       maxHealth: 6,
-      cost: { wood: 1 },
+      cost: { wood: 2 },
       actionCost: 1,
       role: "tower",
       tags: ["defense", "first-line"],
@@ -151,7 +151,7 @@
       survivalXp: 2,
       unlock: "stickLauncher",
       unlockLabel: "Stick launcher",
-      unlockCopy: "Use 1 wood and one action to build the first line outside Scout's watch radius.",
+      unlockCopy: "Use 2 wood and one action to build the first line outside Scout's watch radius.",
     },
     {
       id: "first-line",
@@ -607,9 +607,9 @@
       if (terrain === "tree") {
         if (!consumeAction(state)) return result(state, false, "Both day actions are spent.");
         setTerrain(state, action.x, action.y, "cleared");
-        state.resources.wood += 1;
+        state.resources.wood += 2;
         invalidatePaths(state);
-        return result(state, true, "Tree cleared: +1 wood. One day action spent; the grass is now open.", action, shouldRecord);
+        return result(state, true, "Tree cleared: +2 wood. One day action spent; the grass is now open.", action, shouldRecord);
       }
       if (!consumeAction(state)) return result(state, false, "Both day actions are spent.");
       state.rubble = state.rubble.filter((rubble) => !(rubble.x === action.x && rubble.y === action.y));

@@ -55,15 +55,15 @@ function runPlan(label, chooseDayAction) {
 
 const oneLauncher = runPlan("one launcher", (state) => {
   if (state.levelIndex !== 1) return;
-  if (state.resources.wood < 1 && firstTreeSite(state)) Engine.dispatch(state, { type: "clear", ...firstTreeSite(state) });
+  if (state.resources.wood < 2 && firstTreeSite(state)) Engine.dispatch(state, { type: "clear", ...firstTreeSite(state) });
   const site = firstTowerSite(state, "stickLauncher");
-  if (state.resources.wood >= 1 && site) Engine.dispatch(state, { type: "build", buildingType: "stickLauncher", ...site });
+  if (state.resources.wood >= 2 && site) Engine.dispatch(state, { type: "build", buildingType: "stickLauncher", ...site });
 });
 
 const spread = runPlan("spread launchers", (state) => {
-  if (state.resources.wood < 1 && firstTreeSite(state)) Engine.dispatch(state, { type: "clear", ...firstTreeSite(state) });
+  if (state.resources.wood < 2 && firstTreeSite(state)) Engine.dispatch(state, { type: "clear", ...firstTreeSite(state) });
   const site = firstTowerSite(state, "stickLauncher");
-  if (state.resources.wood >= 1 && site) Engine.dispatch(state, { type: "build", buildingType: "stickLauncher", ...site });
+  if (state.resources.wood >= 2 && site) Engine.dispatch(state, { type: "build", buildingType: "stickLauncher", ...site });
 });
 
 const arrowRush = runPlan("Arrowcraft rush", (state) => {
@@ -74,7 +74,7 @@ const arrowRush = runPlan("Arrowcraft rush", (state) => {
   } else {
     if ((!firstLauncher || state.resources.wood < 4) && state.actionPoints > 0 && firstTreeSite(state)) Engine.dispatch(state, { type: "clear", ...firstTreeSite(state) });
     const site = firstTowerSite(state, "stickLauncher");
-    if (!firstLauncher && state.resources.wood >= 1 && site) Engine.dispatch(state, { type: "build", buildingType: "stickLauncher", ...site });
+    if (!firstLauncher && state.resources.wood >= 2 && site) Engine.dispatch(state, { type: "build", buildingType: "stickLauncher", ...site });
   }
 });
 

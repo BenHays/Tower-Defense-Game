@@ -20,6 +20,6 @@
 - Keep new progression modules separate from combat simulation: XP tech should expose declarative effects and purchase validation, while the engine and UI remain separate consumers.
 - A deterministic balance probe should compare named build plans before changing pressure or tower values; an upgrade that arrives after its defense line reliably falls is not a real choice.
 - Keep the current resource loop narrow: wood is for construction and repair, while XP is the only enemy/level reward. Do not add food, pelts, or Scout health maintenance without a distinct decision it creates.
-- Keep planning values explicitly separate from live values. Tower economy must be tuned against wood income and broad grass placement, not by increasing early wood yield alone.
+- Keep planning values explicitly separate from live values. The current early wood loop pairs one cleared tree (2 wood) with one Stick Launcher (2 wood), so expansion consumes a full normal day without creating excess tower capacity.
 - Model cleared forest as its own terrain value rather than generic open ground. It preserves the harvested-tree visual and faster movement while both terrain values remain valid grass for building placement.
 - A survival aid cannot be free by default: introduce the teepee through a forced zero-cost, full-day Level 1 shelter action, and defer fire until it is an XP-researched, wood-built safety net with one clear purpose.

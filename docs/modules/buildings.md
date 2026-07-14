@@ -5,7 +5,7 @@
 | Building | Cost | Role |
 | --- | --- | --- |
 | Branch teepee | Free, forced Level 1 full day | Targetable homestead; can be repaired. |
-| Stick Launcher | 1 wood, 1 action | 1 hit, slow tempo, short reach. |
+| Stick Launcher | 2 wood, 1 action | 1 hit, slow tempo, short reach. |
 | Arrow Shooter | 4 wood, 1 action upgrade | 1.5× launcher damage, tempo, and reach after Arrowcraft. |
 | Potato Gun | 3 wood, 1 action | 3 hit, very slow medium reach, one-cell knockback. |
 
