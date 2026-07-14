@@ -54,10 +54,48 @@ Later difficulty modes will multiply this budget: Easy 0.8×, Medium 1.0×, Hard
 - Day-only Avery actions, automatic Scout combat, pause/1×/2× playback, optional health bars, and no end-of-night popup.
 - Generated painted sprites for Scout, raccoon, boar, and the teepee; code-native art for the Stick Launcher.
 
-## Next content after this slice
+## Planned opening-loop corrections
 
-1. Add a second tower or path-delay defense so Level 4+ demands placement choices, not only more launchers.
-2. Introduce the boar only with its own readable counter-building.
-3. Add one tangible unlock per level once there is content that creates a real new choice.
-4. Add Easy, Hard, and Very Hard as Threat Budget multipliers.
-5. Add a simple level/tech-tree planning view once the first five rewards are chosen.
+These are design decisions for the next implementation slice; they are not live yet.
+
+- **No false second action:** a Stick Launcher should take Avery's full day (two actions) to construct. The first four days then have a clear rhythm: clear a tree, build the launcher, clear for the next defense, build that defense.
+- **Defer stone until it has a job:** a cleared boulder currently yields one stone, but there is no live stone sink. Remove boulder clearing and the Stone display from the player loop until a durable-building or reinforcement recipe needs it.
+- **Small launcher baseline:** reduce the Stick Launcher's initial range from 4.5 to about 2.8 cells. Keep its 1 damage / 1 attack per second baseline; range, damage, and attack-speed improvements belong to the future tech tree.
+- **Readable selection:** replace the current cell reticle around trees and boulders with a subtle ground highlight behind the object. Inspection should be passive: click any terrain or building directly to see its name, cost, reward, and current state. The separate Inspect / Look tool can then be removed.
+- **Combat feedback:** retain the launcher's short arm-snap animation and add a visible stick projectile, a target hit flash, and a small impact marker. The projectile must arrive before damage is applied so range is visually legible.
+
+## XP tech tree — separate module
+
+XP is earned from enemy kills and survived nights. It is a permanent progression currency, separate from wood and future material resources.
+
+- Create an engine-only `tech-tree` module containing node IDs, XP costs, prerequisites, effects, and validation. It must not know about the DOM or simulation timing.
+- The combat/building engine asks the module which effects are active; the UI only renders the tree and dispatches an XP-purchase action.
+- Level rewards reveal new *available branches*; XP purchases the nodes inside those branches. A level reward therefore creates a choice without automatically granting a combat-stat increase.
+- First branch: Stick Launcher improvements — range, attack speed, and damage. Exact node values and costs remain to be designed before implementation.
+- Future branches: Scout training, homestead durability, and the counter-building for each new enemy family.
+
+## Content cadence and next defense — proposed
+
+Introduce a new enemy family every **three levels**, starting at Level 5. Never make an enemy eligible before its counter has been unlocked and the player has had a full day to build it.
+
+| Level | Purpose / reward | Enemy pressure |
+| --- | --- | --- |
+| 1 | Clear one tree; learn Scout's last-line role | 1 raccoon |
+| 2 | Build the Stick Launcher | 2 raccoons |
+| 3 | Unlock **Stake Snare**, the next defense | 3 raccoons |
+| 4 | Clear/build the Snare and test the first-line layout | 4 raccoons |
+| 5 | Introduce the **Boar** | First mixed or solo boar threat |
+| 6–7 | Expand the counter choice; reveal the next branch | Increasing mixed pressure |
+| 8 | Introduce the next enemy family | New counter already available |
+
+### Next building: Stake Snare
+
+The next thing after the Stick Launcher should be a **Stake Snare**: a cheap, fixed placement that briefly roots or heavily slows the first enemy to cross it. It does not duplicate the launcher's ranged-damage role, creates an interesting placement decision, and is the readable counter for a heavy Boar without introducing a barricade.
+
+## Next implementation order
+
+1. Correct action economy, hide the unfinished stone loop, and replace Inspect / the terrain selector.
+2. Make launcher combat readable with projectile and impact feedback; tune the initial range down.
+3. Build and test the isolated XP tech-tree module plus its minimal UI surface.
+4. Add the Stake Snare, then introduce the Boar only after its counter loop is proven.
+5. Add Easy, Hard, and Very Hard as Threat Budget multipliers after Medium is balanced.
