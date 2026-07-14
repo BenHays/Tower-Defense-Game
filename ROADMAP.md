@@ -7,7 +7,7 @@ This roadmap protects the core loop: use the day to shape a small homestead, the
 ### Level 1 — First watch
 
 1. Start with Scout, a branch teepee, **0 wood**, and two daylight actions.
-2. Clear one tree. It uses both actions, gives **2 wood**, and opens the forest for later expansion.
+2. Clear one tree. It uses both actions, gives **1 wood**, and creates a dedicated forest build site.
 3. End the day. Scout defeats one raccoon without help.
 4. Scout returns to his watch post. The next day begins automatically.
 5. The **Stick Launcher** recipe unlocks.
@@ -23,10 +23,10 @@ This roadmap protects the core loop: use the day to shape a small homestead, the
 
 - **Untimed day:** daylight ends only when the player chooses **End day**.
 - **Two actions:** tree clearing and constructing or upgrading a tower take both actions. Repairing, moving Scout, and clearing rubble each take one.
-- **Forest:** trees visually cover the map, are walkable but slow enemies, and become fast buildable ground when cleared. Buildings and rubble are hard blockers; stone is out of the MVP resource loop.
+- **Forest:** trees visually cover the map, are walkable but slow enemies, and become fast buildable ground when cleared. Only cleared former-tree cells can hold new defenses; the original central clearing cannot. Buildings and rubble are hard blockers; stone is out of the MVP resource loop.
 - **All-angle invasion:** enemies can spawn from any usable perimeter cell.
 - **Scout:** a mobile melee final line. His watch radius stays centered on the daytime post; he chases, bites, and returns automatically.
-- **Stick Launcher:** the first fixed tower. It costs 1 wood and a full day, has 6 health, 2.8-cell range, 1 damage, and fires once per second at the nearest enemy in range.
+- **Stick Launcher:** the first fixed tower. It costs 1 wood and a full day, has 6 health, short 2.25-cell reach, 1 damage, and fires once every 2 seconds at the nearest enemy in range.
 - **XP only:** enemies and cleared nights award XP. There are no meat, pelt, food, or Scout-health maintenance systems.
 - **No barricade yet:** boars and their dedicated counter remain deferred until the first tower loop is proven.
 - **No blueprint state:** selecting Build creates a finished structure immediately when the site, materials, and action are valid.
@@ -73,13 +73,13 @@ Level 1 is intentionally safe. From Level 2 forward, the player is under real pr
 
 ## Proposed next defense path
 
-These are planning decisions, not live gameplay changes.
+Potato Gun, the simplified early stats, cleared-cell placement, campfire, and compact UI are live. Hivecraft, Fungal Craft, and water remain planning decisions.
 
 ### Potato Gun — next new building
 
 The **Potato Gun** should be the next distinct building after the Stick Launcher. Arrow Shooter remains the Stick Launcher upgrade; Potato Gun fills the separate slow, heavy-hit role that later high-health enemies need.
 
-| Property | Proposed starting value |
+| Property | Live starting value |
 | --- | --- |
 | Cost | 3 wood and a full day |
 | Damage | 3 |
@@ -96,38 +96,38 @@ Its job is not crowd control or a universal replacement for launchers. It gives 
 
 ### Environment purpose
 
-- **Campfire:** add a permanent, untargetable fire at the teepee. It does not attack. Its small inner warmth zone slows approaching enemies slightly, giving Scout a final defensive window. It is not a structure, cannot be repaired, and needs no fuel system yet.
+- **Campfire:** a permanent, untargetable fire at the teepee. It does not attack. Its small inner warmth zone slows approaching enemies slightly, giving Scout a final defensive window. It is not a structure, cannot be repaired, and needs no fuel system.
 - **Water:** do not add a water inventory. Later, water should be an environmental moisture source that enables fungal/garden structures near it; its first real purpose is to create location-specific choices for the Mushroom branch rather than another generic currency.
 
-## Planned challenge and stat reset
+## Delivered challenge and stat reset
 
-The current opening produces too much early tower capacity: a cleared tree grants 2 wood while a launcher costs 1, and launchers can be placed in the original clearing. Before adding the Potato Gun, rebalance around outward expansion:
+The old opening produced too much early tower capacity: a cleared tree granted 2 wood while a launcher cost 1, and launchers could be placed in the original clearing. The live loop now rebalances around outward expansion:
 
-- A cleared tree should grant **1 wood**.
-- New defensive buildings should require a **cleared former-tree cell**, not the original teepee clearing.
-- Tree clear, new building, and tower upgrade each retain their full-day cost.
-- Make basic launcher projectiles larger and longer-lived with a short impact flash; reduce its initial range so its fire is visible and local.
+- A cleared tree grants **1 wood**.
+- New defensive buildings require a **cleared former-tree cell**, not the original teepee clearing.
+- Tree clear, new building, and tower upgrade retain their full-day cost.
+- Basic launcher projectiles are larger and slower with a short impact flash; initial reach is reduced so its fire is visible and local.
 
 Keep the engine values precise, but make the player-facing contract legible. Show exact numbers only on a selected unit or building; elsewhere use plain labels such as **Hit**, **Tempo**, **Reach**, and **Condition**.
 
-| Unit or enemy | Proposed simple combat baseline |
+| Unit or enemy | Live simple combat baseline |
 | --- | --- |
 | Scout | 1 damage, quick tempo, short-to-medium watch radius |
 | Raccoon | 5 health, low building damage |
 | Stick Launcher | 1 damage, slow tempo (one shot every 2 seconds), 2.25-cell range |
 | Arrow Shooter | Keeps the existing 1.5× upgrade rule; present it as stronger, faster, and farther rather than crowding the main HUD with decimals |
 
-## Planned level tracker and UI reset
+## Delivered level tracker and UI reset
 
-- Remove Avery as a visible map unit and remove the name from controls, labels, messages, and day-action copy. The player uses abstract **Day actions** to clear, build, repair, and place Scout.
-- Use a thin level strip: `Level 02`, Wood, and XP. It should show only the current level objective or newly available research/building, never a long tutorial or enemy forecast.
-- Put save/load/reset, speed, and health-bar toggles in compact secondary controls. Keep the primary play surface focused on the map, resources, selected object, and **End day**.
-- Replace generic Field Notes with a small context card only when a level unlocks something meaningful: for example, “New: Stick Launcher” or “Research: Arrowcraft — 6 XP.”
-- Use a tight outline matched to the selected object or terrain cell. Do not show a large circular selector around rocks or empty ground.
+- Avery is removed as a visible map unit and from player-facing copy. The player uses abstract **Day actions** to clear, build, repair, and place Scout.
+- A thin level strip shows level, Wood, XP, and the current objective or relevant research/building.
+- Save/load/reset, speed, and health-bar toggles are compact secondary controls. The primary play surface focuses on the map, resources, selected object, and **End day**.
+- Generic Field Notes are replaced by a small current-status line.
+- Selection uses a tight outline matched to the selected object or terrain cell instead of a large circular terrain highlight.
 
 ## Recommended collaboration documents
 
-Yes—split the design into small module documents once this roadmap is agreed. Do not create them yet; this list avoids duplicating conflicting live and proposed values in every file.
+The module documents now live under `docs/modules/`. They avoid duplicating conflicting live and proposed values in every file.
 
 - `docs/modules/core-loop.md` — day actions, night resolution, win/fail rules, and level handoff.
 - `docs/modules/buildings.md` — teepee, fire, Stick Launcher, Arrow Shooter, Potato Gun, costs, placement, and repair.
@@ -148,8 +148,8 @@ Every module should use the same four headings: **Live now**, **Proposed next**,
 
 ## Next implementation order
 
-1. Reset the early economy, placement rule, combat readability, and compact UI before adding another building.
-2. Add Potato Gun and validate its counter role across deterministic Medium seeds.
-3. Add the next tech branch only after Arrowcraft and Potato Gun create reliable but challenging choices.
+1. Validate the Potato Gun's cost, unlock timing, and counter role across deterministic Medium seeds and player testing.
+2. Tune Arrowcraft and Potato Gun so neither becomes a universal answer.
+3. Add the next tech branch only after those choices create a reliable but challenging progression.
 4. Add the next enemy only with its own readable building counter.
 5. Add Easy, Hard, and Very Hard as Threat Budget multipliers after Medium is balanced.

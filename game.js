@@ -2,7 +2,7 @@ const Engine = window.WildHearthEngine;
 
 if (!Engine) throw new Error("Wild Hearth engine did not load.");
 
-const SAVE_KEY = "wild-hearth-save-v4";
+const SAVE_KEY = "wild-hearth-save-v5";
 const SETTINGS_KEY = "wild-hearth-settings-v1";
 const elements = {
   board: document.querySelector("#game-board"),
@@ -11,9 +11,9 @@ const elements = {
   phaseChip: document.querySelector("#phase-chip"),
   phaseLabel: document.querySelector("#phase-label"),
   phaseDetail: document.querySelector("#phase-detail"),
+  boardCaption: document.querySelector("#board-caption"),
   seed: document.querySelector("#seed-value"),
   levelLabel: document.querySelector("#level-label"),
-  levelTitle: document.querySelector("#level-title"),
   levelCopy: document.querySelector("#level-copy"),
   actionPoints: document.querySelector("#action-points"),
   wood: document.querySelector("#wood-value"),
@@ -21,11 +21,11 @@ const elements = {
   selectedTitle: document.querySelector("#selected-title"),
   selectedCopy: document.querySelector("#selected-copy"),
   selectionMeter: document.querySelector("#selection-meter"),
+  selectionMeterWrap: document.querySelector("#selection-meter-wrap"),
   selectionFootnote: document.querySelector("#selection-footnote"),
   actionHint: document.querySelector("#action-hint"),
   actionBadge: document.querySelector("#action-badge"),
   toolGrid: document.querySelector("#tool-grid"),
-  stickLauncherTool: document.querySelector("#stick-launcher-tool"),
   repairButton: document.querySelector("#repair-button"),
   upgradeButton: document.querySelector("#upgrade-button"),
   endDayButton: document.querySelector("#end-day-button"),
@@ -33,9 +33,11 @@ const elements = {
   previewCopy: document.querySelector("#preview-copy"),
   techTitle: document.querySelector("#tech-title"),
   techCopy: document.querySelector("#tech-copy"),
+  techCard: document.querySelector("#tech-card"),
   researchButton: document.querySelector("#research-button"),
   pauseButton: document.querySelector("#pause-button"),
   speedButtons: [...document.querySelectorAll("[data-speed]")],
+  speedControls: document.querySelector("#speed-controls"),
   healthBarsToggle: document.querySelector("#health-bars-toggle"),
   eventLog: document.querySelector("#event-log"),
 };
@@ -86,17 +88,19 @@ function selectedBuilding() { return selected.kind === "building" ? state.buildi
 function selectedCell() { return selected.kind === "cell" ? selected : null; }
 function sameCell(left, right) { return left && right && left.x === right.x && left.y === right.y; }
 function cellId(x, y) { return `${x},${y}`; }
+function isBuildTool(tool) { return Boolean(Engine.BUILDINGS[tool]) && !["teepee", "arrowShooter"].includes(tool); }
+function towerRecipe(type) { return Engine.TOWER_TYPES.includes(type) ? Engine.BUILDINGS[type] : null; }
 
 function toolCellValid(x, y) {
   if (activeTool === "clear") return Engine.terrainAt(state, x, y) === "tree" || Engine.hasRubble(state, x, y);
   if (activeTool === "scout") return Engine.isPassable(state, x, y);
-  if (activeTool === "stickLauncher") return Engine.buildPreview(state, "stickLauncher", x, y).valid;
+  if (isBuildTool(activeTool)) return Engine.buildPreview(state, activeTool, x, y).valid;
   return false;
 }
 
 function currentPreview() {
-  if (activeTool !== "stickLauncher" || !hoverCell || state.phase !== "day") return null;
-  return Engine.buildPreview(state, "stickLauncher", hoverCell.x, hoverCell.y);
+  if (!isBuildTool(activeTool) || !hoverCell || state.phase !== "day") return null;
+  return Engine.buildPreview(state, activeTool, hoverCell.x, hoverCell.y);
 }
 
 function setEvent(message) {
@@ -124,7 +128,8 @@ function renderGrid() {
   const preview = currentPreview();
   const previewPath = planning && preview ? new Set(preview.path.map((cell) => cellId(cell.x, cell.y))) : new Set();
   const previewSignature = preview ? `${preview.valid}|${preview.affordable}|${preview.targetId}|${preview.path.map((cell) => cellId(cell.x, cell.y)).join("/")}` : "";
-  const chosen = selectedCell();
+  const focusedBuilding = selectedBuilding();
+  const chosen = selectedCell() || (focusedBuilding ? { x: focusedBuilding.x, y: focusedBuilding.y } : null);
   const signature = [state.topologyVersion, state.phase, activeTool, hoverCell ? cellId(hoverCell.x, hoverCell.y) : "", chosen ? cellId(chosen.x, chosen.y) : "", planning, previewSignature, state.rubble.map((item) => cellId(item.x, item.y)).join(",")].join("|");
   if (signature === gridSignature) return;
   gridSignature = signature;
@@ -169,7 +174,7 @@ function renderEntities() {
   }
 
   const focusedTower = selectedBuilding();
-  if (planning && focusedTower && ["stickLauncher", "arrowShooter"].includes(focusedTower.type)) {
+  if (planning && focusedTower && towerRecipe(focusedTower.type)) {
     const recipe = Engine.BUILDINGS[focusedTower.type];
     const ring = createNode("div", "range-ring tower-range");
     const diameter = ((recipe.attackRange * 2 + 1) / Engine.BOARD.width) * 100;
@@ -185,6 +190,11 @@ function renderEntities() {
     fragment.append(node);
   });
 
+  const campfire = state.campfire || Engine.CAMPFIRE;
+  const fire = createNode("div", "entity campfire");
+  place(fire, campfire.x, campfire.y);
+  fragment.append(fire);
+
   state.buildings.filter((building) => !building.destroyed).forEach((building) => {
     const recipe = Engine.BUILDINGS[building.type];
     const node = createNode("div", `entity building ${building.type} ${Engine.conditionFor(building)}`);
@@ -196,14 +206,6 @@ function renderEntities() {
     fragment.append(node);
   });
 
-  const teepee = state.buildings.find((building) => building.type === "teepee" && !building.destroyed);
-  if (teepee) {
-    const human = createNode("div", `entity human${state.phase !== "day" ? " sleeping" : ""}`);
-    place(human, teepee.x - 0.5, teepee.y + 0.55);
-    addLabel(human, "Avery");
-    fragment.append(human);
-  }
-
   const scout = createNode("div", `entity scout is-${state.scout.mode || "idle"}`);
   place(scout, state.scout.x, state.scout.y);
   addLabel(scout, "Scout");
@@ -212,6 +214,8 @@ function renderEntities() {
   state.enemies.forEach((enemy) => {
     const node = createNode("div", `entity enemy ${enemy.type}`);
     if (enemy.intent === "sneaking") node.classList.add("is-sneaking");
+    if (enemy.inWarmth) node.classList.add("is-warmed");
+    if (enemy.knockbackTicks > 0) node.classList.add("is-knocked");
     addHealthBar(node, enemy, "enemy-health");
     place(node, enemy.x, enemy.y);
     fragment.append(node);
@@ -230,22 +234,38 @@ function renderEntities() {
   elements.entityLayer.replaceChildren(fragment);
 }
 
+function tempoLabel(attackSpeed) {
+  if (attackSpeed <= 0.4) return "very slow";
+  if (attackSpeed <= 0.6) return "slow";
+  if (attackSpeed < 1.2) return "steady";
+  return "quick";
+}
+
+function reachLabel(attackRange) {
+  if (attackRange <= 2.4) return "short reach";
+  if (attackRange <= 3.4) return "medium reach";
+  return "long reach";
+}
+
 function renderSelection() {
   const building = selectedBuilding();
   if (building) {
     const recipe = Engine.BUILDINGS[building.type];
     const condition = Engine.conditionFor(building).replace("-", " ");
     elements.selectedTitle.textContent = recipe.label;
-    if (["stickLauncher", "arrowShooter"].includes(building.type)) {
-      elements.selectedCopy.textContent = `${recipe.role} · ${recipe.damage} damage · ${recipe.attackSpeed}/sec · ${recipe.attackRange} range · ${building.health}/${building.maxHealth} health · ${condition}.`;
+    elements.selectionMeterWrap.hidden = false;
+    if (towerRecipe(building.type)) {
+      elements.selectedCopy.textContent = `Hit ${recipe.damage} · ${tempoLabel(recipe.attackSpeed)} · ${reachLabel(recipe.attackRange)} · ${condition}.`;
       elements.selectionFootnote.textContent = building.type === "stickLauncher"
         ? Engine.hasResearch(state, "arrowcraft")
-          ? "Arrowcraft is ready: upgrade this launcher for 4 wood and Avery’s full day."
-          : "Research Arrowcraft with XP to convert this into a stronger Arrow Shooter."
-        : "Arrowcraft upgrade: 1.5× the launcher’s damage, attack speed, and range.";
+          ? "Arrowcraft is ready: upgrade this launcher for 4 wood and the full day."
+          : "Arrowcraft can turn this into a stronger Arrow Shooter."
+        : building.type === "potatoGun"
+          ? "Heavy shots push surviving enemies back."
+          : "Stronger, faster, and farther than a Stick Launcher.";
     } else {
-      elements.selectedCopy.textContent = `${recipe.role} · ${building.health}/${building.maxHealth} health · ${condition}. Repair costs ${recipe.repairCost.wood || 0} wood and one Avery action.`;
-      elements.selectionFootnote.textContent = "The teepee is the heart of the clearing.";
+      elements.selectedCopy.textContent = `Home · ${condition} · repair costs ${recipe.repairCost.wood || 0} wood and one day action.`;
+      elements.selectionFootnote.textContent = "The campfire gives Scout a little extra time at the hearth.";
     }
     elements.selectionMeter.style.width = `${(building.health / building.maxHealth) * 100}%`;
     return;
@@ -254,52 +274,57 @@ function renderSelection() {
   if (cell) {
     const terrain = Engine.terrainAt(state, cell.x, cell.y);
     const rubble = Engine.hasRubble(state, cell.x, cell.y);
-    elements.selectedTitle.textContent = rubble ? "Rubble" : terrain === "tree" ? "Tree" : "Open clearing";
+    elements.selectedTitle.textContent = rubble ? "Rubble" : terrain === "tree" ? "Tree" : terrain === "cleared" ? "Cleared forest" : "Home clearing";
     elements.selectedCopy.textContent = rubble
-      ? "Clear rubble for one Avery action to reopen this site."
+      ? "Clear rubble with one day action to reopen the build site."
       : terrain === "tree"
-        ? "Clear this tree for 2 Avery actions to gain 2 wood and make a build site."
-        : "Open ground: a future building can stand here.";
-    elements.selectionMeter.style.width = "0%";
-    elements.selectionFootnote.textContent = "Clicking the meadow inspects it. Choose a tool only when you want Avery to act.";
+        ? "Clear for 1 wood. This takes the full day."
+        : terrain === "cleared"
+          ? "A defense can be built here."
+          : "The original clearing is reserved for the homestead.";
+    elements.selectionMeterWrap.hidden = true;
+    elements.selectionFootnote.textContent = "Choose a day action only when you are ready to use it.";
     return;
   }
   const toolCopy = {
-    none: ["Hearth Meadow", "Click terrain or a building to inspect it. Choose a daytime tool when you are ready to act."],
-    clear: ["Clear tree", "Clearing one tree spends both Avery actions and gains 2 wood. Rubble uses one action."],
-    scout: ["Place Scout", "Spend one Avery action to set Scout’s night watch radius on an open cell."],
-    stickLauncher: ["Stick launcher", "Spend 1 wood and Avery’s full day to build a simple outward defense."],
+    none: ["Hearth Meadow", "Select a tree, cleared site, or building."],
+    clear: ["Clear tree", "Full day · gain 1 wood · create one build site."],
+    scout: ["Place Scout", "Spend one action to set Scout’s night watch post."],
+    stickLauncher: ["Stick launcher", "1 wood · full day · steady protection."],
+    potatoGun: ["Potato gun", "3 wood · full day · heavy knockback shot."],
   };
   elements.selectedTitle.textContent = toolCopy[activeTool][0];
   elements.selectedCopy.textContent = toolCopy[activeTool][1];
-  elements.selectionMeter.style.width = "0%";
-  elements.selectionFootnote.textContent = "The square grid is deliberate engine structure, but never drawn over the forest.";
+  elements.selectionMeterWrap.hidden = true;
+  elements.selectionFootnote.textContent = "Defenses can only stand on cleared forest.";
 }
 
 function renderPreview() {
   const preview = currentPreview();
   if (!preview) {
     elements.previewCopy.textContent = planning
-      ? "Overlay active: Scout’s medium watch radius is visible. Select Stick Launcher and hover an open cell to see its likely target effect."
-      : "Select Stick Launcher and hover an open cell to preview its cost, Scout coverage, and likely target effect.";
+      ? "Scout’s watch and the selected tower’s reach are visible."
+      : "Select a defense, then choose cleared forest.";
     return;
   }
   if (!preview.valid) {
-    elements.previewCopy.textContent = "That footprint is blocked, occupied, or outside the meadow.";
+    elements.previewCopy.textContent = "Build on a cleared, unoccupied forest cell.";
     return;
   }
+  const recipe = Engine.BUILDINGS[activeTool];
   if (!preview.affordable) {
-    elements.previewCopy.textContent = "That cell is open, but you need 1 wood before Avery can build the Stick Launcher.";
+    elements.previewCopy.textContent = `Need ${recipe.cost.wood} wood for ${recipe.label}.`;
     return;
   }
-  const coverage = preview.coverage ? "Scout covers it." : "Scout does not cover it yet.";
-  const target = preview.targetId === "preview" ? "The first arrival would choose this launcher first." : `${preview.targetLabel} remains the closer target.`;
-  elements.previewCopy.textContent = `Build now: 1 wood + Avery’s full day. ${coverage} ${target}`;
+  elements.previewCopy.textContent = `${recipe.label} is ready here. It takes the full day.`;
 }
 
 function renderTechnology() {
   const research = Engine.techAvailability(state, "arrowcraft");
   const node = research.node || Engine.TECH_TREE.arrowcraft;
+  const relevant = Engine.hasResearch(state, "arrowcraft") || currentLevel().number >= node.requiredLevel;
+  elements.techCard.hidden = !relevant;
+  if (!relevant) return;
   elements.techTitle.textContent = node.label;
   if (Engine.hasResearch(state, "arrowcraft")) {
     elements.techCopy.textContent = "Researched. Select a Stick Launcher to upgrade it into an Arrow Shooter for 4 wood.";
@@ -317,11 +342,10 @@ function renderControls() {
   const day = state.phase === "day";
   const night = state.phase === "night";
   const building = selectedBuilding();
-  elements.stickLauncherTool.disabled = !state.unlocks.includes("stickLauncher") || !day;
   elements.toolGrid.querySelectorAll("[data-tool]").forEach((button) => {
     const tool = button.dataset.tool;
     button.classList.toggle("is-active", tool === activeTool);
-    if (tool !== "stickLauncher") button.disabled = !day;
+    button.disabled = isBuildTool(tool) ? !day || !state.unlocks.includes(tool) : !day;
   });
   elements.repairButton.disabled = !day || !building || building.health >= building.maxHealth || state.resources.wood < 1 || state.actionPoints <= 0;
   elements.upgradeButton.disabled = !day || !building || building.type !== "stickLauncher" || !Engine.hasResearch(state, "arrowcraft") || state.resources.wood < 4 || state.actionPoints < 2;
@@ -334,22 +358,26 @@ function renderControls() {
     button.disabled = !night;
     button.classList.toggle("is-active", Number(button.dataset.speed) === state.speed);
   });
+  elements.speedControls.hidden = !night;
   elements.healthBarsToggle.checked = showHealthBars;
-  elements.actionBadge.textContent = day ? `${state.actionPoints} action${state.actionPoints === 1 ? "" : "s"}` : "Avery is inside";
+  elements.actionBadge.textContent = day ? `${state.actionPoints} action${state.actionPoints === 1 ? "" : "s"}` : "Scout on watch";
   elements.actionHint.textContent = day
-    ? "Trees and first-line buildings each use Avery’s full day. Repairs and Scout placement use one action."
-    : "No night commands. Launchers fire outward; Scout is the final line near the teepee.";
+    ? "Trees and defenses use the full day. Repair and Scout placement use one action."
+    : "No night actions. Scout is the final line at the hearth.";
   elements.levelLabel.textContent = `Level ${String(level.number).padStart(2, "0")} · ${level.title}`;
-  elements.levelTitle.textContent = day ? "A hearth in a living forest." : `${level.title} is underway.`;
   elements.levelCopy.textContent = day
     ? level.number === 1
-      ? "Clear one tree to bank the wood for tomorrow. Scout can handle this first raccoon alone."
-      : `Medium threat ${level.threatBudget}. Every night grows by 25%, rounded up; place defenses before Scout is overwhelmed.`
+      ? "Clear one tree. Scout can hold the first raccoon."
+      : level.number === 3 && !Engine.hasResearch(state, "arrowcraft")
+        ? "Arrowcraft research is available when you have enough XP."
+        : state.unlocks.includes("potatoGun") && state.resources.wood < 3
+          ? "Save wood for a Potato Gun, or build another first line."
+          : "Expand from cleared forest before Scout is overwhelmed."
     : night
-      ? `Medium threat ${state.encounter?.threatBudget || level.threatBudget}. Enemies can arrive from any forest edge and slow down in dense trees.`
+      ? "Defend the hearth."
       : state.phase === "aftermath"
-        ? "Scout is returning to his post. The next day begins automatically once he is home."
-        : "The homestead needs a new plan before another night.";
+        ? "Scout is returning to the watch post."
+        : "The hearth needs a new plan.";
 }
 
 function renderHeader() {
@@ -367,6 +395,13 @@ function renderHeader() {
   elements.wood.textContent = state.resources.wood;
   elements.xp.textContent = state.xp;
   elements.eventLog.textContent = state.lastEvent;
+  elements.boardCaption.textContent = day
+    ? elements.levelCopy.textContent
+    : night
+      ? "Scout watches the hearth."
+      : aftermath
+        ? "Scout is returning."
+        : "The homestead needs a new plan.";
 }
 
 function render() {
@@ -399,9 +434,10 @@ function clickCell(x, y) {
     dispatch({ type: "scout", x, y });
     return;
   }
-  if (activeTool === "stickLauncher") {
+  if (isBuildTool(activeTool)) {
+    const buildingType = activeTool;
     activeTool = "none";
-    const outcome = dispatch({ type: "build", buildingType: "stickLauncher", x, y });
+    const outcome = dispatch({ type: "build", buildingType, x, y });
     if (outcome.ok) {
       const building = Engine.buildingAt(state, x, y);
       if (building) selected = { kind: "building", id: building.id };

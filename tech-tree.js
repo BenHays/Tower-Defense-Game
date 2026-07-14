@@ -40,7 +40,7 @@
     if (!check.available) return { ok: false, message: check.reason, node: check.node || node(id) };
     state.xp -= check.node.costXp;
     state.research.push(id);
-    return { ok: true, message: `${check.node.label} researched: Arrow Shooters can now be built from existing launchers.`, node: check.node };
+    return { ok: true, message: `${check.node.label} researched: existing Stick Launchers can become Arrow Shooters.`, node: check.node };
   }
 
   function effectsFor(state) {

@@ -21,3 +21,5 @@
 - A deterministic balance probe should compare named build plans before changing pressure or tower values; an upgrade that arrives after its defense line reliably falls is not a real choice.
 - Keep the current resource loop narrow: wood is for construction and repair, while XP is the only enemy/level reward. Do not add food, pelts, or Scout health maintenance without a distinct decision it creates.
 - Keep planning values explicitly separate from live values. Tower economy must be tuned against the cleared-cell expansion rule, not by increasing early wood yield alone.
+- Model cleared forest as its own terrain value rather than generic open ground. That makes outward-only building placement deterministic, survives rubble cleanup, and prevents the original teepee clearing from becoming a tower pad.
+- Keep permanent environmental effects such as the campfire outside `state.buildings`, so closest-building enemy targeting cannot select or damage them.

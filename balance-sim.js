@@ -7,9 +7,6 @@ const Engine = require("./engine.js");
 
 const seed = process.argv[2] || Engine.DEFAULT_SEED;
 const maxLevel = Number(process.argv[3] || 9);
-const sites = [{ x: 3, y: 4 }, { x: 4, y: 3 }, { x: 8, y: 3 }, { x: 9, y: 5 }, { x: 9, y: 8 }, { x: 5, y: 9 }];
-const towerSites = [{ x: 4, y: 6 }, { x: 5, y: 7 }, { x: 8, y: 7 }, { x: 7, y: 8 }];
-
 function settleNight(state) {
   let guard = 18000;
   while (["night", "aftermath"].includes(state.phase) && guard > 0) {
@@ -19,12 +16,22 @@ function settleNight(state) {
   if (guard === 0) throw new Error("Simulation did not settle.");
 }
 
-function firstTowerSite(state) {
-  return towerSites.find((site) => Engine.validFootprint(state, "stickLauncher", site.x, site.y));
+function firstTowerSite(state, type) {
+  for (let y = 0; y < Engine.BOARD.height; y += 1) {
+    for (let x = 0; x < Engine.BOARD.width; x += 1) {
+      if (Engine.validFootprint(state, type, x, y)) return { x, y };
+    }
+  }
+  return null;
 }
 
 function firstTreeSite(state) {
-  return sites.find((site) => Engine.terrainAt(state, site.x, site.y) === "tree");
+  for (let y = 0; y < Engine.BOARD.height; y += 1) {
+    for (let x = 0; x < Engine.BOARD.width; x += 1) {
+      if (Engine.terrainAt(state, x, y) === "tree") return { x, y };
+    }
+  }
+  return null;
 }
 
 function runPlan(label, chooseDayAction) {
@@ -41,18 +48,18 @@ function runPlan(label, chooseDayAction) {
     kills: state.kills,
     xp: state.xp,
     wood: state.resources.wood,
-    towers: state.buildings.filter((building) => ["stickLauncher", "arrowShooter"].includes(building.type)).map((building) => building.type),
+    towers: state.buildings.filter((building) => Engine.TOWER_TYPES.includes(building.type)).map((building) => building.type),
   };
 }
 
 const oneLauncher = runPlan("one launcher", (state) => {
-  if (state.levelIndex === 0) Engine.dispatch(state, { type: "clear", ...sites[0] });
-  else if (state.levelIndex === 1) Engine.dispatch(state, { type: "build", buildingType: "stickLauncher", ...towerSites[0] });
+  if (state.levelIndex === 0) Engine.dispatch(state, { type: "clear", ...firstTreeSite(state) });
+  else if (state.levelIndex === 1) Engine.dispatch(state, { type: "build", buildingType: "stickLauncher", ...firstTowerSite(state, "stickLauncher") });
 });
 
 const spread = runPlan("spread launchers", (state) => {
-  if (state.levelIndex === 0) Engine.dispatch(state, { type: "clear", ...sites[0] });
-  else if (state.resources.wood >= 1 && firstTowerSite(state)) Engine.dispatch(state, { type: "build", buildingType: "stickLauncher", ...firstTowerSite(state) });
+  if (state.levelIndex === 0) Engine.dispatch(state, { type: "clear", ...firstTreeSite(state) });
+  else if (state.resources.wood >= 1 && firstTowerSite(state, "stickLauncher")) Engine.dispatch(state, { type: "build", buildingType: "stickLauncher", ...firstTowerSite(state, "stickLauncher") });
   else if (firstTreeSite(state)) Engine.dispatch(state, { type: "clear", ...firstTreeSite(state) });
 });
 
@@ -61,11 +68,20 @@ const arrowRush = runPlan("Arrowcraft rush", (state) => {
   const firstLauncher = state.buildings.find((building) => building.type === "stickLauncher" && !building.destroyed);
   if (firstLauncher && Engine.hasResearch(state, "arrowcraft") && state.resources.wood >= 4) {
     Engine.dispatch(state, { type: "upgradeLauncher", id: firstLauncher.id });
-  } else if (state.resources.wood >= 1 && !firstLauncher && firstTowerSite(state)) {
-    Engine.dispatch(state, { type: "build", buildingType: "stickLauncher", ...firstTowerSite(state) });
+  } else if (state.resources.wood >= 1 && !firstLauncher && firstTowerSite(state, "stickLauncher")) {
+    Engine.dispatch(state, { type: "build", buildingType: "stickLauncher", ...firstTowerSite(state, "stickLauncher") });
   } else if (firstTreeSite(state)) {
     Engine.dispatch(state, { type: "clear", ...firstTreeSite(state) });
   }
 });
 
-console.table([oneLauncher, spread, arrowRush]);
+const potatoRush = runPlan("potato rush", (state) => {
+  const potatoSite = firstTowerSite(state, "potatoGun");
+  if (state.unlocks.includes("potatoGun") && state.resources.wood >= 3 && potatoSite) {
+    Engine.dispatch(state, { type: "build", buildingType: "potatoGun", ...potatoSite });
+  } else if (firstTreeSite(state)) {
+    Engine.dispatch(state, { type: "clear", ...firstTreeSite(state) });
+  }
+});
+
+console.table([oneLauncher, spread, arrowRush, potatoRush]);
