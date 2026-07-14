@@ -19,6 +19,7 @@
 
 - Keep `engine.js` DOM-free and advance combat in fixed ticks. The browser renderer, replay function, save/load, and Node simulator then exercise the same rules.
 - Keep generated audio in a browser-only `audio.js` layer. Sample pre/post fixed-tick changes for combat cues and rate-limit them, so 5× playback stays readable and sound never changes saves or deterministic simulation.
+- Keep title-music references original and reproducible: a small dependency-free renderer makes the mood, instrumentation, and composition boundary explicit without importing another game's musical material.
 - The opening works best with direct construction: a Stick Launcher spends its wood and one action, then exists immediately. Blueprint and Finish states add unnecessary clicks before there are complex structures.
 - Keep a unit’s guard post separate from its current position. Scout’s watch radius stays centered on the day-placed post while his night state moves through idle, chase, attack, return, then automatically starts the next day.
 - Use a seeded Threat Budget rather than hard-coded enemy counts. Medium grows the previous budget by 25% rounded up, while each enemy’s Threat value makes later enemy pools compatible with the same allocator.

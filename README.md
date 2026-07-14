@@ -35,6 +35,16 @@ There are no environment variables. Content tuning, Medium Threat allocation, th
 
 As the roster grows, use stable IDs—not JavaScript pointers—between a small set of catalogs: `units.js`, `enemies.js`, `buildings.js`, `levels.js`, `terrain.js`, `talent-tree.js`, and `talent-icons.js`. `engine.js` should consume those catalogs and retain only simulation/state logic. Units, enemies, and buildings are still centralized inside `engine.js` today, so extracting those three registries is the next organization refactor rather than creating duplicate sources of truth.
 
+## Audio reference sketch
+
+[`assets/wild-hearth-title-sketch.wav`](assets/wild-hearth-title-sketch.wav) is a 55-second original title-screen music sketch: D Dorian at 68 BPM in 3/4, built from plucked strings, a small woodwind-like lead, muted string pads, and one restrained middle-section drum pulse. It is a mood reference for the homestead-at-dusk title screen, not an adaptation of an existing game track.
+
+Regenerate it after changing the source score:
+
+```sh
+node scripts/render-title-sketch.js
+```
+
 ## Shared testing
 
 The game can be published as a Codex Site for browser-based playtesting. The hosted build has no environment variables or server-side game state; each tester's save remains in their own browser.
@@ -47,6 +57,9 @@ python3 -m http.server 4173
 
 # Check JavaScript syntax
 npm run check
+
+# Regenerate the original title-screen audio reference
+node scripts/render-title-sketch.js
 
 # Build the static Codex Site bundle
 npm run build
