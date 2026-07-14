@@ -64,6 +64,9 @@ const elements = {
   skillPointDialog: document.querySelector("#skill-point-dialog"),
   skillPointLater: document.querySelector("#skill-point-later"),
   skillPointTech: document.querySelector("#skill-point-tech"),
+  skillPointToast: document.querySelector("#skill-point-toast"),
+  skillPointToastTitle: document.querySelector("#skill-point-toast-title"),
+  skillPointToastCopy: document.querySelector("#skill-point-toast-copy"),
   dawnReport: document.querySelector("#dawn-report"),
   utilityLabel: document.querySelector("#utility-label"),
   pauseButton: document.querySelector("#pause-button"),
@@ -92,6 +95,8 @@ let lastFocusedElement = null;
 let lastEarlyEndFocusedElement = null;
 let lastSkillPointFocusedElement = null;
 let earlyEndWarningDay = null;
+let observedSkillPointsEarned = state.skillPointsEarned || 0;
+let skillPointToastTimer = null;
 const TOOLBAR_SIZES = ["compact", "standard", "large"];
 let toolbarSize = "compact";
 let buildListSignature = "";
@@ -297,6 +302,36 @@ function showSkillPointNotice() {
   elements.skillPointDialog.hidden = false;
   document.body.classList.add("skill-point-dialog-open");
   requestAnimationFrame(() => elements.skillPointTech.focus());
+}
+
+function clearSkillPointToast() {
+  if (skillPointToastTimer) window.clearTimeout(skillPointToastTimer);
+  skillPointToastTimer = null;
+  elements.skillPointToast.hidden = true;
+}
+
+function showSkillPointToast(gained) {
+  clearSkillPointToast();
+  const label = gained === 1 ? "Skill Point" : "Skill Points";
+  elements.skillPointToastTitle.textContent = `+${gained} ${label} earned`;
+  elements.skillPointToastCopy.textContent = `${state.skillPoints} ready in the Talent Tree.`;
+  elements.skillPointToast.hidden = false;
+  skillPointToastTimer = window.setTimeout(clearSkillPointToast, 4600);
+}
+
+function observeSkillPointAwards() {
+  const earned = state.skillPointsEarned || 0;
+  if (earned <= observedSkillPointsEarned) {
+    observedSkillPointsEarned = earned;
+    return;
+  }
+  const gained = earned - observedSkillPointsEarned;
+  const firstPointIsInThisAward = state.firstSkillPointReady
+    && !state.firstSkillPointAcknowledged
+    && observedSkillPointsEarned < 1;
+  observedSkillPointsEarned = earned;
+  const toastPoints = gained - (firstPointIsInThisAward ? 1 : 0);
+  if (toastPoints > 0) showSkillPointToast(toastPoints);
 }
 
 function setPreferredSpeed(speed) {
@@ -904,6 +939,7 @@ function render() {
   renderTechnology();
   renderTelemetry();
   showSkillPointNotice();
+  observeSkillPointAwards();
 }
 
 function clickCell(x, y) {
@@ -970,7 +1006,9 @@ function clickCell(x, y) {
 
 function resetRun(seed) {
   clearHarvestEffect();
+  clearSkillPointToast();
   state = Engine.createRun(seed || state.seed);
+  observedSkillPointsEarned = state.skillPointsEarned || 0;
   earlyEndWarningDay = null;
   state.speed = preferredSpeed;
   activeTool = "none";
@@ -998,6 +1036,8 @@ function loadGame() {
     const saved = localStorage.getItem(SAVE_KEY) || LEGACY_SAVE_KEYS.map((key) => localStorage.getItem(key)).find(Boolean);
     if (!saved) { setEvent("No saved meadow is available in this browser."); return; }
     state = Engine.hydrate(saved);
+    observedSkillPointsEarned = state.skillPointsEarned || 0;
+    clearSkillPointToast();
     earlyEndWarningDay = null;
     localStorage.setItem(SAVE_KEY, Engine.serialize(state));
     preferredSpeed = state.speed;
