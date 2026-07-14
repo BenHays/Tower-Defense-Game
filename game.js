@@ -735,7 +735,8 @@ function drawTechConnections() {
       connectors.append(path);
     });
   });
-  stage.classList.toggle("can-scroll", viewport.scrollWidth > viewport.clientWidth + 4);
+  stage.classList.toggle("can-scroll-x", viewport.scrollWidth > viewport.clientWidth + 4);
+  stage.classList.toggle("can-scroll-y", viewport.scrollHeight > viewport.clientHeight + 4);
 }
 
 function queueTechConnections() {
@@ -779,7 +780,7 @@ function renderTechnology() {
   const viewport = createNode("div", "tech-tree-viewport");
   viewport.tabIndex = 0;
   viewport.setAttribute("role", "region");
-  viewport.setAttribute("aria-label", "Talent Tree. Scroll horizontally to explore future talents.");
+  viewport.setAttribute("aria-label", "Talent Tree. Scroll horizontally and vertically to explore talents.");
   const canvas = createNode("div", "tech-tree-canvas");
   canvas.style.setProperty("--tech-depth", String(treeDepth));
   const connectors = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -821,7 +822,7 @@ function renderTechnology() {
     canvas.append(branch);
   });
   viewport.append(canvas);
-  stage.append(viewport, createNode("p", "tech-scroll-hint", "Scroll to explore →"));
+  stage.append(viewport, createNode("p", "tech-scroll-hint", "Scroll to explore ↔ ↕"));
   elements.techBranches.replaceChildren(stage);
   queueTechConnections();
   elements.techDetailIcon.replaceChildren(talentIconSvg(selectedNode.icon));

@@ -222,9 +222,9 @@ button[hidden], [hidden] { display: none !important; }
 .build-icon.campfire-icon::before { position: absolute; left: 39%; top: 7%; width: 27%; height: 62%; border-radius: 70% 30% 67% 33%; background: linear-gradient(#fff6ae,#ed8c32 62%,#cf5134); content: ""; transform: rotate(17deg); }.build-icon.campfire-icon::after { display: none; }
 .build-button.is-active .build-icon.campfire-icon { background-color: rgba(255,255,255,.87); }
 
-/* Mouse and Bear are CSS silhouettes so roster growth does not require a sprite-sheet edit. */
+/* Mouse remains a CSS silhouette; Bear uses a dedicated cutout without a sprite-sheet edit. */
 .enemy.mouse { width: 31px; height: 27px; background: none; filter: drop-shadow(0 3px 2px rgba(24,47,37,.25)); }.enemy.mouse::before { display: block; left: 5px; bottom: 5px; width: 22px; height: 13px; border-radius: 58% 45% 47% 47%; background: #a68d7a; box-shadow: -8px 5px 0 -5px #bda99a; }.enemy.mouse::after { display: block; right: 1px; bottom: 14px; width: 10px; height: 10px; border-radius: 50%; background: radial-gradient(circle at 68% 40%,#20332d 0 1px,transparent 2px),#c6b1a1; }
-.enemy.bear { width: 70px; height: 59px; background: none; filter: drop-shadow(0 5px 3px rgba(24,47,37,.34)); }.enemy.bear::before { display: block; left: 3px; bottom: 4px; width: 60px; height: 39px; border-radius: 54% 47% 43% 43%; background: linear-gradient(145deg,#4a3429,#7b5439); box-shadow: inset -10px -7px rgba(31,21,18,.14),0 5px 2px rgba(24,47,37,.2); }.enemy.bear::after { display: block; right: 0; bottom: 25px; width: 28px; height: 26px; border-radius: 48% 48% 43% 43%; background: radial-gradient(circle at 32% 40%,#1e2823 0 2px,transparent 3px),radial-gradient(circle at 69% 40%,#1e2823 0 2px,transparent 3px),radial-gradient(ellipse at 51% 72%,#d0aa7f 0 18%,transparent 20%),#876044; box-shadow: -14px -5px 0 -7px #5a3d2d,10px -5px 0 -7px #5a3d2d; }
+.enemy.bear { width: 78px; height: 68px; background: center / 118% no-repeat url("assets/bear-v2.png?v=bear-cutout-1"); filter: drop-shadow(0 5px 3px rgba(24,47,37,.34)); }.enemy.bear::before,.enemy.bear::after { display: none; }.enemy.bear.is-burning::after { display: none; }
 .enemy.is-burning { filter: drop-shadow(0 0 7px rgba(255,150,55,.95)) saturate(1.18); }.enemy.is-burning::after { box-shadow: 0 0 0 3px rgba(244,105,42,.42),0 -7px 7px -4px rgba(255,212,94,.98); }
 .projectile.fireball { width: 15px; height: 15px; border-radius: 50%; background: radial-gradient(circle at 35% 30%,#fff8ba 0 12%,#ffbf4d 14% 36%,#e65d34 38% 62%,rgba(198,68,40,.15) 64%); box-shadow: 0 0 12px rgba(255,158,53,.96),0 2px 3px rgba(16,39,32,.45); }.impact.fireball { border-color: rgba(255,181,70,.96); background: radial-gradient(circle,rgba(255,248,185,.92) 0 12%,rgba(255,157,56,.55) 16% 43%,transparent 48%); }
 @keyframes campfire-cast { from { transform: scale(.92) rotate(-7deg); } to { transform: scale(1.08) rotate(8deg); } }
@@ -303,10 +303,9 @@ button[hidden], [hidden] { display: none !important; }
 
 /* The next counter chain lives on a readable air layer: Vultures glide above the
    forest while Scarecrows send straw darts upward from an ordinary grass cell. */
-.building.scarecrow { width: 58px; height: 66px; filter: drop-shadow(0 4px 2px rgba(31,56,38,.28)); }
-.building.scarecrow::before { display: block; left: 24px; top: 14px; width: 11px; height: 44px; border-radius: 6px; background: linear-gradient(90deg,#694327,#b77b3e 52%,#603c24); box-shadow: -16px 19px 0 -5px #97733f,16px 19px 0 -5px #97733f; }
-.building.scarecrow::after { display: block; left: 10px; top: 2px; width: 38px; height: 33px; border: 3px solid #81572f; border-radius: 43% 43% 38% 38%; background: radial-gradient(circle at 35% 45%,#2d372a 0 2px,transparent 3px),radial-gradient(circle at 66% 45%,#2d372a 0 2px,transparent 3px),linear-gradient(145deg,#d6b464,#b98945); box-shadow: inset 0 -8px rgba(112,72,36,.18),-14px 13px 0 -10px #c6a358,14px 13px 0 -10px #c6a358; }
-.building.scarecrow.is-firing::after { animation: scarecrow-fling .22s ease-out alternate 2; }.building.scarecrow.is-selected { filter: drop-shadow(0 0 7px rgba(235,205,105,.94)) drop-shadow(0 4px 2px rgba(31,56,38,.28)); }
+.building.scarecrow { width: 68px; height: 74px; background: center / 118% no-repeat url("assets/scarecrow-v2.png?v=scarecrow-cutout-1"); filter: drop-shadow(0 4px 2px rgba(31,56,38,.28)); }
+.building.scarecrow::before,.building.scarecrow::after { display: none; }
+.building.scarecrow.is-firing::after { display: block; top: 5px; right: 5px; width: 22px; height: 22px; border-radius: 50%; background: radial-gradient(circle,rgba(255,245,190,.95) 0 12%,rgba(246,198,91,.65) 18% 34%,rgba(217,119,74,.18) 48%,transparent 66%); filter: blur(.15px); animation: tower-shot-flash .24s ease-out alternate 2; }.building.scarecrow.is-selected { filter: drop-shadow(0 0 7px rgba(235,205,105,.94)) drop-shadow(0 4px 2px rgba(31,56,38,.28)); }.building.scarecrow .health-bar { top: -14px; }
 .build-icon.scarecrow-icon { background: linear-gradient(#dcebd8 0 53%,#b59052 54% 100%); }.build-icon.scarecrow-icon::before { position: absolute; left: 41%; top: 9%; width: 23%; height: 54%; border: 2px solid #7b542d; border-radius: 42%; background: #d6b464; box-shadow: inset 0 -7px rgba(109,70,33,.18); content: ""; }.build-icon.scarecrow-icon::after { position: absolute; left: 46%; top: 52%; width: 8%; height: 39%; border-radius: 6px; background: #80552e; box-shadow: -10px 11px 0 -3px #a57a3e,10px 11px 0 -3px #a57a3e; content: ""; }.build-button.is-active .build-icon.scarecrow-icon { background-color: rgba(255,255,255,.87); }
 .placement-ghost.scarecrow::before { position: absolute; left: 43%; top: 15%; width: 14%; height: 66%; border-radius: 6px; background: rgba(141,93,45,.72); box-shadow: -13px 17px 0 -5px rgba(205,172,91,.74),13px 17px 0 -5px rgba(205,172,91,.74); content: ""; }.placement-ghost.scarecrow::after { position: absolute; left: 23%; top: 9%; width: 54%; height: 37%; border-radius: 42%; background: rgba(220,190,101,.68); content: ""; }
 .enemy.vulture { width: 68px; height: 50px; background: none; filter: drop-shadow(0 8px 2px rgba(18,42,37,.25)); animation: vulture-glide .48s ease-in-out infinite alternate; }.enemy.vulture::before { display: block; left: 4px; bottom: 8px; width: 61px; height: 27px; background: linear-gradient(154deg,transparent 0 17%,#463c35 18% 39%,#7a6758 40% 55%,#403931 56% 100%); clip-path: polygon(0 53%,26% 0,49% 42%,76% 7%,100% 63%,69% 80%,48% 65%,20% 88%); }.enemy.vulture::after { display: block; right: 5px; bottom: 14px; width: 20px; height: 17px; border-radius: 52% 46% 46% 54%; background: radial-gradient(circle at 34% 36%,#d9c281 0 2px,transparent 3px),#84735d; box-shadow: 10px 9px 0 -6px #d8b94f; }
@@ -360,4 +359,39 @@ button[hidden], [hidden] { display: none !important; }
 @media (max-width: 430px) {
   .settings-card .audio-settings { padding-left: 0; border-left: 0; }
   .settings-card .audio-volume input { width: 40px; }
+}
+
+/* A Talent Tree can grow in both directions without losing its lower branches. */
+.tech-dialog-panel {
+  height: min(760px, calc(100dvh - 28px));
+  max-height: min(760px, calc(100dvh - 28px));
+  overflow: hidden;
+}
+.tech-dialog-body { flex: 1 1 auto; min-height: 0; }
+.tech-dialog .tech-branches,
+.tech-tree-stage { min-height: 0; }
+.tech-tree-stage { display: flex; flex-direction: column; }
+.tech-tree-viewport {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-x pan-y;
+}
+.tech-tree-viewport::-webkit-scrollbar { width: 8px; height: 8px; }
+.tech-tree-stage.can-scroll-x::after {
+  position: absolute;
+  z-index: 3;
+  top: 8px;
+  right: 8px;
+  bottom: 14px;
+  width: 38px;
+  pointer-events: none;
+  background: linear-gradient(90deg,transparent,rgba(255,253,248,.94));
+  content: "";
+}
+.tech-tree-stage.can-scroll-x .tech-scroll-hint,
+.tech-tree-stage.can-scroll-y .tech-scroll-hint { display: block; }
+@media (max-width: 700px) {
+  .tech-dialog-panel { height: 92dvh; max-height: 92dvh; }
 }

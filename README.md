@@ -35,6 +35,8 @@ There are no environment variables. Content tuning, Medium Threat allocation, th
 
 As the roster grows, use stable IDs—not JavaScript pointers—between a small set of catalogs: `units.js`, `enemies.js`, `buildings.js`, `levels.js`, `terrain.js`, `talent-tree.js`, and `talent-icons.js`. `engine.js` should consume those catalogs and retain only simulation/state logic. Units, enemies, and buildings are still centralized inside `engine.js` today, so extracting those three registries is the next organization refactor rather than creating duplicate sources of truth.
 
+The Bear and Scarecrow now use transparent generated cutouts from `assets/` in the meadow; their small Build-strip and placement-preview representations stay CSS-driven. The Talent Tree canvas scrolls horizontally and vertically, so its deeper branch rows stay reachable.
+
 ## Audio reference sketch
 
 [`assets/wild-hearth-title-sketch.wav`](assets/wild-hearth-title-sketch.wav) is a 55-second original title-screen music sketch: D Dorian at 68 BPM in 3/4, built from plucked strings, a small woodwind-like lead, muted string pads, and one restrained middle-section drum pulse. It is a mood reference for the homestead-at-dusk title screen, not an adaptation of an existing game track.
