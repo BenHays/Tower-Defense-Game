@@ -29,7 +29,9 @@ const elements = {
   selectionFootnote: document.querySelector("#selection-footnote"),
   actionHint: document.querySelector("#action-hint"),
   actionBadge: document.querySelector("#action-badge"),
-  toolGrid: document.querySelector("#tool-grid"),
+  dayActionList: document.querySelector("#day-action-list"),
+  buildCard: document.querySelector("#build-card"),
+  buildList: document.querySelector("#build-list"),
   toolbarSmaller: document.querySelector("#toolbar-smaller"),
   toolbarLarger: document.querySelector("#toolbar-larger"),
   toolbarSizeLabel: document.querySelector("#toolbar-size-label"),
@@ -83,6 +85,11 @@ let lastEarlyEndFocusedElement = null;
 let earlyEndWarningDay = null;
 const TOOLBAR_SIZES = ["compact", "standard", "large"];
 let toolbarSize = "compact";
+let buildListSignature = "";
+const BUILD_CARD_ICONS = {
+  stickLauncher: "stick-launcher-icon",
+  potatoGun: "potato-gun-icon",
+};
 
 try {
   const settings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
@@ -165,6 +172,36 @@ function cellId(x, y) { return `${x},${y}`; }
 function isBuildTool(tool) { return Boolean(Engine.BUILDINGS[tool]) && !["teepee", "arrowShooter"].includes(tool); }
 function towerRecipe(type) { return Engine.TOWER_TYPES.includes(type) ? Engine.BUILDINGS[type] : null; }
 function needsShelter() { return !Engine.hasShelter(state); }
+
+function buildCostCopy(recipe) {
+  const wood = recipe.cost?.wood || 0;
+  const actionCost = recipe.actionCost || 1;
+  return `${wood} wood · ${actionCost} action${actionCost === 1 ? "" : "s"}`;
+}
+
+function renderBuildList() {
+  const unlockedTools = state.unlocks.filter(isBuildTool);
+  const signature = unlockedTools.join("|");
+  if (isBuildTool(activeTool) && !unlockedTools.includes(activeTool)) activeTool = "none";
+  if (signature === buildListSignature) return unlockedTools;
+
+  const cards = unlockedTools.map((tool) => {
+    const recipe = Engine.BUILDINGS[tool];
+    const button = createNode("button", "build-button");
+    button.type = "button";
+    button.dataset.tool = tool;
+    button.setAttribute("aria-label", `Build ${recipe.label}`);
+    const icon = createNode("span", `build-icon ${BUILD_CARD_ICONS[tool] || "structure-icon"}`);
+    icon.setAttribute("aria-hidden", "true");
+    const copy = createNode("span", "build-copy");
+    copy.append(createNode("strong", "", recipe.label), createNode("small", "", buildCostCopy(recipe)));
+    button.append(icon, copy);
+    return button;
+  });
+  elements.buildList.replaceChildren(...cards);
+  buildListSignature = signature;
+  return unlockedTools;
+}
 
 function toolCellValid(x, y) {
   return Engine.toolPreview(state, activeTool, x, y).valid;
@@ -629,13 +666,19 @@ function renderControls() {
   elements.selectedCard.hidden = !hasInspector || (!day && !opening);
   elements.actionCard.hidden = false;
   elements.planningCard.hidden = opening || !showPlanningCard;
+  const unlockedBuildTools = renderBuildList();
+  elements.buildCard.hidden = opening || !unlockedBuildTools.length;
   elements.shelterButton.hidden = !opening;
   elements.shelterButton.disabled = !day || !opening;
-  elements.toolGrid.querySelectorAll("[data-tool]").forEach((button) => {
+  elements.dayActionList.querySelectorAll("[data-tool]").forEach((button) => {
     const tool = button.dataset.tool;
     button.classList.toggle("is-active", tool === activeTool);
-    button.hidden = !opening && isBuildTool(tool) && !state.unlocks.includes(tool);
-    button.disabled = opening || !day || state.actionPoints <= 0 || (isBuildTool(tool) && !state.unlocks.includes(tool));
+    button.disabled = opening || !day || state.actionPoints <= 0;
+  });
+  elements.buildList.querySelectorAll("[data-tool]").forEach((button) => {
+    const tool = button.dataset.tool;
+    button.classList.toggle("is-active", tool === activeTool);
+    button.disabled = opening || !day || state.actionPoints <= 0;
   });
   elements.repairButton.disabled = opening || !day || !building || building.health >= building.maxHealth || state.resources.wood < 1 || state.actionPoints <= 0;
   const upgradeCost = arrowUpgradeReady ? 4 : refit?.cost?.wood || 0;
@@ -824,14 +867,17 @@ elements.grid.addEventListener("pointermove", (event) => {
 elements.grid.addEventListener("pointerleave", () => {
   if (hoverCell) { hoverCell = null; gridSignature = ""; render(); }
 });
-elements.toolGrid.addEventListener("click", (event) => {
+function selectTool(event) {
   const button = event.target.closest("[data-tool]");
   if (!button || button.disabled) return;
   activeTool = button.dataset.tool;
   selected = { kind: "none", id: null };
   gridSignature = "";
   render();
-});
+}
+
+elements.dayActionList.addEventListener("click", selectTool);
+elements.buildList.addEventListener("click", selectTool);
 elements.toolbarSmaller.addEventListener("click", () => changeToolbarSize(-1));
 elements.toolbarLarger.addEventListener("click", () => changeToolbarSize(1));
 elements.shelterButton.addEventListener("click", () => {

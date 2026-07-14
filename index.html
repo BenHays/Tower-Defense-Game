@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="A deterministic, top-down homestead defense prototype." />
     <title>Wild Hearth — Hearth Meadow</title>
-    <link rel="stylesheet" href="styles.css?v=health-bar-color-1" />
+    <link rel="stylesheet" href="styles.css?v=build-strip-1" />
   </head>
   <body>
     <main class="game-shell" id="top">
@@ -56,21 +56,19 @@
 
         <section class="action-card" id="action-card" aria-label="Day actions">
           <div class="action-heading">
-            <p class="eyebrow">Field kit</p>
-            <div class="toolbar-size-controls" role="group" aria-label="Toolbar size">
-              <button class="toolbar-size-button" id="toolbar-smaller" type="button" aria-label="Make toolbar smaller" title="Make toolbar smaller">−</button>
+            <p class="eyebrow">Day actions</p>
+            <div class="toolbar-size-controls" role="group" aria-label="Control size">
+              <button class="toolbar-size-button" id="toolbar-smaller" type="button" aria-label="Make controls smaller" title="Make controls smaller">−</button>
               <span id="toolbar-size-label" aria-live="polite">Compact</span>
-              <button class="toolbar-size-button" id="toolbar-larger" type="button" aria-label="Make toolbar larger" title="Make toolbar larger">+</button>
+              <button class="toolbar-size-button" id="toolbar-larger" type="button" aria-label="Make controls larger" title="Make controls larger">+</button>
             </div>
             <strong id="action-badge">2 actions</strong>
           </div>
           <p class="action-hint" id="action-hint">Choose one action, then select a map cell.</p>
-          <div class="tool-grid" id="tool-grid">
+          <div class="day-action-list" id="day-action-list">
             <button class="tool-button shelter-button" id="shelter-button" type="button"><span class="tool-icon" aria-hidden="true">⌂</span><span class="tool-copy"><strong>Construct shelter</strong><small>Free · first day</small></span></button>
             <button class="tool-button" data-tool="clear" type="button"><span class="tool-icon" aria-hidden="true">✂</span><span class="tool-copy"><strong>Clear tree</strong><small>+2 wood</small></span></button>
             <button class="tool-button" data-tool="scout" type="button"><span class="tool-icon" aria-hidden="true">●</span><span class="tool-copy"><strong>Place Scout</strong><small>1 action</small></span></button>
-            <button class="tool-button" data-tool="stickLauncher" id="stick-launcher-tool" type="button"><span class="tool-icon" aria-hidden="true">╱</span><span class="tool-copy"><strong>Stick launcher</strong><small>2 wood</small></span></button>
-            <button class="tool-button" data-tool="potatoGun" id="potato-gun-tool" type="button"><span class="tool-icon" aria-hidden="true">◉</span><span class="tool-copy"><strong>Potato gun</strong><small>3 wood</small></span></button>
           </div>
           <div class="action-row" id="action-row">
             <button class="secondary-button" id="repair-button" type="button">Repair selected <span>1 wood · 1 action</span></button>
@@ -91,6 +89,11 @@
           </div>
           <label class="setting-toggle" for="health-bars-toggle"><input id="health-bars-toggle" type="checkbox" /> <span>Health bars</span></label>
         </aside>
+
+        <section class="build-card" id="build-card" aria-label="Available structures">
+          <p class="eyebrow">Build</p>
+          <div class="build-list" id="build-list" aria-label="Buildable structures"></div>
+        </section>
       </section>
 
       <section class="event-log" id="event-log-wrap" aria-label="Game update" aria-live="polite" hidden><p id="event-log"></p></section>
@@ -133,6 +136,6 @@
 
     <script src="tech-tree.js?v=early-end-warning-1"></script>
     <script src="engine.js?v=early-end-warning-1"></script>
-    <script src="game.js?v=health-bar-color-1"></script>
+    <script src="game.js?v=build-strip-1"></script>
   </body>
 </html>
