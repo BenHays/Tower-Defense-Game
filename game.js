@@ -55,7 +55,7 @@ const elements = {
   speedButtons: [...document.querySelectorAll("[data-speed]")],
   speedControls: document.querySelector("#speed-controls"),
   healthBarsToggle: document.querySelector("#health-bars-toggle"),
-  healthBarsSetting: document.querySelector(".setting-toggle"),
+  healthBarsSetting: document.querySelector("#health-bars-setting"),
   eventLogWrap: document.querySelector("#event-log-wrap"),
   eventLog: document.querySelector("#event-log"),
 };
@@ -68,7 +68,7 @@ let planning = false;
 let lastFrame = 0;
 let accumulator = 0;
 let gridSignature = "";
-let showHealthBars = false;
+let showHealthBars = true;
 let activeTechId = null;
 const gridCells = new Map();
 let techSignature = "";
@@ -86,18 +86,18 @@ const BUILD_CARD_ICONS = {
 
 try {
   const settings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
-  showHealthBars = Boolean(settings.showHealthBars);
+  showHealthBars = settings.healthBarsPreferenceSet ? Boolean(settings.showHealthBars) : true;
   preferredSpeed = [1, 2].includes(settings.preferredSpeed) ? settings.preferredSpeed : 1;
   toolbarSize = TOOLBAR_SIZES.includes(settings.toolbarSize) ? settings.toolbarSize : "compact";
 } catch (error) {
-  showHealthBars = false;
+  showHealthBars = true;
   preferredSpeed = 1;
   toolbarSize = "compact";
 }
 
 function saveSettings() {
   try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ showHealthBars, preferredSpeed, toolbarSize }));
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ showHealthBars, healthBarsPreferenceSet: true, preferredSpeed, toolbarSize }));
   } catch (error) { /* Settings still apply for this browser session. */ }
 }
 
@@ -693,7 +693,7 @@ function renderControls() {
     button.classList.toggle("is-active", Number(button.dataset.speed) === preferredSpeed);
   });
   elements.speedControls.hidden = !night;
-  elements.healthBarsSetting.hidden = !night;
+  elements.healthBarsSetting.hidden = false;
   elements.healthBarsToggle.checked = showHealthBars;
   elements.actionBadge.textContent = day ? `${state.actionPoints} action${state.actionPoints === 1 ? "" : "s"}` : night ? "Scout on watch" : "Dawn";
   elements.actionHint.textContent = day

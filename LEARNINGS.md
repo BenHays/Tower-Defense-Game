@@ -42,7 +42,7 @@
 - Keep day actions and the Build strip spatially stable through the night. Disabled controls preserve orientation, while fast combat events belong in animation and telemetry rather than a notification strip the player cannot read.
 - Drive the Build strip from `state.unlocks`: it should show only unlocked, directly constructible structures, beginning with Stick Launcher and growing horizontally as new construction unlocks arrive.
 - Keep the Build strip as a one-row rail of square, icon-first tiles. Fixed tile dimensions and horizontal scrolling let the roster expand without making the play dock taller or less readable.
-- Let the optional building health bar communicate both condition and amount: green at full health, yellow below full, and red below 30%, with no separate dot or condition label.
+- Start enemy and building health bars on, and keep their toggle visible in both phases. Persist only an explicit player choice, so old saved preferences from the former off-by-default state migrate to visible bars; Scout remains bar-free.
 - Keep End Day decisive: unused actions are a player choice, so one click starts the night without a confirmation modal or explanatory copy.
 - Use each generated tower portrait in both its meadow entity and Build-strip tile. This keeps purchase decisions visually connected to their placed defense while projectile and firing state stay CSS-driven.
 

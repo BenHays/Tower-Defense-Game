@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="A deterministic, top-down homestead defense prototype." />
     <title>Wild Hearth — Hearth Meadow</title>
-    <link rel="stylesheet" href="styles.css?v=tower-art-1" />
+    <link rel="stylesheet" href="styles.css?v=health-bars-2" />
   </head>
   <body>
     <main class="game-shell" id="top">
@@ -69,6 +69,7 @@
             <button class="secondary-button" id="upgrade-button" type="button">Upgrade selected <span>Arrowcraft · 4 wood · 1 action</span></button>
           </div>
           <button class="primary-button wide" id="end-day-button" type="button">End Day</button>
+          <div class="always-settings"><label class="setting-toggle" id="health-bars-setting" for="health-bars-toggle"><input id="health-bars-toggle" type="checkbox" checked /> <span>Health bars</span></label></div>
         </section>
 
         <aside class="planning-card" id="planning-card" aria-label="Planning and night controls">
@@ -81,7 +82,6 @@
             <button class="speed-button is-active" data-speed="1" type="button">1×</button>
             <button class="speed-button" data-speed="2" type="button">2×</button>
           </div>
-          <label class="setting-toggle" for="health-bars-toggle"><input id="health-bars-toggle" type="checkbox" /> <span>Health bars</span></label>
         </aside>
 
         <section class="build-card" id="build-card" aria-label="Available structures">
@@ -127,8 +127,8 @@
       </section>
     </div>
 
-    <script src="tech-tree.js?v=tower-art-1"></script>
-    <script src="engine.js?v=tower-art-1"></script>
-    <script src="game.js?v=tower-art-1"></script>
+    <script src="tech-tree.js?v=health-bars-2"></script>
+    <script src="engine.js?v=health-bars-2"></script>
+    <script src="game.js?v=health-bars-2"></script>
   </body>
 </html>
