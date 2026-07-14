@@ -5,11 +5,13 @@
  * headless simulator both drive these same deterministic state transitions.
  */
 (function registerWildHearthEngine(root, factory) {
-  const engine = factory();
+  const techTree = typeof module !== "undefined" && module.exports ? require("./tech-tree.js") : root.WildHearthTechTree;
+  const engine = factory(techTree);
   if (typeof module !== "undefined" && module.exports) module.exports = engine;
   root.WildHearthEngine = engine;
-}(typeof globalThis !== "undefined" ? globalThis : this, function buildEngine() {
-  const SAVE_VERSION = 3;
+}(typeof globalThis !== "undefined" ? globalThis : this, function buildEngine(TechTree) {
+  if (!TechTree) throw new Error("Wild Hearth tech tree did not load.");
+  const SAVE_VERSION = 4;
   const TICK_RATE = 20;
   const BOARD = { id: "hearth-meadow", label: "Hearth Meadow", width: 13, height: 13 };
   const STARTING_ACTIONS = 2;
@@ -38,7 +40,7 @@
       label: "Raccoon",
       threat: 1,
       health: 4,
-      damage: 1,
+      damage: 0.5,
       attackSpeed: 0.85,
       moveSpeed: 1.3,
       attackRange: 0.72,
@@ -46,6 +48,7 @@
       targetRule: "closest-reachable-building",
       targetType: "building",
       approach: "sneak",
+      arrivalPauseTicks: 5,
       forestMoveCost: 1.32,
       xp: 1,
     },
@@ -62,6 +65,7 @@
       targetRule: "closest-reachable-building",
       targetType: "building",
       approach: "trudge",
+      arrivalPauseTicks: 0,
       forestMoveCost: 1.82,
       xp: 3,
     },
@@ -73,7 +77,7 @@
       label: "Branch teepee",
       footprint: { width: 1, height: 1 },
       maxHealth: 12,
-      cost: { wood: 0, stone: 0 },
+      cost: { wood: 0 },
       role: "home",
       tags: ["home"],
       repairAmount: 4,
@@ -84,26 +88,32 @@
       label: "Stick launcher",
       footprint: { width: 1, height: 1 },
       maxHealth: 6,
-      cost: { wood: 1, stone: 0 },
+      cost: { wood: 1 },
+      actionCost: 2,
       role: "tower",
       tags: ["defense", "first-line"],
       damage: 1,
       attackSpeed: 1,
-      attackRange: 4.5,
+      attackRange: 2.8,
+      projectile: { type: "stick", speed: 8 },
       targetRule: "nearest-enemy-in-range",
       repairAmount: 3,
       repairCost: { wood: 1 },
     },
-  };
-
-  const UPGRADES = {
-    stonework: {
-      id: "stonework",
-      label: "Stone teepee brace",
-      cost: { stone: 1 },
-      maxHealthBonus: 5,
-      healthBonus: 5,
-      role: "durable-home",
+    arrowShooter: {
+      id: "arrowShooter",
+      label: "Arrow shooter",
+      footprint: { width: 1, height: 1 },
+      maxHealth: 6,
+      role: "tower",
+      tags: ["defense", "first-line", "arrowcraft"],
+      damage: 1.5,
+      attackSpeed: 1.5,
+      attackRange: 4.2,
+      projectile: { type: "arrow", speed: 12 },
+      targetRule: "nearest-enemy-in-range",
+      repairAmount: 3,
+      repairCost: { wood: 1 },
     },
   };
 
@@ -121,7 +131,7 @@
       survivalXp: 2,
       unlock: "stickLauncher",
       unlockLabel: "Stick launcher",
-      unlockCopy: "Use 1 wood and one daylight action to build the first line outside Scout's watch radius.",
+      unlockCopy: "Use 1 wood and Avery's full day to build the first line outside Scout's watch radius.",
     },
     {
       id: "first-line",
@@ -143,7 +153,6 @@
         if (Math.hypot(x - 6, y - 6) <= 2.28) open(x, y);
       }
     }
-    [[3, 5], [9, 7], [3, 9], [9, 3], [8, 10]].forEach(([x, y]) => set(x, y, "boulder"));
     return terrain;
   }
 
@@ -157,7 +166,7 @@
     for (let y = 1; y < BOARD.height - 1; y += 1) {
       cells.push({ x: 0, y, edge: "west" }, { x: BOARD.width - 1, y, edge: "east" });
     }
-    return cells.filter((cell) => FIXED_TERRAIN[indexOf(cell.x, cell.y)] !== "boulder");
+    return cells;
   }
 
   const SPAWN_CELLS = perimeterSpawnCells();
@@ -396,9 +405,10 @@
       tick: 0,
       nightTick: 0,
       actionPoints: STARTING_ACTIONS,
-      resources: { wood: 0, stone: 0 },
+      resources: { wood: 0 },
       xp: 0,
       unlocks: [],
+      research: [],
       terrain: FIXED_TERRAIN.slice(),
       buildings: [teepee],
       rubble: [],
@@ -413,6 +423,8 @@
         mode: "idle",
       },
       enemies: [],
+      projectiles: [],
+      impacts: [],
       encounter: null,
       topologyVersion: 0,
       nextEntityId: 1,
@@ -423,7 +435,6 @@
       aftermathTicks: 0,
       paused: false,
       speed: 1,
-      upgrades: [],
       history: [],
     };
   }
@@ -440,6 +451,7 @@
       health: recipe.health,
       maxHealth: recipe.health,
       cooldown: 5,
+      approachDelay: (recipe.arrivalPauseTicks || 0) + (state.nextEntityId % 4) * 2,
       targetId: null,
       intent: "approaching",
       spawnEdge: spawn.edge,
@@ -463,9 +475,10 @@
 
     const waves = [];
     let cursor = 0;
-    let spawnTick = 14;
+    let spawnTick = 18 + rng.int(0, 8);
     while (cursor < units.length) {
-      const groupSize = Math.min(units.length - cursor, rng.next() > 0.68 ? 2 : 1);
+      const remainingUnits = units.length - cursor;
+      const groupSize = Math.min(remainingUnits, remainingUnits >= 4 && rng.next() > 0.62 ? 2 : 1);
       const entry = clone(rng.pick(SPAWN_CELLS));
       waves.push({
         id: `wave-${waves.length + 1}`,
@@ -475,7 +488,7 @@
         spawned: false,
       });
       cursor += groupSize;
-      spawnTick += rng.int(34, 54);
+      spawnTick += rng.int(42, 66);
     }
     return {
       threatBudget: level.threatBudget,
@@ -527,23 +540,22 @@
       return result(state, false, "Avery can only work during daylight.");
     }
 
+    if (action.type === "research") {
+      const outcome = TechTree.research(state, action.nodeId);
+      return result(state, outcome.ok, outcome.message, action, shouldRecord);
+    }
+
     if (action.type === "clear") {
       const terrain = terrainAt(state, action.x, action.y);
-      if (!["tree", "boulder"].includes(terrain) && !hasRubble(state, action.x, action.y)) return result(state, false, "Only a tree, boulder, or rubble can be cleared there.");
+      if (terrain !== "tree" && !hasRubble(state, action.x, action.y)) return result(state, false, "Only a tree or rubble can be cleared there.");
       if (terrain === "tree") {
         if (!consumeActions(state, 2)) return result(state, false, "Clearing a tree takes both daylight actions.");
         setTerrain(state, action.x, action.y, "open");
-        state.resources.wood += 1;
+        state.resources.wood += 2;
         invalidatePaths(state);
-        return result(state, true, "Avery clears a tree: +1 wood. The day is spent, but the first build site is ready.", action, shouldRecord);
+        return result(state, true, "Avery clears a tree: +2 wood. The day is spent, but the first build site is ready.", action, shouldRecord);
       }
       if (!consumeAction(state)) return result(state, false, "Avery has used both daylight actions.");
-      if (terrain === "boulder") {
-        setTerrain(state, action.x, action.y, "open");
-        state.resources.stone += 1;
-        invalidatePaths(state);
-        return result(state, true, "Avery clears a boulder: +1 stone and a new buildable cell.", action, shouldRecord);
-      }
       state.rubble = state.rubble.filter((rubble) => !(rubble.x === action.x && rubble.y === action.y));
       invalidatePaths(state);
       return result(state, true, "Avery clears the rubble. That ground is open again.", action, shouldRecord);
@@ -575,11 +587,11 @@
 
     if (action.type === "build") {
       const recipe = buildingRecipe(action.buildingType);
-      if (!recipe || action.buildingType === "teepee") return result(state, false, "That building cannot be placed here.");
+      if (!recipe || ["teepee", "arrowShooter"].includes(action.buildingType)) return result(state, false, "That building cannot be placed here.");
       if (!hasUnlock(state, action.buildingType)) return result(state, false, `${recipe.label} has not been unlocked yet.`);
       if (!validFootprint(state, action.buildingType, action.x, action.y)) return result(state, false, "That build site is blocked or occupied.");
       if (!hasResources(state, recipe.cost)) return result(state, false, `Need ${recipe.cost.wood || 0} wood to build this.`);
-      if (!consumeAction(state)) return result(state, false, "Avery has used both daylight actions.");
+      if (!consumeActions(state, recipe.actionCost || 1)) return result(state, false, `${recipe.label} takes Avery's full day to build.`);
       spendResources(state, recipe.cost);
       state.buildings.push({
         id: `b-${state.nextEntityId++}`,
@@ -594,21 +606,25 @@
         destroyed: false,
       });
       invalidatePaths(state);
-      return result(state, true, `Avery builds the ${recipe.label.toLowerCase()}.`, action, shouldRecord);
+      return result(state, true, `Avery builds the ${recipe.label.toLowerCase()}. The day is spent.`, action, shouldRecord);
     }
 
-    if (action.type === "stonework") {
-      if (!hasUnlock(state, "stonework")) return result(state, false, "Stonework unlocks after the boar lesson.");
-      if (state.upgrades.includes("stonework")) return result(state, false, "The teepee already has its stone brace.");
-      const upgrade = UPGRADES.stonework;
-      if (!hasResources(state, upgrade.cost)) return result(state, false, "Stonework needs 1 stone from a cleared boulder.");
-      if (!consumeAction(state)) return result(state, false, "Avery has used both daylight actions.");
-      spendResources(state, upgrade.cost);
-      const teepee = state.buildings.find((building) => building.type === "teepee");
-      teepee.maxHealth += upgrade.maxHealthBonus;
-      teepee.health = Math.min(teepee.maxHealth, teepee.health + upgrade.healthBonus);
-      state.upgrades.push("stonework");
-      return result(state, true, "Avery braces the teepee with stone. Its shelter is stronger now.", action, shouldRecord);
+    if (action.type === "upgradeLauncher") {
+      const building = state.buildings.find((item) => item.id === action.id && !item.destroyed);
+      if (!building || building.type !== "stickLauncher") return result(state, false, "Choose a standing Stick Launcher to upgrade.");
+      if (TechTree.effectsFor(state).unlocksBuildingUpgrade !== "arrowShooter") return result(state, false, "Research Arrowcraft before upgrading a launcher.");
+      const cost = { wood: 4 };
+      if (!hasResources(state, cost)) return result(state, false, "An Arrow Shooter upgrade needs 4 wood.");
+      if (!consumeActions(state, 2)) return result(state, false, "Upgrading to an Arrow Shooter takes Avery's full day.");
+      spendResources(state, cost);
+      const recipe = buildingRecipe("arrowShooter");
+      building.type = "arrowShooter";
+      building.maxHealth = recipe.maxHealth;
+      building.health = Math.min(building.health, recipe.maxHealth);
+      building.cooldown = 0;
+      building.targetId = null;
+      building.firingTicks = 0;
+      return result(state, true, "Avery fletches arrows and upgrades the launcher. The day is spent.", action, shouldRecord);
     }
 
     if (action.type === "endDay") {
@@ -663,28 +679,66 @@
     state.lastEvent = `The ${buildingRecipe(building.type).label.toLowerCase()} becomes rubble and blocks the ground.`;
   }
 
-  function updateStickLaunchers(state) {
-    state.buildings.filter((building) => !building.destroyed && building.type === "stickLauncher").forEach((launcher) => {
-      const recipe = buildingRecipe(launcher.type);
-      launcher.cooldown = Math.max(0, (launcher.cooldown || 0) - 1);
-      launcher.firingTicks = Math.max(0, (launcher.firingTicks || 0) - 1);
-      const targets = state.enemies
-        .filter((enemy) => distance(launcher, enemy) <= recipe.attackRange + enemyRecipe(enemy.type).collisionRadius)
-        .sort((left, right) => distance(launcher, left) - distance(launcher, right) || String(left.id).localeCompare(String(right.id)));
-      const target = targets[0];
-      launcher.targetId = target?.id || null;
-      if (!target || launcher.cooldown > 0) return;
-      target.health = Math.max(0, target.health - recipe.damage);
-      launcher.cooldown = Math.max(1, Math.round(TICK_RATE / recipe.attackSpeed));
-      launcher.firingTicks = 5;
-      state.lastEvent = `The stick launcher snaps a sharpened branch at the ${enemyRecipe(target.type).label.toLowerCase()}.`;
-      if (target.health === 0) {
-        state.kills += 1;
-        state.xp += enemyRecipe(target.type).xp;
-        state.enemies = state.enemies.filter((enemy) => enemy.id !== target.id);
-        launcher.targetId = null;
-        state.lastEvent = `The stick launcher turns away the ${enemyRecipe(target.type).label.toLowerCase()}: +${enemyRecipe(target.type).xp} XP.`;
+  function defeatEnemy(state, enemy, source) {
+    const reward = enemyRecipe(enemy.type).xp;
+    state.kills += 1;
+    state.xp += reward;
+    state.enemies = state.enemies.filter((item) => item.id !== enemy.id);
+    state.lastEvent = `${source} turns away the ${enemyRecipe(enemy.type).label.toLowerCase()}: +${reward} XP.`;
+  }
+
+  function updateProjectiles(state) {
+    state.impacts = state.impacts.filter((impact) => impact.ticks > 1).map((impact) => ({ ...impact, ticks: impact.ticks - 1 }));
+    const remaining = [];
+    state.projectiles.forEach((projectile) => {
+      const target = state.enemies.find((enemy) => enemy.id === projectile.targetId);
+      if (!target) return;
+      const travel = projectile.speed / TICK_RATE;
+      if (distance(projectile, target) <= travel + enemyRecipe(target.type).collisionRadius) {
+        projectile.x = target.x;
+        projectile.y = target.y;
+        target.health = Math.max(0, target.health - projectile.damage);
+        state.impacts.push({ id: `impact-${state.nextEntityId++}`, x: target.x, y: target.y, ticks: 6, type: projectile.type });
+        if (target.health === 0) defeatEnemy(state, target, projectile.sourceLabel);
+        return;
       }
+      projectile.angle = Math.atan2(target.y - projectile.y, target.x - projectile.x) * (180 / Math.PI);
+      moveTowards(projectile, target, travel);
+      projectile.age += 1;
+      remaining.push(projectile);
+    });
+    state.projectiles = remaining;
+  }
+
+  function updateTowers(state) {
+    state.buildings.filter((building) => !building.destroyed && ["stickLauncher", "arrowShooter"].includes(building.type)).forEach((tower) => {
+      const recipe = buildingRecipe(tower.type);
+      tower.cooldown = Math.max(0, (tower.cooldown || 0) - 1);
+      tower.firingTicks = Math.max(0, (tower.firingTicks || 0) - 1);
+      const targets = state.enemies
+        .filter((enemy) => distance(tower, enemy) <= recipe.attackRange + enemyRecipe(enemy.type).collisionRadius)
+        .sort((left, right) => distance(tower, left) - distance(tower, right) || String(left.id).localeCompare(String(right.id)));
+      const target = targets[0];
+      tower.targetId = target?.id || null;
+      if (!target || tower.cooldown > 0) return;
+      state.projectiles.push({
+        id: `p-${state.nextEntityId++}`,
+        type: recipe.projectile.type,
+        sourceId: tower.id,
+        sourceLabel: recipe.label,
+        targetId: target.id,
+        x: tower.x,
+        y: tower.y,
+        damage: recipe.damage,
+        speed: recipe.projectile.speed,
+        angle: Math.atan2(target.y - tower.y, target.x - tower.x) * (180 / Math.PI),
+        age: 0,
+      });
+      tower.cooldown = Math.max(1, Math.round(TICK_RATE / recipe.attackSpeed));
+      tower.firingTicks = 5;
+      state.lastEvent = tower.type === "arrowShooter"
+        ? "The Arrow Shooter sends an arrow through the trees."
+        : "The Stick Launcher snaps a sharpened branch through the trees.";
     });
   }
 
@@ -723,11 +777,8 @@
     scout.cooldown = Math.max(1, Math.round(TICK_RATE / scout.attackSpeed));
     state.lastEvent = `Scout lunges at the ${enemyRecipe(target.type).label.toLowerCase()} inside his watch radius.`;
     if (target.health === 0) {
-      state.kills += 1;
-      state.xp += enemyRecipe(target.type).xp;
-      state.enemies = state.enemies.filter((enemy) => enemy.id !== target.id);
       scout.targetId = null;
-      state.lastEvent = `Scout turns away the ${enemyRecipe(target.type).label.toLowerCase()}: +${enemyRecipe(target.type).xp} XP.`;
+      defeatEnemy(state, target, "Scout");
     }
   }
 
@@ -746,6 +797,11 @@
 
   function updateEnemy(state, enemy) {
     const recipe = enemyRecipe(enemy.type);
+    if (enemy.approachDelay > 0) {
+      enemy.approachDelay -= 1;
+      enemy.intent = "sneaking";
+      return;
+    }
     const target = closestReachableBuilding(state, enemy);
     if (!target) {
       enemy.intent = "searching";
@@ -781,6 +837,8 @@
     state.nightTick = 0;
     state.encounter = null;
     state.enemies = [];
+    state.projectiles = [];
+    state.impacts = [];
     state.paused = false;
     state.speed = 1;
     state.outcome = null;
@@ -795,7 +853,7 @@
     const unlockedNow = Boolean(level.unlock) && !hasUnlock(state, level.unlock);
     if (unlockedNow) addUnlock(state, level.unlock);
     const completionCopy = unlockedNow
-      ? `${level.unlockLabel} unlocked. ${level.unlockCopy}`
+      ? `+${level.survivalXp} XP. ${level.unlockLabel} unlocked. ${level.unlockCopy}`
       : `+${level.survivalXp} survival XP.`;
     state.history.push({ level: level.id, result: "victory", seed: state.seed, kills: state.kills });
     startNextDay(state, level, completionCopy);
@@ -813,13 +871,14 @@
     }
     state.nightTick += 1;
     spawnWaves(state);
-    updateStickLaunchers(state);
+    updateProjectiles(state);
+    updateTowers(state);
     updateScout(state);
     if (state.phase !== "night") return state;
     [...state.enemies].forEach((enemy) => {
       if (state.phase === "night" && state.enemies.some((item) => item.id === enemy.id)) updateEnemy(state, enemy);
     });
-    if (state.phase === "night" && state.encounter.waves.every((wave) => wave.spawned) && state.enemies.length === 0) beginAftermath(state);
+    if (state.phase === "night" && state.encounter.waves.every((wave) => wave.spawned) && state.enemies.length === 0 && state.projectiles.length === 0) beginAftermath(state);
     return state;
   }
 
@@ -868,6 +927,7 @@
       resources: state.resources,
       xp: state.xp,
       unlocks: state.unlocks,
+      research: state.research,
       kills: state.kills,
       terrain: state.terrain,
       buildings: state.buildings.map((building) => ({ id: building.id, type: building.type, x: building.x, y: building.y, health: building.health, maxHealth: building.maxHealth, destroyed: building.destroyed })),
@@ -895,7 +955,7 @@
     UNITS,
     ENEMIES,
     BUILDINGS,
-    UPGRADES,
+    TECH_TREE: TechTree.NODES,
     ENEMY_COUNTERS,
     LEVELS,
     STARTING_ACTIONS,
@@ -906,6 +966,8 @@
     nextSeed,
     levelFor,
     mediumThreatBudget,
+    techAvailability: TechTree.availability,
+    hasResearch: TechTree.isResearched,
     terrainAt,
     inBounds,
     cellKey,

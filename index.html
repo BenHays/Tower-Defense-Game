@@ -34,8 +34,7 @@
         </div>
         <dl class="resource-row">
           <div><dt>Actions</dt><dd id="action-points">2</dd></div>
-          <div><dt>Wood</dt><dd id="wood-value">4</dd></div>
-          <div><dt>Stone</dt><dd id="stone-value">0</dd></div>
+          <div><dt>Wood</dt><dd id="wood-value">0</dd></div>
           <div><dt>Homestead XP</dt><dd id="xp-value">0</dd></div>
         </dl>
       </section>
@@ -53,19 +52,19 @@
           <h2 id="selected-title">Branch teepee</h2>
           <p id="selected-copy">Home · 12/12 health · repair costs 1 wood and one Avery action.</p>
           <div class="mini-meter" aria-hidden="true"><span id="selection-meter" style="width: 100%"></span></div>
-          <p class="selection-footnote" id="selection-footnote">Scout begins inside the central clearing.</p>
+          <p class="selection-footnote" id="selection-footnote">Click terrain or a building to inspect it.</p>
         </section>
 
         <section class="action-card" aria-label="Avery actions">
-          <div class="action-heading"><div><p class="eyebrow">Avery’s daylight</p><p class="action-hint" id="action-hint">One tree uses the whole day. Buildings cost materials and one action.</p></div><strong id="action-badge">2 actions</strong></div>
+          <div class="action-heading"><div><p class="eyebrow">Avery’s daylight</p><p class="action-hint" id="action-hint">Trees and first-line buildings use the whole day.</p></div><strong id="action-badge">2 actions</strong></div>
           <div class="tool-grid" id="tool-grid">
-            <button class="tool-button is-active" data-tool="inspect" type="button">Inspect<span>look</span></button>
-            <button class="tool-button" data-tool="clear" type="button">Clear<span>tree / rock</span></button>
+            <button class="tool-button" data-tool="clear" type="button">Clear<span>tree · 2 actions</span></button>
             <button class="tool-button" data-tool="scout" type="button">Place Scout<span>1 action</span></button>
-            <button class="tool-button" data-tool="stickLauncher" id="stick-launcher-tool" type="button">Stick launcher<span>1 wood · 1 action</span></button>
+            <button class="tool-button" data-tool="stickLauncher" id="stick-launcher-tool" type="button">Stick launcher<span>1 wood · full day</span></button>
           </div>
           <div class="action-row">
             <button class="secondary-button" id="repair-button" type="button">Repair selected <span>1 wood · 1 action</span></button>
+            <button class="secondary-button" id="upgrade-button" type="button">Upgrade selected <span>Arrowcraft · 4 wood</span></button>
           </div>
           <button class="primary-button wide" id="end-day-button" type="button">End day <span>Begin night watch →</span></button>
         </section>
@@ -74,18 +73,25 @@
           <p class="eyebrow">Plan the meadow</p>
           <button class="secondary-button wide" id="overlay-button" type="button">Show planning overlay <span>range + routes</span></button>
           <p class="preview-copy" id="preview-copy">Clear one tree in the first day. After Scout holds the first night, build the Stick Launcher with that wood.</p>
+          <section class="tech-card" aria-label="Technology">
+            <p class="eyebrow">Technology</p>
+            <strong id="tech-title">Arrowcraft</strong>
+            <p id="tech-copy">Clear levels and turn XP into lasting knowledge.</p>
+            <button class="secondary-button wide" id="research-button" type="button">Research Arrowcraft <span>6 XP</span></button>
+          </section>
           <div class="speed-controls" aria-label="Night speed">
             <button class="speed-button" id="pause-button" type="button">Pause</button>
             <button class="speed-button is-active" data-speed="1" type="button">1×</button>
             <button class="speed-button" data-speed="2" type="button">2×</button>
           </div>
-          <label class="setting-toggle" for="health-bars-toggle"><input id="health-bars-toggle" type="checkbox" /> <span>Show health bars</span></label>
+          <label class="setting-toggle" for="health-bars-toggle"><input id="health-bars-toggle" type="checkbox" /> <span>Show enemy + building health</span></label>
         </aside>
       </section>
 
       <section class="event-log" aria-label="Field notes" aria-live="polite"><p class="eyebrow">Field notes</p><p id="event-log">Avery and Scout begin with two daylight actions. The meadow will wait until you choose End day.</p></section>
     </main>
 
+    <script src="tech-tree.js"></script>
     <script src="engine.js"></script>
     <script src="game.js"></script>
   </body>
