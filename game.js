@@ -2,7 +2,7 @@ const Engine = window.WildHearthEngine;
 
 if (!Engine) throw new Error("Wild Hearth engine did not load.");
 
-const SAVE_KEY = "wild-hearth-save-v8";
+const SAVE_KEY = "wild-hearth-save-v9";
 const SETTINGS_KEY = "wild-hearth-settings-v1";
 const elements = {
   board: document.querySelector("#game-board"),
@@ -190,6 +190,8 @@ function describeCell(x, y) {
 }
 
 function ensureGrid() {
+  elements.grid.style.setProperty("--board-columns", String(Engine.BOARD.width));
+  elements.grid.style.setProperty("--board-rows", String(Engine.BOARD.height));
   if (gridCells.size) return;
   const fragment = document.createDocumentFragment();
   for (let y = 0; y < Engine.BOARD.height; y += 1) {

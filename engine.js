@@ -11,13 +11,15 @@
   root.WildHearthEngine = engine;
 }(typeof globalThis !== "undefined" ? globalThis : this, function buildEngine(TechTree) {
   if (!TechTree) throw new Error("Wild Hearth tech tree did not load.");
-  const SAVE_VERSION = 8;
+  const SAVE_VERSION = 9;
   const TICK_RATE = 20;
-  const BOARD = { id: "hearth-meadow", label: "Hearth Meadow", width: 13, height: 13 };
+  const BOARD = { id: "hearth-meadow", label: "Hearth Meadow", width: 15, height: 15 };
   const STARTING_ACTIONS = 2;
   const DEFAULT_SEED = "HEARTH-1042";
   const pathCaches = new WeakMap();
-  const SHELTER_SITE = { x: 6, y: 6 };
+  const SHELTER_SITE = { x: Math.floor(BOARD.width / 2), y: Math.floor(BOARD.height / 2) };
+  const SCOUT_POST = { x: SHELTER_SITE.x - 1, y: SHELTER_SITE.y + 1 };
+  const CLEARING_RADIUS = 2.28;
 
   const UNITS = {
     scout: {
@@ -222,9 +224,9 @@
     const set = (x, y, type) => { terrain[y * BOARD.width + x] = type; };
     const open = (x, y) => set(x, y, "open");
 
-    for (let y = 3; y <= 9; y += 1) {
-      for (let x = 3; x <= 9; x += 1) {
-        if (Math.hypot(x - 6, y - 6) <= 2.28) open(x, y);
+    for (let y = SHELTER_SITE.y - 3; y <= SHELTER_SITE.y + 3; y += 1) {
+      for (let x = SHELTER_SITE.x - 3; x <= SHELTER_SITE.x + 3; x += 1) {
+        if (Math.hypot(x - SHELTER_SITE.x, y - SHELTER_SITE.y) <= CLEARING_RADIUS) open(x, y);
       }
     }
     return terrain;
@@ -658,10 +660,10 @@
       rubble: [],
       scout: {
         ...clone(UNITS.scout),
-        x: 5,
-        y: 7,
-        postX: 5,
-        postY: 7,
+        x: SCOUT_POST.x,
+        y: SCOUT_POST.y,
+        postX: SCOUT_POST.x,
+        postY: SCOUT_POST.y,
         cooldown: 0,
         targetId: null,
         mode: "idle",

@@ -33,3 +33,4 @@
 - Introduce a new enemy family through a guaranteed showcase, then fold it into the seeded Threat Budget. Its counter should be buildable at least two levels in advance and new families should be spaced three levels apart.
 - Put repeatable enemy-control effects behind one non-stacking status contract. Potato slow is short and heavy; Honeyed and Warmth can later be longer/lighter variants without ambiguous stacking.
 - Keep guidance in one place: the HUD owns the current objective, the map stays visual, and the inspector only appears for a selection or armed action. Phase-specific controls prevent day-planning text from competing with the night watch.
+- Derive central anchors from the board dimensions. The 15×15 meadow preserves the 21-cell opening and Scout's relative post while gaining a dense outer ring; board-size changes also require a save-version bump and a renderer grid update.
