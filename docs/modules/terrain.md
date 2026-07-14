@@ -2,7 +2,7 @@
 
 ## Live now
 
-- The fixed 15×15 map has a 21-cell clearing centered on the shelter site; trees cover every other cell. They slow enemies but are walkable.
+- The fixed 15×15 map has a 21-cell starting clearing centered on the Scout anchor; trees cover every other cell. They slow enemies but are walkable, and the player chooses the first shelter location on open grass.
 - Harvesting a tree spends one action, grants 2 wood (3 after Woodland Yield), and changes it into cleared grass.
 - Both original meadow grass and cleared grass can hold defenses when unoccupied. Cleared ground is faster; trees remain a wood source and slower route.
 - The placement preview exposes nearby route cost so clearing remains a deliberate trade: wood and building room can also speed a route.

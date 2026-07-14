@@ -44,8 +44,11 @@ function runPlan(label, chooseDayAction) {
   const state = Engine.createRun(seed);
   while (state.phase === "day" && state.levelIndex + 1 <= maxLevel) {
     if (!Engine.hasShelter(state)) {
-      if (!state.hatchetCrafted) Engine.dispatch(state, { type: "craftHatchet" });
-      Engine.dispatch(state, { type: "constructShelter" });
+      if (!state.hatchetCrafted) {
+        Engine.OPENING_PICKUPS.forEach((pickup) => Engine.dispatch(state, { type: "collectOpeningPickup", id: pickup.id }));
+        Engine.dispatch(state, { type: "craftHatchet" });
+      }
+      Engine.dispatch(state, { type: "constructShelter", ...Engine.SHELTER_SITE });
     }
     else chooseDayAction(state);
     if (state.phase === "day") Engine.dispatch(state, { type: "endDay" });

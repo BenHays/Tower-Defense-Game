@@ -11,7 +11,7 @@
   root.WildHearthEngine = engine;
 }(typeof globalThis !== "undefined" ? globalThis : this, function buildEngine(TechTree) {
   if (!TechTree) throw new Error("Wild Hearth tech tree did not load.");
-  const SAVE_VERSION = 11;
+  const SAVE_VERSION = 12;
   const TICK_RATE = 20;
   const SKILL_POINT_XP = 8;
   const BOARD = { id: "hearth-meadow", label: "Hearth Meadow", width: 15, height: 15 };
@@ -21,6 +21,10 @@
   const SHELTER_SITE = { x: Math.floor(BOARD.width / 2), y: Math.floor(BOARD.height / 2) };
   const SCOUT_POST = { x: SHELTER_SITE.x - 1, y: SHELTER_SITE.y + 1 };
   const CLEARING_RADIUS = 2.28;
+  const OPENING_PICKUPS = [
+    { id: "starter-stick", type: "stick", x: SHELTER_SITE.x - 2, y: SHELTER_SITE.y },
+    { id: "starter-rock", type: "rock", x: SHELTER_SITE.x + 2, y: SHELTER_SITE.y },
+  ];
 
   const UNITS = {
     scout: {
@@ -699,6 +703,14 @@
     return Boolean(state.shelterBuilt) && state.buildings.some((building) => building.type === "teepee" && !building.destroyed);
   }
 
+  function openingPickupAt(state, x, y) {
+    return (state.openingPickups || []).find((pickup) => !pickup.collected && pickup.x === x && pickup.y === y) || null;
+  }
+
+  function hasOpeningSupplies(state) {
+    return OPENING_PICKUPS.every((definition) => state.openingPickups?.some((pickup) => pickup.id === definition.id && pickup.collected));
+  }
+
   function potatoPatchProgress(building) {
     const recipe = building?.type === "potatoPatch" ? buildingRecipe("potatoPatch") : null;
     const requiredNights = recipe?.maturityNights || 0;
@@ -714,8 +726,8 @@
     return Boolean(building && !building.destroyed && building.type === "potatoPatch" && isPotatoPatchMature(building) && hasUnlock(state, "potatoGun"));
   }
 
-  function makeTeepee(state) {
-    return makeBuilding(state, "b-teepee", "teepee", SHELTER_SITE.x, SHELTER_SITE.y);
+  function makeTeepee(state, x, y) {
+    return makeBuilding(state, "b-teepee", "teepee", x, y);
   }
 
   function makeBuilding(state, id, type, x, y) {
@@ -758,6 +770,7 @@
       unlocks: [],
       research: [],
       terrain: FIXED_TERRAIN.slice(),
+      openingPickups: OPENING_PICKUPS.map((pickup) => ({ ...pickup, collected: false })),
       hatchetCrafted: false,
       shelterBuilt: false,
       buildings: [],
@@ -781,7 +794,7 @@
       nextEntityId: 1,
       kills: 0,
       actionLog: [],
-      lastEvent: "Craft a hatchet, then build a shelter before the first watch.",
+      lastEvent: "Collect the stick and rock, then craft an axe before the first watch.",
       outcome: null,
       aftermathTicks: 0,
       paused: false,
@@ -946,24 +959,35 @@
       return result(state, false, "Day actions are only available before nightfall.");
     }
 
-    if (!state.shelterBuilt && !["craftHatchet", "constructShelter", "speed"].includes(action.type)) {
-      return result(state, false, "Craft a hatchet, then construct shelter before taking other actions.", action, shouldRecord);
+    if (!state.shelterBuilt && !["collectOpeningPickup", "craftHatchet", "constructShelter", "speed"].includes(action.type)) {
+      return result(state, false, "Collect the stick and rock, craft an axe, then place the shelter before taking other actions.", action, shouldRecord);
+    }
+
+    if (action.type === "collectOpeningPickup") {
+      if (state.levelIndex !== 0 || state.shelterBuilt) return result(state, false, "Starter materials can only be collected at the start of Level 1.");
+      const pickup = (state.openingPickups || []).find((item) => item.id === action.id);
+      if (!pickup || pickup.collected) return result(state, false, "That starter material has already been collected.");
+      pickup.collected = true;
+      const nextStep = hasOpeningSupplies(state) ? "Both materials collected. Craft an axe." : `The ${pickup.type} is collected. Find the other starter material.`;
+      return result(state, true, nextStep, action, shouldRecord);
     }
 
     if (action.type === "craftHatchet") {
       if (state.hatchetCrafted) return result(state, false, "The hatchet is already ready.");
       if (state.levelIndex !== 0) return result(state, false, "The starter hatchet can only be crafted at the start of Level 1.");
+      if (!hasOpeningSupplies(state)) return result(state, false, "Collect the stick and rock before crafting an axe.");
       if (!consumeAction(state)) return result(state, false, "Both day actions are spent.");
       state.hatchetCrafted = true;
-      return result(state, true, "Hatchet crafted. Construct the shelter to begin the first watch.", action, shouldRecord);
+      return result(state, true, "Axe crafted. Choose unoccupied grass for the shelter.", action, shouldRecord);
     }
 
     if (action.type === "constructShelter") {
       if (state.shelterBuilt || hasShelter(state)) return result(state, false, "The shelter is already built.");
       if (state.levelIndex !== 0) return result(state, false, "The shelter can only be built at the start of Level 1.");
-      if (!state.hatchetCrafted) return result(state, false, "Craft the hatchet before constructing the shelter.");
+      if (!state.hatchetCrafted) return result(state, false, "Craft the axe before placing the shelter.");
+      if (!Number.isInteger(action.x) || !Number.isInteger(action.y) || !validFootprint(state, "teepee", action.x, action.y)) return result(state, false, "Place the shelter on unoccupied grass.");
       if (!consumeAction(state)) return result(state, false, "Both day actions are spent.");
-      state.buildings.push(makeTeepee(state));
+      state.buildings.push(makeTeepee(state, action.x, action.y));
       state.shelterBuilt = true;
       invalidatePaths(state);
       return result(state, true, "Shelter complete. Both opening actions are spent; start the first watch.", action, shouldRecord);
@@ -1525,13 +1549,40 @@
     return JSON.stringify({ version: SAVE_VERSION, state });
   }
 
-  function migrateV10State(legacyState) {
+  function openingPickupActions(collectedIds = new Set()) {
+    return OPENING_PICKUPS.filter((pickup) => !collectedIds.has(pickup.id)).map((pickup) => ({ type: "collectOpeningPickup", id: pickup.id }));
+  }
+
+  function migrateLegacyState(legacyState, version) {
     const state = clone(legacyState);
     state.version = SAVE_VERSION;
-    state.hatchetCrafted = Boolean(state.shelterBuilt);
-    if (Array.isArray(state.actionLog) && !state.actionLog.some((action) => action.type === "craftHatchet")) {
-      const shelterIndex = state.actionLog.findIndex((action) => action.type === "constructShelter");
-      if (shelterIndex >= 0) state.actionLog.splice(shelterIndex, 0, { type: "craftHatchet" });
+    if (version === 10) state.hatchetCrafted = Boolean(state.shelterBuilt);
+    state.openingPickups = OPENING_PICKUPS.map((pickup) => ({ ...pickup, collected: Boolean(state.hatchetCrafted || state.shelterBuilt) }));
+    if (Array.isArray(state.actionLog)) {
+      const migratedActions = [];
+      let supplied = false;
+      const collectedIds = new Set();
+      state.actionLog.forEach((action) => {
+        if (action.type === "collectOpeningPickup") {
+          collectedIds.add(action.id);
+          migratedActions.push(action);
+          return;
+        }
+        if (action.type === "craftHatchet" && !supplied) {
+          migratedActions.push(...openingPickupActions(collectedIds));
+          supplied = true;
+        }
+        if (action.type === "constructShelter") {
+          if (!supplied) {
+            migratedActions.push(...openingPickupActions(collectedIds), { type: "craftHatchet" });
+            supplied = true;
+          }
+          migratedActions.push({ ...action, x: Number.isInteger(action.x) ? action.x : SHELTER_SITE.x, y: Number.isInteger(action.y) ? action.y : SHELTER_SITE.y });
+          return;
+        }
+        migratedActions.push(action);
+      });
+      state.actionLog = migratedActions;
     }
     state.buildings = Array.isArray(state.buildings) ? state.buildings.map((building) => ({
       ...building,
@@ -1542,11 +1593,12 @@
 
   function hydrate(serialized) {
     const parsed = typeof serialized === "string" ? JSON.parse(serialized) : serialized;
-    if (!parsed || !parsed.state || ![10, SAVE_VERSION].includes(parsed.version)) throw new Error("This save belongs to a different version of Wild Hearth.");
-    const state = parsed.version === 10 ? migrateV10State(parsed.state) : parsed.state;
+    if (!parsed || !parsed.state || ![10, 11, SAVE_VERSION].includes(parsed.version)) throw new Error("This save belongs to a different version of Wild Hearth.");
+    const state = parsed.version === SAVE_VERSION ? parsed.state : migrateLegacyState(parsed.state, parsed.version);
     if (state.version !== SAVE_VERSION) throw new Error("This save belongs to a different version of Wild Hearth.");
     if (!Array.isArray(state.terrain) || state.terrain.length !== BOARD.width * BOARD.height) throw new Error("This save has an invalid meadow.");
     if (typeof state.hatchetCrafted !== "boolean" || typeof state.shelterBuilt !== "boolean" || !Array.isArray(state.buildings)) throw new Error("This save has an invalid shelter state.");
+    if (!Array.isArray(state.openingPickups) || !OPENING_PICKUPS.every((definition) => state.openingPickups.some((pickup) => pickup.id === definition.id && pickup.type === definition.type && pickup.x === definition.x && pickup.y === definition.y && typeof pickup.collected === "boolean"))) throw new Error("This save has invalid starter materials.");
     if (![1, 2].includes(state.speed)) throw new Error("This save has an invalid speed setting.");
     if (!state.resources || !Number.isFinite(state.resources.wood) || !Number.isFinite(state.resources.hides) || !Number.isFinite(state.xp) || !Number.isInteger(state.skillPoints) || !Number.isInteger(state.skillPointsEarned)) throw new Error("This save has an invalid progression state.");
     if (!state.telemetry || !state.telemetry.total || !Array.isArray(state.telemetry.nightReports) || !Array.isArray(state.replaySnapshots) || !Array.isArray(state.remains)) throw new Error("This save has an invalid night record.");
@@ -1587,6 +1639,7 @@
       skillPointsEarned: state.skillPointsEarned,
       unlocks: state.unlocks,
       research: state.research,
+      openingPickups: state.openingPickups.map((pickup) => ({ id: pickup.id, collected: pickup.collected })),
       hatchetCrafted: state.hatchetCrafted,
       shelterBuilt: state.shelterBuilt,
       kills: state.kills,
@@ -1620,6 +1673,7 @@
     BUILDINGS,
     TOWER_TYPES,
     SHELTER_SITE,
+    OPENING_PICKUPS,
     TECH_TREE: TechTree.NODES,
     TECH_BRANCHES: TechTree.BRANCHES,
     ENEMY_COUNTERS,
@@ -1647,6 +1701,8 @@
     isBuildableGrass,
     validScoutPost,
     hasShelter,
+    openingPickupAt,
+    hasOpeningSupplies,
     potatoPatchProgress,
     isPotatoPatchMature,
     canUpgradePotatoPatch,

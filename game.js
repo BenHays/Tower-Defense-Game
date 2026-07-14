@@ -2,8 +2,8 @@ const Engine = window.WildHearthEngine;
 
 if (!Engine) throw new Error("Wild Hearth engine did not load.");
 
-const SAVE_KEY = "wild-hearth-save-v11";
-const LEGACY_SAVE_KEY = "wild-hearth-save-v10";
+const SAVE_KEY = "wild-hearth-save-v12";
+const LEGACY_SAVE_KEYS = ["wild-hearth-save-v11", "wild-hearth-save-v10"];
 const SETTINGS_KEY = "wild-hearth-settings-v1";
 const elements = {
   board: document.querySelector("#game-board"),
@@ -32,7 +32,7 @@ const elements = {
   toolbarLarger: document.querySelector("#toolbar-larger"),
   toolbarSizeLabel: document.querySelector("#toolbar-size-label"),
   actionRow: document.querySelector("#action-row"),
-  hatchetButton: document.querySelector("#hatchet-button"),
+  axeButton: document.querySelector("#axe-button"),
   shelterButton: document.querySelector("#shelter-button"),
   repairButton: document.querySelector("#repair-button"),
   upgradeButton: document.querySelector("#upgrade-button"),
@@ -83,6 +83,7 @@ let buildListSignature = "";
 let harvestEffect = null;
 let harvestTimer = null;
 const HARVEST_EFFECT_MS = 760;
+const REDUCED_HARVEST_EFFECT_MS = 320;
 const BUILD_CARD_ICONS = {
   stickLauncher: "stick-launcher-icon",
   potatoPatch: "potato-patch-icon",
@@ -237,7 +238,7 @@ function startHarvestEffect(x, y) {
     harvestEffect = null;
     harvestTimer = null;
     render();
-  }, window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 80 : HARVEST_EFFECT_MS);
+  }, window.matchMedia("(prefers-reduced-motion: reduce)").matches ? REDUCED_HARVEST_EFFECT_MS : HARVEST_EFFECT_MS);
 }
 
 function openTechnology() {
@@ -294,6 +295,8 @@ function beginNight() {
 }
 
 function describeCell(x, y) {
+  const pickup = Engine.openingPickupAt(state, x, y);
+  if (pickup) return pickup.type === "stick" ? "Starter stick" : "Starter rock";
   const building = Engine.buildingAt(state, x, y);
   if (building) return Engine.BUILDINGS[building.type].label;
   if (Engine.scoutPostAt(state, x, y)) return "Scout watch post";
@@ -325,7 +328,8 @@ function patchCell(cell, x, y, chosen, previewPath, preview) {
   const terrain = Engine.terrainAt(state, x, y);
   const wasTree = cell.dataset.terrain === "tree";
   cell.dataset.terrain = terrain;
-  cell.disabled = state.phase !== "day" || needsShelter();
+  const openingCell = Engine.openingPickupAt(state, x, y);
+  cell.disabled = state.phase !== "day" || (needsShelter() && !openingCell && activeTool !== "teepee");
   cell.setAttribute("aria-label", describeCell(x, y));
   cell.className = `cell terrain-${terrain}`;
   if (terrain === "tree") {
@@ -354,7 +358,8 @@ function renderGrid() {
   const focusedBuilding = selectedBuilding();
   const scout = selectedScout();
   const chosen = selectedCell() || (focusedBuilding ? { x: focusedBuilding.x, y: focusedBuilding.y } : scout ? { x: Math.round(scout.x), y: Math.round(scout.y) } : null);
-  const signature = [state.topologyVersion, state.phase, state.actionPoints, state.resources.wood, activeTool, hoverCell ? cellId(hoverCell.x, hoverCell.y) : "", chosen ? cellId(chosen.x, chosen.y) : "", planning, previewSignature, state.rubble.map((item) => cellId(item.x, item.y)).join(",")].join("|");
+  const pickupSignature = state.openingPickups.map((pickup) => `${pickup.id}:${pickup.collected}`).join(",");
+  const signature = [state.topologyVersion, state.phase, state.actionPoints, state.resources.wood, activeTool, hoverCell ? cellId(hoverCell.x, hoverCell.y) : "", chosen ? cellId(chosen.x, chosen.y) : "", planning, previewSignature, pickupSignature, state.rubble.map((item) => cellId(item.x, item.y)).join(",")].join("|");
   if (signature === gridSignature) return;
   gridSignature = signature;
   for (let y = 0; y < Engine.BOARD.height; y += 1) {
@@ -402,6 +407,7 @@ function renderEntities() {
       createNode("span", "harvest-canopy tree-canopy"),
       createNode("span", "harvest-swoosh"),
       createNode("span", "harvest-hatchet"),
+      createNode("span", "harvest-impact"),
       createNode("span", "harvest-chips"),
     );
     place(effect, harvestEffect.x, harvestEffect.y);
@@ -409,10 +415,11 @@ function renderEntities() {
   }
 
   if (needsShelter()) {
-    const shelterSite = createNode("div", "entity shelter-site");
-    place(shelterSite, Engine.SHELTER_SITE.x, Engine.SHELTER_SITE.y);
-    addLabel(shelterSite, "Shelter site");
-    fragment.append(shelterSite);
+    state.openingPickups.filter((pickup) => !pickup.collected).forEach((pickup) => {
+      const node = createNode("div", `entity opening-pickup ${pickup.type}`);
+      place(node, pickup.x, pickup.y);
+      fragment.append(node);
+    });
   }
 
   state.buildings.filter((building) => !building.destroyed).forEach((building) => {
@@ -674,6 +681,7 @@ function renderControls() {
   const potatoPatchUpgradeReady = building && Engine.canUpgradePotatoPatch(state, building);
   const patchProgress = building?.type === "potatoPatch" ? Engine.potatoPatchProgress(building) : null;
   const opening = needsShelter();
+  const openingSuppliesReady = Engine.hasOpeningSupplies(state);
   const hasPlanningTarget = Boolean(selectedScout() || towerRecipe(building?.type));
   const showPlanningCard = night || state.phase === "aftermath" || (day && hasPlanningTarget);
   elements.controlPanel.classList.toggle("is-day", day);
@@ -683,14 +691,16 @@ function renderControls() {
   elements.planningCard.hidden = opening || !showPlanningCard;
   const unlockedBuildTools = renderBuildList();
   elements.buildCard.hidden = opening || !unlockedBuildTools.length;
-  elements.hatchetButton.hidden = !opening || state.hatchetCrafted;
-  elements.hatchetButton.disabled = !day || !opening || state.hatchetCrafted || state.actionPoints <= 0;
-  elements.shelterButton.hidden = !opening;
+  elements.axeButton.hidden = !opening || state.hatchetCrafted;
+  elements.axeButton.disabled = !day || !opening || state.hatchetCrafted || !openingSuppliesReady || state.actionPoints <= 0;
+  elements.shelterButton.hidden = !opening || !state.hatchetCrafted;
   elements.shelterButton.disabled = !day || !opening || !state.hatchetCrafted || state.actionPoints <= 0;
   elements.dayActionList.querySelectorAll("[data-tool]").forEach((button) => {
     const tool = button.dataset.tool;
     button.classList.toggle("is-active", tool === activeTool);
-    button.disabled = opening || !day || state.actionPoints <= 0;
+    button.disabled = tool === "teepee"
+      ? !day || !opening || !state.hatchetCrafted || state.actionPoints <= 0
+      : opening || !day || state.actionPoints <= 0;
   });
   const woodYield = 2 + Engine.techEffects(state).filter((effect) => effect.kind === "harvestWood").reduce((total, effect) => total + effect.amount, 0);
   const clearDetail = elements.dayActionList.querySelector('[data-tool="clear"] small');
@@ -730,8 +740,10 @@ function renderControls() {
   elements.actionHint.textContent = day
     ? opening
       ? state.hatchetCrafted
-        ? "Construct the shelter to start the first watch."
-        : "Craft a hatchet to unlock tree harvesting."
+        ? "Choose open grass for the shelter."
+        : openingSuppliesReady
+          ? "Craft an axe from the stick and rock."
+          : "Click the stick and rock in the meadow."
       : "Choose an action, then select the meadow."
     : "Scout is defending the hearth.";
   elements.utilityLabel.textContent = night ? "Night watch" : state.phase === "aftermath" ? "Dawn" : "Tools";
@@ -740,8 +752,10 @@ function renderControls() {
   elements.levelCopy.textContent = day
     ? opening
       ? state.hatchetCrafted
-        ? "Construct the shelter before the first watch."
-        : "Craft a hatchet, then construct the shelter."
+        ? "Place the shelter on any unoccupied grass before the first watch."
+        : openingSuppliesReady
+          ? "Craft an axe, then place the shelter."
+          : "Collect the stick and rock from the meadow."
       : level.number === 1
         ? "Scout can hold the first raccoon. Harvest a tree for wood when ready."
         : level.number === 3 && state.unlocks.includes("potatoPatch") && !state.buildings.some((item) => item.type === "potatoPatch" && !item.destroyed)
@@ -802,7 +816,24 @@ function render() {
 }
 
 function clickCell(x, y) {
-  if (state.phase !== "day" || needsShelter() || harvestEffect) return;
+  if (state.phase !== "day" || harvestEffect) return;
+  if (needsShelter()) {
+    const pickup = Engine.openingPickupAt(state, x, y);
+    if (pickup) {
+      selected = { kind: "cell", x, y };
+      dispatch({ type: "collectOpeningPickup", id: pickup.id });
+      return;
+    }
+    if (activeTool === "teepee") {
+      const outcome = dispatch({ type: "constructShelter", x, y });
+      if (outcome.ok) {
+        activeTool = "none";
+        selected = { kind: "building", id: "b-teepee" };
+      }
+      render();
+    }
+    return;
+  }
   const occupied = Engine.buildingAt(state, x, y);
   if (occupied) {
     selected = { kind: "building", id: occupied.id };
@@ -872,7 +903,7 @@ function saveGame() {
 
 function loadGame() {
   try {
-    const saved = localStorage.getItem(SAVE_KEY) || localStorage.getItem(LEGACY_SAVE_KEY);
+    const saved = localStorage.getItem(SAVE_KEY) || LEGACY_SAVE_KEYS.map((key) => localStorage.getItem(key)).find(Boolean);
     if (!saved) { setEvent("No saved meadow is available in this browser."); return; }
     state = Engine.hydrate(saved);
     localStorage.setItem(SAVE_KEY, Engine.serialize(state));
@@ -922,14 +953,7 @@ elements.dayActionList.addEventListener("click", selectTool);
 elements.buildList.addEventListener("click", selectTool);
 elements.toolbarSmaller.addEventListener("click", () => changeToolbarSize(-1));
 elements.toolbarLarger.addEventListener("click", () => changeToolbarSize(1));
-elements.hatchetButton.addEventListener("click", () => dispatch({ type: "craftHatchet" }));
-elements.shelterButton.addEventListener("click", () => {
-  const outcome = dispatch({ type: "constructShelter" });
-  if (outcome.ok) {
-    selected = { kind: "building", id: "b-teepee" };
-    render();
-  }
-});
+elements.axeButton.addEventListener("click", () => dispatch({ type: "craftHatchet" }));
 elements.repairButton.addEventListener("click", () => {
   const building = selectedBuilding();
   if (building) dispatch({ type: "repair", id: building.id });

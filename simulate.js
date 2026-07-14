@@ -2,8 +2,9 @@ const Engine = require("./engine.js");
 
 const seed = process.argv[2] || Engine.DEFAULT_SEED;
 const state = Engine.createRun(seed);
+Engine.OPENING_PICKUPS.forEach((pickup) => Engine.dispatch(state, { type: "collectOpeningPickup", id: pickup.id }));
 Engine.dispatch(state, { type: "craftHatchet" });
-Engine.dispatch(state, { type: "constructShelter" });
+Engine.dispatch(state, { type: "constructShelter", ...Engine.SHELTER_SITE });
 Engine.dispatch(state, { type: "endDay" });
 
 let guard = 14000;

@@ -18,7 +18,7 @@ Open [http://localhost:4173](http://localhost:4173). You can also open `index.ht
 
 ## How to play
 
-1. Level 1 begins at a shelter site with two guided actions: **Craft hatchet** (free, one action), then **Construct shelter** (free, one action). Every other control and **End Day** stays locked until the shelter stands.
+1. Level 1 begins with a visible **stick** and **rock** in the starting clearing. Click both (free), then **Craft axe** (free, one action) and **Place shelter** (free, one action) on any unoccupied grass. Every other control and **End Day** stays locked until the shelter stands.
 2. End the day. Scout handles the first raccoon, then returns to the watch post. The next day starts automatically—there is no Continue button or result popup.
 3. Every normal day has two actions. **Harvest Tree**, placing Scout, building a tower, repairing, and upgrading each use **one** action. Harvesting grants **2 wood** and turns the tree into open grass through a short wind-up, swing, chip burst, and stump-reveal animation. Scout's watch post reserves its cell: towers cannot overlap it, and Scout cannot be placed inside a structure.
 4. Level 1 unlocks the **Stick Launcher**. On Level 2, harvest a tree and build it for 2 wood on any unoccupied grass cell in the same day. It has 8 health, deals 1 damage, fires once every 2 seconds, and has short reach.

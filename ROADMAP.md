@@ -6,9 +6,9 @@ This roadmap protects the core loop: use the day to shape a small homestead, the
 
 ### Level 1 — Shelter and first watch
 
-1. Start with Scout, a **shelter site**, **0 wood**, and two daylight actions. There is no teepee or fire yet.
-2. The first active control is **Craft hatchet**. It costs no wood and consumes one action; it unlocks **Harvest Tree**. Then **Construct shelter** costs no wood and consumes the second action. Every other action, research, and build control—including **End day**—is disabled until this is complete.
-3. The new teepee is therefore the one free thing the player *earns* through the two-step tutorial, not a free starting building. The hatchet is a starter tool, not a tracked resource.
+1. Start with Scout, a visible **stick** and **rock** in the clearing, **0 wood**, and two daylight actions. There is no teepee or fire yet.
+2. Click both materials (free). **Craft axe** becomes available and consumes one action; it unlocks **Harvest Tree**. **Place shelter** then consumes the second action and lets the player choose any unoccupied grass cell. Every other action, research, and build control—including **End day**—is disabled until this is complete.
+3. The new teepee is therefore the one free thing the player *earns* through the two-action tutorial, not a free starting building. The axe is a starter tool, not a tracked resource.
 4. End the day. Scout defeats one raccoon without help, returns to his watch post, and the **Stick Launcher** recipe unlocks.
 
 ### Level 2 — First line
@@ -66,7 +66,7 @@ Level 1 is intentionally safe. From Level 2 forward, the player is under real pr
 
 | Level | Player decision | Pressure |
 | --- | --- | --- |
-| 1 | Construct the shelter; watch Scout defeat one raccoon | Tutorial / easy |
+| 1 | Collect stick and rock, craft axe, place shelter; watch Scout defeat one raccoon | Tutorial / easy |
 | 2 | Harvest a tree and build the first Stick Launcher; Scout Training appears | 2 raccoons |
 | 3 | Plant a Potato Patch, or choose Scout Training / Arrowcraft and harvest for wood | 3 raccoons |
 | 4 | Let the patch grow through its second held night; choose Hearthkeeping I or Potato Packing | 4 raccoons |
@@ -76,7 +76,7 @@ Level 1 is intentionally safe. From Level 2 forward, the player is under real pr
 
 ## Delivered potato defense path
 
-The guided hatchet/shelter opening, Potato Patch, Potato Gun conversion, simplified early stats, grass placement, and compact UI are live. Hivecraft, Fungal Craft, water, and the earned hearth are planning decisions.
+The guided stick/rock → axe → player-placed shelter opening, Potato Patch, Potato Gun conversion, simplified early stats, grass placement, and compact UI are live. Hivecraft, Fungal Craft, water, and the earned hearth are planning decisions.
 
 ### Potato Patch → Potato Gun
 

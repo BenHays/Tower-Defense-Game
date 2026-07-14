@@ -17,11 +17,14 @@ function settleToNextDay(state) {
 }
 
 function constructShelter(state) {
-  if (!state.hatchetCrafted) action(state, { type: "craftHatchet" });
-  action(state, { type: "constructShelter" });
+  if (!state.hatchetCrafted) {
+    Engine.OPENING_PICKUPS.forEach((pickup) => action(state, { type: "collectOpeningPickup", id: pickup.id }));
+    action(state, { type: "craftHatchet" });
+  }
+  action(state, { type: "constructShelter", ...Engine.SHELTER_SITE });
 }
 
-// Level 1 begins with a forced shelter. Nothing else can spend resources or begin the night first.
+// Level 1 begins with map pickups, then a player-chosen shelter. Nothing else can spend resources or begin the night first.
 const run = Engine.createRun("HEARTH-1042");
 const centralBuildSite = { x: Engine.SHELTER_SITE.x - 2, y: Engine.SHELTER_SITE.y - 1 };
 const centralEnemySite = { x: centralBuildSite.x, y: centralBuildSite.y - 1.1 };
@@ -36,6 +39,10 @@ assert.equal(run.shelterBuilt, false);
 assert.equal(run.hatchetCrafted, false);
 assert.equal(Engine.hasShelter(run), false);
 assert.equal(run.buildings.length, 0);
+assert.deepEqual(run.openingPickups.map((pickup) => ({ id: pickup.id, collected: pickup.collected })), [
+  { id: "starter-stick", collected: false },
+  { id: "starter-rock", collected: false },
+], "the opening starts with one fixed stick and rock on the map");
 assert.equal(run.terrain.includes("boulder"), false, "stone is out of the current resource loop");
 assert.equal(Engine.validFootprint(run, "stickLauncher", centralBuildSite.x, centralBuildSite.y), true, "original unoccupied grass is a defense build site");
 assert.equal(Engine.validFootprint(run, "stickLauncher", 1, 3), false, "standing trees still block placement");
@@ -44,16 +51,30 @@ waterRun.terrain[0] = "water";
 assert.equal(Engine.validFootprint(waterRun, "stickLauncher", 0, 0), false, "future terrain blocks placement until it explicitly opts in");
 assert.equal(Engine.dispatch(run, { type: "clear", x: 1, y: 3 }).ok, false, "tree clearing is locked until shelter construction");
 assert.equal(Engine.dispatch(run, { type: "constructShelter" }).ok, false, "the shelter is locked until the hatchet is crafted");
+assert.equal(Engine.dispatch(run, { type: "craftHatchet" }).ok, false, "the axe is locked until both map materials are collected");
 assert.equal(Engine.dispatch(run, { type: "endDay" }).ok, false, "night cannot begin before shelter construction");
 assert.equal(run.actionPoints, 2, "blocked opening actions do not spend actions");
-constructShelter(run);
+action(run, { type: "collectOpeningPickup", id: "starter-stick" });
+assert.equal(run.actionPoints, 2, "collecting the starter stick does not spend a day action");
+assert.equal(Engine.dispatch(run, { type: "craftHatchet" }).ok, false, "one material cannot craft the axe");
+action(run, { type: "collectOpeningPickup", id: "starter-rock" });
+assert.equal(Engine.hasOpeningSupplies(run), true, "both map materials unlock the starter axe");
+action(run, { type: "craftHatchet" });
+assert.equal(Engine.dispatch(run, { type: "constructShelter", x: 1, y: 3 }).ok, false, "the shelter cannot be placed on a tree");
+action(run, { type: "constructShelter", ...Engine.SHELTER_SITE });
 assert.equal(run.hatchetCrafted, true, "the opening records the crafted starter hatchet");
 assert.equal(run.shelterBuilt, true);
 assert.equal(Engine.hasShelter(run), true);
 assert.equal(run.buildings[0].type, "teepee");
-assert.deepEqual([run.buildings[0].x, run.buildings[0].y], [Engine.SHELTER_SITE.x, Engine.SHELTER_SITE.y], "the forced shelter is centered");
+assert.deepEqual([run.buildings[0].x, run.buildings[0].y], [Engine.SHELTER_SITE.x, Engine.SHELTER_SITE.y], "the player may choose the centered grass cell for the shelter");
 assert.equal(run.resources.wood, 0, "the shelter is the only free build");
 assert.equal(run.actionPoints, 0, "crafting the hatchet and shelter each use one opening action");
+const playerPlacedShelterRun = Engine.createRun("PLAYER-PLACED-SHELTER");
+Engine.OPENING_PICKUPS.forEach((pickup) => action(playerPlacedShelterRun, { type: "collectOpeningPickup", id: pickup.id }));
+action(playerPlacedShelterRun, { type: "craftHatchet" });
+const playerShelterSite = { x: Engine.SHELTER_SITE.x - 2, y: Engine.SHELTER_SITE.y - 1 };
+action(playerPlacedShelterRun, { type: "constructShelter", ...playerShelterSite });
+assert.deepEqual([playerPlacedShelterRun.buildings[0].x, playerPlacedShelterRun.buildings[0].y], [playerShelterSite.x, playerShelterSite.y], "the player can place the shelter on any valid grass in the opening");
 action(run, { type: "endDay" });
 assert.equal(run.encounter.threatBudget, 1);
 assert.deepEqual(run.encounter.units, ["raccoon"]);
@@ -111,6 +132,16 @@ v10Save.state.actionLog = v10Save.state.actionLog.filter((item) => item.type !==
 const migratedV10 = Engine.hydrate(v10Save);
 assert.equal(migratedV10.hatchetCrafted, true, "a completed v10 shelter save receives its starter hatchet during migration");
 assert.ok(migratedV10.actionLog.some((item) => item.type === "craftHatchet"), "migration restores the opening action for deterministic replays");
+const v11Save = JSON.parse(Engine.serialize(run));
+v11Save.version = 11;
+v11Save.state.version = 11;
+delete v11Save.state.openingPickups;
+v11Save.state.actionLog = v11Save.state.actionLog
+  .filter((item) => item.type !== "collectOpeningPickup")
+  .map((item) => item.type === "constructShelter" ? { type: item.type } : item);
+const migratedV11 = Engine.hydrate(v11Save);
+assert.equal(Engine.hasOpeningSupplies(migratedV11), true, "a completed v11 opening migrates its collected stick and rock");
+assert.deepEqual(Engine.replay(run.seed, migratedV11.actionLog).buildings.find((building) => building.type === "teepee").x, Engine.SHELTER_SITE.x, "v11 shelter actions gain their original deterministic placement");
 assert.equal(run.resources.wood, 0, "building still spends the whole first wood bundle");
 assert.equal(run.actionPoints, 0);
 assert.equal(Engine.BUILDINGS.stickLauncher.attackRange, 2.25);
