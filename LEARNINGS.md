@@ -5,6 +5,10 @@
 - The no-timer day still needs a fixed action budget: normal days have two actions, and clearing, building, repairing, upgrading, and Scout placement each use one. XP is lifetime progress; every 8 XP earns a Skill Point, and research spends points without an action.
 - Scout is fully automatic at night; player attention stays on daytime position, terrain, and building decisions rather than combat controls.
 
+## Hosting
+
+- Keep the deployed version dependency-free: copy the existing browser assets into `dist/` and serve them through the platform asset binding, so each tester retains an isolated browser-local save.
+
 ## Top-down expansion
 
 - Use an authored hidden square grid. The art hides the cells, while the engine gets valid placement, footprints, four-direction paths, and range calculations.

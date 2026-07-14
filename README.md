@@ -33,6 +33,10 @@ Open [http://localhost:4173](http://localhost:4173). You can also open `index.ht
 
 There are no environment variables. Content tuning, Medium Threat allocation, the fixed 15×15 map and its centered clearing, combat contracts, loot ranges, and levels live in `engine.js`. `tech-tree.js` is the editable catalog of branches, node dependencies, Skill Point costs, and typed effects. `game.js` is the browser renderer, stable map-input layer, and full-screen Technology overlay.
 
+## Shared testing
+
+The game can be published as a Codex Site for browser-based playtesting. The hosted build has no environment variables or server-side game state; each tester's save remains in their own browser.
+
 ## Key commands
 
 ```sh
@@ -40,10 +44,13 @@ There are no environment variables. Content tuning, Medium Threat allocation, th
 python3 -m http.server 4173
 
 # Check JavaScript syntax
-node --check engine.js && node --check game.js && node --check simulate.js
+npm run check
+
+# Build the static Codex Site bundle
+npm run build
 
 # Run deterministic engine checks
-node test-engine.js
+npm test
 
 # Run a headless first-night simulation (optional seed argument)
 node simulate.js HEARTH-1042

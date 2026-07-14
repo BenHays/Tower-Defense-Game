@@ -1,0 +1,9 @@
+{
+  "name": "wild-hearth-hearth-meadow",
+  "private": true,
+  "scripts": {
+    "build": "node build-site.js",
+    "test": "node test-engine.js",
+    "check": "node --check engine.js && node --check tech-tree.js && node --check game.js && node --check simulate.js && node --check build-site.js"
+  }
+}
