@@ -44,6 +44,7 @@
 - Keep the Build strip as a one-row rail of square, icon-first tiles. Fixed tile dimensions and horizontal scrolling let the roster expand without making the play dock taller or less readable.
 - Let the optional building health bar communicate both condition and amount: green at full health, yellow below full, and red below 30%, with no separate dot or condition label.
 - Keep End Day decisive: unused actions are a player choice, so one click starts the night without a confirmation modal or explanatory copy.
+- Use each generated tower portrait in both its meadow entity and Build-strip tile. This keeps purchase decisions visually connected to their placed defense while projectile and firing state stay CSS-driven.
 
 ## Progression and occupancy
 

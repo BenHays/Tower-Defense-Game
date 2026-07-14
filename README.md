@@ -31,7 +31,7 @@ Open [http://localhost:4173](http://localhost:4173). You can also open `index.ht
 
 ## Configuration
 
-There are no environment variables. Content tuning, Medium Threat allocation, the fixed 15×15 map and its centered clearing, combat contracts, loot ranges, and levels live in `engine.js`. `tech-tree.js` is the editable catalog of branches, node dependencies, Skill Point costs, and typed effects. `game.js` is the browser renderer, stable map-input layer, and full-screen Technology overlay.
+There are no environment variables. Content tuning, Medium Threat allocation, the fixed 15×15 map and its centered clearing, combat contracts, loot ranges, and levels live in `engine.js`. `tech-tree.js` is the editable catalog of branches, node dependencies, Skill Point costs, and typed effects. `game.js` is the browser renderer, stable map-input layer, and full-screen Technology overlay. The shared Stick Launcher and Potato Gun artwork lives in `assets/` and is used in both the meadow and Build strip.
 
 ## Shared testing
 

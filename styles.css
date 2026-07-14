@@ -135,3 +135,81 @@ button[hidden], [hidden] { display: none !important; }
 /* One horizontally expanding research map keeps future branches readable. */
 .tech-dialog-panel { width: min(1280px,100%); }.tech-dialog-body { grid-template-columns: minmax(0,1fr) minmax(236px,280px); gap: 16px; padding: clamp(16px,2.8vw,30px); overflow: hidden; }.tech-dialog .tech-branches { display: block; min-width: 0; margin: 0; }.tech-detail { position: sticky; top: 0; z-index: 3; padding: 16px; }.tech-tree-stage { position: relative; min-width: 0; }.tech-tree-viewport { overflow-x: auto; overflow-y: hidden; padding: 1px 1px 11px; border: 1px solid rgba(53,108,82,.2); border-radius: 14px; background: linear-gradient(135deg,rgba(225,237,215,.78),rgba(255,253,248,.9)); scrollbar-width: thin; scrollbar-color: rgba(53,108,82,.58) transparent; }.tech-tree-viewport::-webkit-scrollbar { height: 8px; }.tech-tree-viewport::-webkit-scrollbar-thumb { border-radius: 99px; background: rgba(53,108,82,.46); }.tech-tree-canvas { position: relative; display: grid; gap: 9px; min-width: calc(130px + (var(--tech-depth) * 168px) + 34px); padding: 18px 16px 12px; }.tech-tree-stage.can-scroll::after { position: absolute; z-index: 3; top: 1px; right: 1px; bottom: 12px; width: 32px; pointer-events: none; background: linear-gradient(90deg,transparent,rgba(255,253,248,.94)); content: ""; }.tech-branch { position: relative; z-index: 1; display: grid; grid-template-columns: 112px max-content; align-items: center; gap: 14px; min-height: 79px; padding: 7px 0; --tech-color: var(--moss); --tech-tint: #e7f1df; }.tech-branch[data-branch="huntcraft"] { --tech-color: #a96526; --tech-tint: #f6e7d0; }.tech-branch[data-branch="forager"] { --tech-color: #477a47; --tech-tint: #e2efdc; }.tech-branch[data-branch="fortification"] { --tech-color: #4c6f91; --tech-tint: #deebf4; }.tech-branch[data-branch="scout"] { --tech-color: #765276; --tech-tint: #f0e2f2; }.tech-branch-label { display: grid; place-items: center; min-height: 46px; margin: 0; padding: 7px 8px; border: 1px solid color-mix(in srgb,var(--tech-color) 55%,white); border-radius: 10px; color: var(--tech-color); background: var(--tech-tint); font-size: .64rem; font-weight: 950; letter-spacing: .07em; line-height: 1.08; text-align: center; text-transform: uppercase; }.tech-node-track { position: relative; display: grid; grid-template-columns: repeat(var(--tech-depth),142px); grid-template-rows: repeat(var(--tech-row-count),70px); grid-auto-flow: column; gap: 9px 26px; min-width: max-content; }.tech-dialog .tech-node { position: relative; z-index: 2; grid-column: var(--tech-column); grid-row: var(--tech-row); width: 142px; min-height: 70px; display: grid; align-content: center; justify-items: start; gap: 2px; padding: 8px 9px; border: 1px solid color-mix(in srgb,var(--tech-color) 48%,white); border-radius: 10px; color: var(--ink); background: rgba(255,253,248,.96); box-shadow: 0 4px 10px rgba(33,56,44,.08); font-size: .68rem; text-align: left; }.tech-node-title { overflow: hidden; width: 100%; font-size: .66rem; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }.tech-node-effect { overflow: hidden; width: 100%; color: var(--tech-color); font-size: .54rem; font-style: normal; font-weight: 950; letter-spacing: .025em; line-height: 1.12; text-overflow: ellipsis; white-space: nowrap; }.tech-node-cost { color: var(--muted); font-size: .5rem; font-style: normal; font-weight: 900; line-height: 1; text-transform: uppercase; }.tech-dialog .tech-node:hover,.tech-dialog .tech-node.is-selected { border-color: var(--tech-color); background: var(--tech-tint); box-shadow: 0 0 0 2px color-mix(in srgb,var(--tech-color) 18%,transparent),0 5px 11px rgba(33,56,44,.12); }.tech-dialog .tech-node.is-researched { border-color: var(--tech-color); color: #fffdf8; background: var(--tech-color); }.tech-dialog .tech-node.is-researched .tech-node-effect,.tech-dialog .tech-node.is-researched .tech-node-cost { color: rgba(255,253,248,.82); }.tech-connectors { position: absolute; z-index: 0; inset: 0; overflow: visible; pointer-events: none; }.tech-connection { fill: none; stroke: rgba(53,108,82,.42); stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }.tech-connection.huntcraft { stroke: rgba(169,101,38,.64); }.tech-connection.forager { stroke: rgba(71,122,71,.64); }.tech-connection.fortification { stroke: rgba(76,111,145,.64); }.tech-connection.scout { stroke: rgba(118,82,118,.64); }.tech-scroll-hint { display: none; margin: 5px 3px 0; color: var(--muted); font-size: .58rem; font-weight: 900; letter-spacing: .05em; text-align: right; text-transform: uppercase; }.tech-tree-stage.can-scroll .tech-scroll-hint { display: block; }.tech-empty { margin: 0; }
 @media(max-width:860px) { .tech-dialog-body { grid-template-columns: 1fr; overflow: visible; }.tech-detail { position: static; order: -1; }.tech-tree-canvas { min-width: calc(110px + (var(--tech-depth) * 158px) + 28px); }.tech-branch { grid-template-columns: 96px max-content; gap: 10px; }.tech-node-track { grid-template-columns: repeat(var(--tech-depth),132px); gap: 9px 20px; }.tech-dialog .tech-node { width: 132px; }.tech-branch-label { font-size: .58rem; } }
+
+/* Generated tower art uses the same silhouettes in the meadow and Build strip. */
+.building.stickLauncher,
+.building.potatoGun {
+  width: 68px;
+  height: 68px;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 118%;
+  filter: drop-shadow(0 4px 2px rgba(31, 56, 38, .3));
+}
+
+.building.stickLauncher { background-image: url("assets/stick-launcher-v2.png"); }
+.building.potatoGun { background-image: url("assets/potato-gun-v2.png"); }
+
+.building.stickLauncher::before,
+.building.stickLauncher::after,
+.building.potatoGun::before,
+.building.potatoGun::after {
+  display: none;
+}
+
+.building.stickLauncher.is-firing::after,
+.building.potatoGun.is-firing::after {
+  display: block;
+  top: 5px;
+  right: 5px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 245, 190, .95) 0 12%, rgba(246, 198, 91, .65) 18% 34%, rgba(217, 119, 74, .18) 48%, transparent 66%);
+  filter: blur(.15px);
+  pointer-events: none;
+  animation: tower-shot-flash .24s ease-out alternate 2;
+}
+
+.building.potatoGun.is-firing::after {
+  top: 4px;
+  right: 3px;
+  width: 25px;
+  height: 25px;
+}
+
+.building.stickLauncher.is-selected,
+.building.potatoGun.is-selected {
+  filter: drop-shadow(0 0 7px rgba(255, 224, 121, .9)) drop-shadow(0 4px 2px rgba(31, 56, 38, .3));
+}
+
+.build-icon.stick-launcher-icon,
+.build-icon.potato-gun-icon,
+.build-button.is-active .build-icon.stick-launcher-icon,
+.build-button.is-active .build-icon.potato-gun-icon {
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 118%;
+}
+
+.build-icon.stick-launcher-icon,
+.build-button.is-active .build-icon.stick-launcher-icon {
+  background-image: url("assets/stick-launcher-v2.png");
+}
+
+.build-icon.potato-gun-icon,
+.build-button.is-active .build-icon.potato-gun-icon {
+  background-image: url("assets/potato-gun-v2.png");
+}
+
+.stick-launcher-icon::before,
+.stick-launcher-icon::after,
+.potato-gun-icon::before,
+.potato-gun-icon::after {
+  display: none;
+}
+
+@keyframes tower-shot-flash {
+  from { transform: scale(.45); opacity: 1; }
+  to { transform: scale(1.18); opacity: 0; }
+}
