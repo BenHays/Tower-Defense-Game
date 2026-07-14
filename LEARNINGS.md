@@ -43,6 +43,7 @@
 - Drive the Build strip from `state.unlocks`: it should show only unlocked, directly constructible structures, beginning with Stick Launcher and growing horizontally as new construction unlocks arrive.
 - Keep the Build strip as a one-row rail of square, icon-first tiles. Fixed tile dimensions and horizontal scrolling let the roster expand without making the play dock taller or less readable.
 - Start enemy and building health bars on, and keep their toggle visible in both phases. Persist only an explicit player choice, so old saved preferences from the former off-by-default state migrate to visible bars; Scout remains bar-free.
+- Position building health bars above the sprite silhouette, not on its roof. The generated shelter and tower art needs a negative bar offset so the bar stays readable at a glance.
 - Keep End Day decisive: unused actions are a player choice, so one click starts the night without a confirmation modal or explanatory copy.
 - Use each generated tower portrait in both its meadow entity and Build-strip tile. This keeps purchase decisions visually connected to their placed defense while projectile and firing state stay CSS-driven.
 
