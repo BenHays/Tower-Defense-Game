@@ -37,7 +37,8 @@ function firstTreeSite(state) {
 function runPlan(label, chooseDayAction) {
   const state = Engine.createRun(seed);
   while (state.phase === "day" && state.levelIndex + 1 <= maxLevel) {
-    chooseDayAction(state);
+    if (!Engine.hasShelter(state)) Engine.dispatch(state, { type: "constructShelter" });
+    else chooseDayAction(state);
     if (state.phase === "day") Engine.dispatch(state, { type: "endDay" });
     settleNight(state);
   }
@@ -53,14 +54,16 @@ function runPlan(label, chooseDayAction) {
 }
 
 const oneLauncher = runPlan("one launcher", (state) => {
-  if (state.levelIndex === 0) Engine.dispatch(state, { type: "clear", ...firstTreeSite(state) });
-  else if (state.levelIndex === 1) Engine.dispatch(state, { type: "build", buildingType: "stickLauncher", ...firstTowerSite(state, "stickLauncher") });
+  if (state.levelIndex !== 1) return;
+  if (state.resources.wood < 1 && firstTreeSite(state)) Engine.dispatch(state, { type: "clear", ...firstTreeSite(state) });
+  const site = firstTowerSite(state, "stickLauncher");
+  if (state.resources.wood >= 1 && site) Engine.dispatch(state, { type: "build", buildingType: "stickLauncher", ...site });
 });
 
 const spread = runPlan("spread launchers", (state) => {
-  if (state.levelIndex === 0) Engine.dispatch(state, { type: "clear", ...firstTreeSite(state) });
-  else if (state.resources.wood >= 1 && firstTowerSite(state, "stickLauncher")) Engine.dispatch(state, { type: "build", buildingType: "stickLauncher", ...firstTowerSite(state, "stickLauncher") });
-  else if (firstTreeSite(state)) Engine.dispatch(state, { type: "clear", ...firstTreeSite(state) });
+  if (state.resources.wood < 1 && firstTreeSite(state)) Engine.dispatch(state, { type: "clear", ...firstTreeSite(state) });
+  const site = firstTowerSite(state, "stickLauncher");
+  if (state.resources.wood >= 1 && site) Engine.dispatch(state, { type: "build", buildingType: "stickLauncher", ...site });
 });
 
 const arrowRush = runPlan("Arrowcraft rush", (state) => {
@@ -68,10 +71,10 @@ const arrowRush = runPlan("Arrowcraft rush", (state) => {
   const firstLauncher = state.buildings.find((building) => building.type === "stickLauncher" && !building.destroyed);
   if (firstLauncher && Engine.hasResearch(state, "arrowcraft") && state.resources.wood >= 4) {
     Engine.dispatch(state, { type: "upgradeLauncher", id: firstLauncher.id });
-  } else if (state.resources.wood >= 1 && !firstLauncher && firstTowerSite(state, "stickLauncher")) {
-    Engine.dispatch(state, { type: "build", buildingType: "stickLauncher", ...firstTowerSite(state, "stickLauncher") });
-  } else if (firstTreeSite(state)) {
-    Engine.dispatch(state, { type: "clear", ...firstTreeSite(state) });
+  } else {
+    if ((!firstLauncher || state.resources.wood < 4) && state.actionPoints > 0 && firstTreeSite(state)) Engine.dispatch(state, { type: "clear", ...firstTreeSite(state) });
+    const site = firstTowerSite(state, "stickLauncher");
+    if (!firstLauncher && state.resources.wood >= 1 && site) Engine.dispatch(state, { type: "build", buildingType: "stickLauncher", ...site });
   }
 });
 

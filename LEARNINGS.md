@@ -2,7 +2,7 @@
 
 ## MVP scope
 
-- The no-timer day still needs a fixed action budget: two day actions make one tree clear a deliberate whole-day commitment, while builds, repairs, and Scout placement remain one-action choices.
+- The no-timer day still needs a fixed action budget: normal days have two actions, and clearing, building, repairing, upgrading, and Scout placement each use one. Research spends XP only.
 - Scout is fully automatic at night; player attention stays on daytime position, terrain, and building decisions rather than combat controls.
 
 ## Top-down expansion
@@ -14,7 +14,7 @@
 ## Simulation
 
 - Keep `engine.js` DOM-free and advance combat in fixed ticks. The browser renderer, replay function, save/load, and Node simulator then exercise the same rules.
-- The opening works best with direct construction: a Stick Launcher spends its wood and the full day, then exists immediately. Blueprint and Finish states add unnecessary clicks before there are complex structures.
+- The opening works best with direct construction: a Stick Launcher spends its wood and one action, then exists immediately. Blueprint and Finish states add unnecessary clicks before there are complex structures.
 - Keep a unit’s guard post separate from its current position. Scout’s watch radius stays centered on the day-placed post while his night state moves through idle, chase, attack, return, then automatically starts the next day.
 - Use a seeded Threat Budget rather than hard-coded enemy counts. Medium grows the previous budget by 25% rounded up, while each enemy’s Threat value makes later enemy pools compatible with the same allocator.
 - Keep new progression modules separate from combat simulation: XP tech should expose declarative effects and purchase validation, while the engine and UI remain separate consumers.
@@ -22,5 +22,4 @@
 - Keep the current resource loop narrow: wood is for construction and repair, while XP is the only enemy/level reward. Do not add food, pelts, or Scout health maintenance without a distinct decision it creates.
 - Keep planning values explicitly separate from live values. Tower economy must be tuned against wood income and broad grass placement, not by increasing early wood yield alone.
 - Model cleared forest as its own terrain value rather than generic open ground. It preserves the harvested-tree visual and faster movement while both terrain values remain valid grass for building placement.
-- Keep permanent environmental effects such as the campfire outside `state.buildings`, so closest-building enemy targeting cannot select or damage them.
-- A survival aid cannot be free by default: introduce the teepee through a forced zero-cost Level 1 shelter action, and defer fire until it is an XP-researched, wood-built safety net with one clear purpose.
+- A survival aid cannot be free by default: introduce the teepee through a forced zero-cost, full-day Level 1 shelter action, and defer fire until it is an XP-researched, wood-built safety net with one clear purpose.

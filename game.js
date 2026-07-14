@@ -2,7 +2,7 @@ const Engine = window.WildHearthEngine;
 
 if (!Engine) throw new Error("Wild Hearth engine did not load.");
 
-const SAVE_KEY = "wild-hearth-save-v5";
+const SAVE_KEY = "wild-hearth-save-v6";
 const SETTINGS_KEY = "wild-hearth-settings-v1";
 const elements = {
   board: document.querySelector("#game-board"),
@@ -26,6 +26,7 @@ const elements = {
   actionHint: document.querySelector("#action-hint"),
   actionBadge: document.querySelector("#action-badge"),
   toolGrid: document.querySelector("#tool-grid"),
+  shelterButton: document.querySelector("#shelter-button"),
   repairButton: document.querySelector("#repair-button"),
   upgradeButton: document.querySelector("#upgrade-button"),
   endDayButton: document.querySelector("#end-day-button"),
@@ -45,7 +46,7 @@ const elements = {
 let state = Engine.createRun(Engine.DEFAULT_SEED);
 let activeTool = "none";
 let hoverCell = null;
-let selected = { kind: "building", id: "b-teepee" };
+let selected = { kind: "none", id: null };
 let planning = false;
 let lastFrame = 0;
 let accumulator = 0;
@@ -90,6 +91,7 @@ function sameCell(left, right) { return left && right && left.x === right.x && l
 function cellId(x, y) { return `${x},${y}`; }
 function isBuildTool(tool) { return Boolean(Engine.BUILDINGS[tool]) && !["teepee", "arrowShooter"].includes(tool); }
 function towerRecipe(type) { return Engine.TOWER_TYPES.includes(type) ? Engine.BUILDINGS[type] : null; }
+function needsShelter() { return !Engine.hasShelter(state); }
 
 function toolCellValid(x, y) {
   if (activeTool === "clear") return Engine.terrainAt(state, x, y) === "tree" || Engine.hasRubble(state, x, y);
@@ -141,7 +143,7 @@ function renderGrid() {
       cell.type = "button";
       cell.dataset.x = String(x);
       cell.dataset.y = String(y);
-      cell.disabled = state.phase !== "day";
+      cell.disabled = state.phase !== "day" || needsShelter();
       cell.setAttribute("aria-label", describeCell(x, y));
       cell.classList.add(`terrain-${terrain}`);
       if (terrain === "tree") {
@@ -195,10 +197,12 @@ function renderEntities() {
     fragment.append(node);
   });
 
-  const campfire = state.campfire || Engine.CAMPFIRE;
-  const fire = createNode("div", "entity campfire");
-  place(fire, campfire.x, campfire.y);
-  fragment.append(fire);
+  if (needsShelter()) {
+    const shelterSite = createNode("div", "entity shelter-site");
+    place(shelterSite, Engine.SHELTER_SITE.x, Engine.SHELTER_SITE.y);
+    addLabel(shelterSite, "Shelter site");
+    fragment.append(shelterSite);
+  }
 
   state.buildings.filter((building) => !building.destroyed).forEach((building) => {
     const recipe = Engine.BUILDINGS[building.type];
@@ -253,6 +257,13 @@ function reachLabel(attackRange) {
 }
 
 function renderSelection() {
+  if (needsShelter()) {
+    elements.selectedTitle.textContent = "Shelter site";
+    elements.selectedCopy.textContent = "Construct the free branch teepee before the first watch.";
+    elements.selectionMeterWrap.hidden = true;
+    elements.selectionFootnote.textContent = "It is the only action available on Level 1 Day 1.";
+    return;
+  }
   const building = selectedBuilding();
   if (building) {
     const recipe = Engine.BUILDINGS[building.type];
@@ -263,14 +274,14 @@ function renderSelection() {
       elements.selectedCopy.textContent = `Hit ${recipe.damage} · ${tempoLabel(recipe.attackSpeed)} · ${reachLabel(recipe.attackRange)} · ${condition}.`;
       elements.selectionFootnote.textContent = building.type === "stickLauncher"
         ? Engine.hasResearch(state, "arrowcraft")
-          ? "Arrowcraft is ready: upgrade this launcher for 4 wood and the full day."
+          ? "Arrowcraft is ready: upgrade this launcher for 4 wood and 1 action."
           : "Arrowcraft can turn this into a stronger Arrow Shooter."
         : building.type === "potatoGun"
           ? "Heavy shots push surviving enemies back."
           : "Stronger, faster, and farther than a Stick Launcher.";
     } else {
       elements.selectedCopy.textContent = `Home · ${condition} · repair costs ${recipe.repairCost.wood || 0} wood and one day action.`;
-      elements.selectionFootnote.textContent = "The campfire gives Scout a little extra time at the hearth.";
+      elements.selectionFootnote.textContent = "The teepee is the homestead target. Fire arrives later through research.";
     }
     elements.selectionMeter.style.width = `${(building.health / building.maxHealth) * 100}%`;
     return;
@@ -283,7 +294,7 @@ function renderSelection() {
     elements.selectedCopy.textContent = rubble
       ? "Clear rubble with one day action to reopen the grass."
       : terrain === "tree"
-        ? "Clear for 1 wood. This takes the full day."
+        ? "Clear for 1 wood. This takes 1 day action."
         : terrain === "cleared"
           ? "Open grass: a defense can be built here."
           : "Unoccupied grass can hold a defense.";
@@ -293,10 +304,10 @@ function renderSelection() {
   }
   const toolCopy = {
     none: ["Hearth Meadow", "Select a tree, grass, or building."],
-    clear: ["Clear tree", "Full day · gain 1 wood · open grass."],
+    clear: ["Clear tree", "1 action · gain 1 wood · open grass."],
     scout: ["Place Scout", "Spend one action to set Scout’s night watch post."],
-    stickLauncher: ["Stick launcher", "1 wood · full day · steady protection."],
-    potatoGun: ["Potato gun", "3 wood · full day · heavy knockback shot."],
+    stickLauncher: ["Stick launcher", "1 wood · 1 action · steady protection."],
+    potatoGun: ["Potato gun", "3 wood · 1 action · heavy knockback shot."],
   };
   elements.selectedTitle.textContent = toolCopy[activeTool][0];
   elements.selectedCopy.textContent = toolCopy[activeTool][1];
@@ -321,10 +332,14 @@ function renderPreview() {
     elements.previewCopy.textContent = `Need ${recipe.cost.wood} wood for ${recipe.label}.`;
     return;
   }
-  elements.previewCopy.textContent = `${recipe.label} is ready here. It takes the full day.`;
+  elements.previewCopy.textContent = `${recipe.label} is ready here. It takes 1 day action.`;
 }
 
 function renderTechnology() {
+  if (needsShelter()) {
+    elements.techCard.hidden = true;
+    return;
+  }
   const research = Engine.techAvailability(state, "arrowcraft");
   const node = research.node || Engine.TECH_TREE.arrowcraft;
   const relevant = Engine.hasResearch(state, "arrowcraft") || currentLevel().number >= node.requiredLevel;
@@ -332,14 +347,14 @@ function renderTechnology() {
   if (!relevant) return;
   elements.techTitle.textContent = node.label;
   if (Engine.hasResearch(state, "arrowcraft")) {
-    elements.techCopy.textContent = "Researched. Select a Stick Launcher to upgrade it into an Arrow Shooter for 4 wood.";
+    elements.techCopy.textContent = "Researched. Select a Stick Launcher to upgrade it into an Arrow Shooter for 4 wood and 1 action.";
     setButtonContent(elements.researchButton, "Arrowcraft researched", "ready");
     elements.researchButton.disabled = true;
     return;
   }
-  elements.techCopy.textContent = `${node.copy} ${research.reason}`;
-  setButtonContent(elements.researchButton, "Research Arrowcraft", `${node.costXp} XP`);
-  elements.researchButton.disabled = state.phase !== "day" || !research.available;
+  elements.techCopy.textContent = `${node.copy} ${research.reason} Research costs XP only; it uses no day action.`;
+  setButtonContent(elements.researchButton, "Research Arrowcraft", `${node.costXp} XP · no action`);
+  elements.researchButton.disabled = needsShelter() || state.phase !== "day" || !research.available;
 }
 
 function renderControls() {
@@ -347,15 +362,19 @@ function renderControls() {
   const day = state.phase === "day";
   const night = state.phase === "night";
   const building = selectedBuilding();
+  const opening = needsShelter();
+  elements.shelterButton.hidden = !opening;
+  elements.shelterButton.disabled = !day || !opening;
   elements.toolGrid.querySelectorAll("[data-tool]").forEach((button) => {
     const tool = button.dataset.tool;
     button.classList.toggle("is-active", tool === activeTool);
-    button.disabled = isBuildTool(tool) ? !day || !state.unlocks.includes(tool) : !day;
+    button.disabled = opening || (isBuildTool(tool) ? !day || !state.unlocks.includes(tool) : !day);
   });
-  elements.repairButton.disabled = !day || !building || building.health >= building.maxHealth || state.resources.wood < 1 || state.actionPoints <= 0;
-  elements.upgradeButton.disabled = !day || !building || building.type !== "stickLauncher" || !Engine.hasResearch(state, "arrowcraft") || state.resources.wood < 4 || state.actionPoints < 2;
-  elements.endDayButton.disabled = !day;
+  elements.repairButton.disabled = opening || !day || !building || building.health >= building.maxHealth || state.resources.wood < 1 || state.actionPoints <= 0;
+  elements.upgradeButton.disabled = opening || !day || !building || building.type !== "stickLauncher" || !Engine.hasResearch(state, "arrowcraft") || state.resources.wood < 4 || state.actionPoints <= 0;
+  elements.endDayButton.disabled = opening || !day;
   setButtonContent(elements.endDayButton, day ? "End day" : "Night in progress", day ? "Begin night watch →" : "Scout is on watch");
+  elements.overlayButton.disabled = opening || !day;
   elements.overlayButton.textContent = planning ? "Hide planning overlay" : "Show planning overlay";
   elements.pauseButton.disabled = !night;
   elements.pauseButton.textContent = state.paused ? "Resume" : "Pause";
@@ -367,12 +386,16 @@ function renderControls() {
   elements.healthBarsToggle.checked = showHealthBars;
   elements.actionBadge.textContent = day ? `${state.actionPoints} action${state.actionPoints === 1 ? "" : "s"}` : "Scout on watch";
   elements.actionHint.textContent = day
-    ? "Trees and defenses use the full day. Repair and Scout placement use one action."
+    ? opening
+      ? "Build the free shelter. Everything else unlocks afterward."
+      : "Clear, build, repair, upgrade, and place Scout each use 1 action. Research uses XP only."
     : "No night actions. Scout is the final line at the hearth.";
   elements.levelLabel.textContent = `Level ${String(level.number).padStart(2, "0")} · ${level.title}`;
   elements.levelCopy.textContent = day
-    ? level.number === 1
-      ? "Clear one tree. Scout can hold the first raccoon."
+    ? opening
+      ? "Construct the shelter before the first watch."
+      : level.number === 1
+        ? "Scout can hold the first raccoon. Clear a tree for wood when ready."
       : level.number === 3 && !Engine.hasResearch(state, "arrowcraft")
         ? "Arrowcraft research is available when you have enough XP."
         : state.unlocks.includes("potatoGun") && state.resources.wood < 3
@@ -410,17 +433,17 @@ function renderHeader() {
 }
 
 function render() {
+  renderControls();
   renderHeader();
   renderGrid();
   renderEntities();
   renderSelection();
   renderPreview();
   renderTechnology();
-  renderControls();
 }
 
 function clickCell(x, y) {
-  if (state.phase !== "day") return;
+  if (state.phase !== "day" || needsShelter()) return;
   const occupied = Engine.buildingAt(state, x, y);
   if (occupied) {
     selected = { kind: "building", id: occupied.id };
@@ -458,7 +481,7 @@ function resetRun(seed) {
   state = Engine.createRun(seed || state.seed);
   activeTool = "none";
   hoverCell = null;
-  selected = { kind: "building", id: "b-teepee" };
+  selected = { kind: "none", id: null };
   planning = false;
   accumulator = 0;
   gridSignature = "";
@@ -480,7 +503,8 @@ function loadGame() {
     if (!saved) { setEvent("No saved meadow is available in this browser."); return; }
     state = Engine.hydrate(saved);
     activeTool = "none";
-    selected = { kind: "building", id: state.buildings.find((building) => building.type === "teepee")?.id || null };
+    const teepee = state.buildings.find((building) => building.type === "teepee" && !building.destroyed);
+    selected = teepee ? { kind: "building", id: teepee.id } : { kind: "none", id: null };
     hoverCell = null;
     accumulator = 0;
     gridSignature = "";
@@ -516,6 +540,13 @@ elements.toolGrid.addEventListener("click", (event) => {
   selected = { kind: "none", id: null };
   gridSignature = "";
   render();
+});
+elements.shelterButton.addEventListener("click", () => {
+  const outcome = dispatch({ type: "constructShelter" });
+  if (outcome.ok) {
+    selected = { kind: "building", id: "b-teepee" };
+    render();
+  }
 });
 elements.repairButton.addEventListener("click", () => {
   const building = selectedBuilding();

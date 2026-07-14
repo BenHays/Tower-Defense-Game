@@ -2,7 +2,7 @@ const Engine = require("./engine.js");
 
 const seed = process.argv[2] || Engine.DEFAULT_SEED;
 const state = Engine.createRun(seed);
-Engine.dispatch(state, { type: "clear", x: 1, y: 3 });
+Engine.dispatch(state, { type: "constructShelter" });
 Engine.dispatch(state, { type: "endDay" });
 
 let guard = 14000;

@@ -4,6 +4,7 @@
 
 - XP comes from defeated enemies and surviving a night.
 - Arrowcraft costs 6 XP, becomes available on Level 3, and unlocks the Arrow Shooter upgrade.
+- Research spends XP only; it never consumes a day action.
 
 ## Proposed next
 

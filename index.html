@@ -17,22 +17,19 @@
         <div class="phase-chip" id="phase-chip" aria-live="polite">
           <span class="phase-dot"></span><span id="phase-label">Day planning</span><span class="phase-time" id="phase-detail">Untimed</span>
         </div>
-        <details class="run-tools">
-          <summary>Run</summary>
-          <div class="run-tools-menu">
-            <span class="seed-pill">Seed <code id="seed-value">HEARTH-1042</code></span>
-            <button class="quiet-button" id="new-seed-button" type="button">New seed</button>
-            <button class="quiet-button" id="save-button" type="button">Save</button>
-            <button class="quiet-button" id="load-button" type="button">Load</button>
-            <button class="quiet-button" id="reset-button" type="button">Reset</button>
-          </div>
-        </details>
+        <div class="run-tools" aria-label="Game controls">
+          <span class="seed-pill">Seed <code id="seed-value">HEARTH-1042</code></span>
+          <button class="quiet-button" id="new-seed-button" type="button">New seed</button>
+          <button class="quiet-button" id="save-button" type="button">Save</button>
+          <button class="quiet-button" id="load-button" type="button">Load</button>
+          <button class="quiet-button" id="reset-button" type="button">Reset</button>
+        </div>
       </header>
 
       <section class="topline" aria-label="Level progress and homestead status">
         <div class="level-strip">
           <p class="eyebrow" id="level-label">Level 01 · first watch</p>
-          <p class="level-objective" id="level-copy">Clear one tree for wood, then build on open grass.</p>
+          <p class="level-objective" id="level-copy">Build a shelter before the first watch.</p>
         </div>
         <dl class="resource-row">
           <div><dt>Actions</dt><dd id="action-points">2</dd></div>
@@ -45,14 +42,14 @@
         <div class="meadow-texture" aria-hidden="true"></div>
         <div class="board-grid" id="board-grid" aria-label="Hidden-square meadow board"></div>
         <div class="entity-layer" id="entity-layer" aria-hidden="true"></div>
-        <div class="board-caption" id="board-caption">Clear one tree for wood, then build on open grass.</div>
+        <div class="board-caption" id="board-caption">Build a shelter before the first watch.</div>
       </section>
 
       <section class="control-panel" aria-label="Day planning controls">
         <section class="selected-card" aria-label="Selection details">
           <p class="eyebrow">Selected</p>
-          <h2 id="selected-title">Branch teepee</h2>
-          <p id="selected-copy">Home · sound · repair costs 1 wood and one day action.</p>
+          <h2 id="selected-title">Shelter site</h2>
+          <p id="selected-copy">Build the branch teepee before the first watch.</p>
           <div class="mini-meter" id="selection-meter-wrap" aria-hidden="true"><span id="selection-meter" style="width: 100%"></span></div>
           <p class="selection-footnote" id="selection-footnote">Click terrain or a building to inspect it.</p>
         </section>
@@ -60,14 +57,15 @@
         <section class="action-card" aria-label="Day actions">
           <div class="action-heading"><div><p class="eyebrow">Day actions</p><p class="action-hint" id="action-hint">Trees and buildings use the whole day.</p></div><strong id="action-badge">2 actions</strong></div>
           <div class="tool-grid" id="tool-grid">
-            <button class="tool-button" data-tool="clear" type="button">Clear<span>tree · full day · +1 wood</span></button>
+            <button class="tool-button shelter-button" id="shelter-button" type="button">Construct shelter<span>required · free · full day</span></button>
+            <button class="tool-button" data-tool="clear" type="button">Clear<span>tree · 1 action · +1 wood</span></button>
             <button class="tool-button" data-tool="scout" type="button">Place Scout<span>1 action</span></button>
-            <button class="tool-button" data-tool="stickLauncher" id="stick-launcher-tool" type="button">Stick launcher<span>1 wood · full day</span></button>
-            <button class="tool-button" data-tool="potatoGun" id="potato-gun-tool" type="button">Potato gun<span>3 wood · full day</span></button>
+            <button class="tool-button" data-tool="stickLauncher" id="stick-launcher-tool" type="button">Stick launcher<span>1 wood · 1 action</span></button>
+            <button class="tool-button" data-tool="potatoGun" id="potato-gun-tool" type="button">Potato gun<span>3 wood · 1 action</span></button>
           </div>
           <div class="action-row">
             <button class="secondary-button" id="repair-button" type="button">Repair selected <span>1 wood · 1 action</span></button>
-            <button class="secondary-button" id="upgrade-button" type="button">Upgrade selected <span>Arrowcraft · 4 wood</span></button>
+            <button class="secondary-button" id="upgrade-button" type="button">Upgrade selected <span>Arrowcraft · 4 wood · 1 action</span></button>
           </div>
           <button class="primary-button wide" id="end-day-button" type="button">End day <span>Begin night watch →</span></button>
         </section>
@@ -91,7 +89,7 @@
         </aside>
       </section>
 
-      <section class="event-log" aria-label="Current status" aria-live="polite"><p id="event-log">Clear one tree for wood. Defenses can stand on any open grass.</p></section>
+      <section class="event-log" aria-label="Current status" aria-live="polite"><p id="event-log">Build a shelter before the first watch.</p></section>
     </main>
 
     <script src="tech-tree.js"></script>

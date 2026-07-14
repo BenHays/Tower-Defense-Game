@@ -11,18 +11,13 @@
   root.WildHearthEngine = engine;
 }(typeof globalThis !== "undefined" ? globalThis : this, function buildEngine(TechTree) {
   if (!TechTree) throw new Error("Wild Hearth tech tree did not load.");
-  const SAVE_VERSION = 5;
+  const SAVE_VERSION = 6;
   const TICK_RATE = 20;
   const BOARD = { id: "hearth-meadow", label: "Hearth Meadow", width: 13, height: 13 };
   const STARTING_ACTIONS = 2;
   const DEFAULT_SEED = "HEARTH-1042";
   const pathCaches = new WeakMap();
-  const CAMPFIRE = {
-    x: 6.72,
-    y: 7.05,
-    radius: 1.25,
-    enemySpeedMultiplier: 0.72,
-  };
+  const SHELTER_SITE = { x: 6, y: 6 };
 
   const UNITS = {
     scout: {
@@ -95,7 +90,7 @@
       footprint: { width: 1, height: 1 },
       maxHealth: 6,
       cost: { wood: 1 },
-      actionCost: 2,
+      actionCost: 1,
       role: "tower",
       tags: ["defense", "first-line"],
       damage: 1,
@@ -127,7 +122,7 @@
       footprint: { width: 1, height: 1 },
       maxHealth: 6,
       cost: { wood: 3 },
-      actionCost: 2,
+      actionCost: 1,
       role: "heavy tower",
       tags: ["defense", "heavy"],
       damage: 3,
@@ -156,7 +151,7 @@
       survivalXp: 2,
       unlock: "stickLauncher",
       unlockLabel: "Stick launcher",
-      unlockCopy: "Use 1 wood and the full day to build the first line outside Scout's watch radius.",
+      unlockCopy: "Use 1 wood and one action to build the first line outside Scout's watch radius.",
     },
     {
       id: "first-line",
@@ -425,16 +420,23 @@
     return true;
   }
 
-  function createRun(seed) {
-    const teepee = {
+  function hasShelter(state) {
+    return Boolean(state.shelterBuilt) && state.buildings.some((building) => building.type === "teepee" && !building.destroyed);
+  }
+
+  function makeTeepee() {
+    return {
       id: "b-teepee",
       type: "teepee",
-      x: 6,
-      y: 6,
+      x: SHELTER_SITE.x,
+      y: SHELTER_SITE.y,
       health: BUILDINGS.teepee.maxHealth,
       maxHealth: BUILDINGS.teepee.maxHealth,
       destroyed: false,
     };
+  }
+
+  function createRun(seed) {
     return {
       version: SAVE_VERSION,
       mapId: BOARD.id,
@@ -449,8 +451,8 @@
       unlocks: [],
       research: [],
       terrain: FIXED_TERRAIN.slice(),
-      campfire: { ...CAMPFIRE },
-      buildings: [teepee],
+      shelterBuilt: false,
+      buildings: [],
       rubble: [],
       scout: {
         ...clone(UNITS.scout),
@@ -470,7 +472,7 @@
       nextEntityId: 1,
       kills: 0,
       actionLog: [],
-      lastEvent: "Clear one tree for wood. Defenses can stand on any open grass.",
+      lastEvent: "Build a shelter before the first watch.",
       outcome: null,
       aftermathTicks: 0,
       paused: false,
@@ -580,6 +582,20 @@
       return result(state, false, "Day actions are only available before nightfall.");
     }
 
+    if (!state.shelterBuilt && action.type !== "constructShelter") {
+      return result(state, false, "Construct shelter before taking other actions.", action, shouldRecord);
+    }
+
+    if (action.type === "constructShelter") {
+      if (state.shelterBuilt || hasShelter(state)) return result(state, false, "The shelter is already built.");
+      if (state.levelIndex !== 0) return result(state, false, "The shelter can only be built at the start of Level 1.");
+      if (!consumeActions(state, STARTING_ACTIONS)) return result(state, false, "Constructing the shelter takes the full first day.");
+      state.buildings.push(makeTeepee());
+      state.shelterBuilt = true;
+      invalidatePaths(state);
+      return result(state, true, "Shelter complete. End the day when Scout is ready for the first watch.", action, shouldRecord);
+    }
+
     if (action.type === "research") {
       const outcome = TechTree.research(state, action.nodeId);
       return result(state, outcome.ok, outcome.message, action, shouldRecord);
@@ -589,11 +605,11 @@
       const terrain = terrainAt(state, action.x, action.y);
       if (terrain !== "tree" && !hasRubble(state, action.x, action.y)) return result(state, false, "Only a tree or rubble can be cleared there.");
       if (terrain === "tree") {
-        if (!consumeActions(state, 2)) return result(state, false, "Clearing a tree takes both daylight actions.");
+        if (!consumeAction(state)) return result(state, false, "Both day actions are spent.");
         setTerrain(state, action.x, action.y, "cleared");
         state.resources.wood += 1;
         invalidatePaths(state);
-        return result(state, true, "Tree cleared: +1 wood. The day is spent; the grass is now open.", action, shouldRecord);
+        return result(state, true, "Tree cleared: +1 wood. One day action spent; the grass is now open.", action, shouldRecord);
       }
       if (!consumeAction(state)) return result(state, false, "Both day actions are spent.");
       state.rubble = state.rubble.filter((rubble) => !(rubble.x === action.x && rubble.y === action.y));
@@ -631,7 +647,7 @@
       if (!hasUnlock(state, action.buildingType)) return result(state, false, `${recipe.label} has not been unlocked yet.`);
       if (!validFootprint(state, action.buildingType, action.x, action.y)) return result(state, false, "That grass is blocked or occupied.");
       if (!hasResources(state, recipe.cost)) return result(state, false, `Need ${recipe.cost.wood || 0} wood to build this.`);
-      if (!consumeActions(state, recipe.actionCost || 1)) return result(state, false, `${recipe.label} takes the full day to build.`);
+      if (!consumeActions(state, recipe.actionCost || 1)) return result(state, false, "Both day actions are spent.");
       spendResources(state, recipe.cost);
       state.buildings.push({
         id: `b-${state.nextEntityId++}`,
@@ -646,7 +662,7 @@
         destroyed: false,
       });
       invalidatePaths(state);
-      return result(state, true, `${recipe.label} built. The day is spent.`, action, shouldRecord);
+      return result(state, true, `${recipe.label} built. One day action spent.`, action, shouldRecord);
     }
 
     if (action.type === "upgradeLauncher") {
@@ -655,7 +671,7 @@
       if (TechTree.effectsFor(state).unlocksBuildingUpgrade !== "arrowShooter") return result(state, false, "Research Arrowcraft before upgrading a launcher.");
       const cost = { wood: 4 };
       if (!hasResources(state, cost)) return result(state, false, "An Arrow Shooter upgrade needs 4 wood.");
-      if (!consumeActions(state, 2)) return result(state, false, "Upgrading to an Arrow Shooter takes the full day.");
+      if (!consumeAction(state)) return result(state, false, "Both day actions are spent.");
       spendResources(state, cost);
       const recipe = buildingRecipe("arrowShooter");
       building.type = "arrowShooter";
@@ -664,7 +680,7 @@
       building.cooldown = 0;
       building.targetId = null;
       building.firingTicks = 0;
-      return result(state, true, "Arrow Shooter built from the launcher. The day is spent.", action, shouldRecord);
+      return result(state, true, "Arrow Shooter built from the launcher. One day action spent.", action, shouldRecord);
     }
 
     if (action.type === "endDay") {
@@ -883,10 +899,8 @@
     enemy.intent = `moving-${target.building.id}`;
     const nextStep = target.path.length > 1 ? target.path[1] : target.approach;
     const stepCost = travelCost(state, nextStep.x, nextStep.y, recipe);
-    const campfire = state.campfire || CAMPFIRE;
-    enemy.inWarmth = distance(enemy, campfire) <= campfire.radius;
-    const warmthSpeed = enemy.inWarmth ? campfire.enemySpeedMultiplier : 1;
-    moveTowards(enemy, nextStep, (recipe.moveSpeed * warmthSpeed) / TICK_RATE / stepCost);
+    enemy.inWarmth = false;
+    moveTowards(enemy, nextStep, recipe.moveSpeed / TICK_RATE / stepCost);
   }
 
   function beginAftermath(state) {
@@ -969,6 +983,9 @@
     if (!parsed || parsed.version !== SAVE_VERSION || !parsed.state || parsed.state.version !== SAVE_VERSION) throw new Error("This save belongs to a different version of Wild Hearth.");
     const state = parsed.state;
     if (!Array.isArray(state.terrain) || state.terrain.length !== BOARD.width * BOARD.height) throw new Error("This save has an invalid meadow.");
+    if (typeof state.shelterBuilt !== "boolean" || !Array.isArray(state.buildings)) throw new Error("This save has an invalid shelter state.");
+    const teepeeCount = state.buildings.filter((building) => building.type === "teepee" && !building.destroyed).length;
+    if ((state.shelterBuilt && teepeeCount !== 1) || (!state.shelterBuilt && teepeeCount !== 0)) throw new Error("This save has an invalid shelter state.");
     pathCaches.delete(state);
     return state;
   }
@@ -993,6 +1010,7 @@
       xp: state.xp,
       unlocks: state.unlocks,
       research: state.research,
+      shelterBuilt: state.shelterBuilt,
       kills: state.kills,
       terrain: state.terrain,
       buildings: state.buildings.map((building) => ({ id: building.id, type: building.type, x: building.x, y: building.y, health: building.health, maxHealth: building.maxHealth, destroyed: building.destroyed })),
@@ -1021,7 +1039,7 @@
     ENEMIES,
     BUILDINGS,
     TOWER_TYPES,
-    CAMPFIRE,
+    SHELTER_SITE,
     TECH_TREE: TechTree.NODES,
     ENEMY_COUNTERS,
     LEVELS,
@@ -1042,6 +1060,7 @@
     buildingAt,
     isPassable,
     isBuildableGrass,
+    hasShelter,
     hasRubble,
     validFootprint,
     buildPreview,
