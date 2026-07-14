@@ -730,7 +730,13 @@ function renderControls() {
   elements.shelterButton.hidden = !opening || !state.hatchetCrafted;
   elements.shelterButton.disabled = !day || !opening || !state.hatchetCrafted || state.actionPoints <= 0;
   const shelterArmed = opening && activeTool === "teepee";
+  const shelterReady = opening && state.hatchetCrafted && day && state.actionPoints > 0 && !shelterArmed;
+  elements.shelterButton.classList.toggle("is-ready", shelterReady);
   elements.shelterButton.setAttribute("aria-pressed", String(shelterArmed));
+  elements.shelterButton.setAttribute(
+    "aria-label",
+    shelterArmed ? "Choose shelter site. Click open grass." : "Place shelter. Free. Uses one action.",
+  );
   elements.shelterLabel.textContent = shelterArmed ? "Choose shelter site" : "Place shelter";
   elements.shelterDetail.textContent = shelterArmed ? "Click open grass" : "Free · 1 action";
   elements.dayActionList.querySelectorAll("[data-tool]").forEach((button) => {
@@ -992,7 +998,12 @@ elements.dayActionList.addEventListener("click", selectTool);
 elements.buildList.addEventListener("click", selectTool);
 elements.toolbarSmaller.addEventListener("click", () => changeToolbarSize(-1));
 elements.toolbarLarger.addEventListener("click", () => changeToolbarSize(1));
-elements.axeButton.addEventListener("click", () => dispatch({ type: "craftHatchet" }));
+elements.axeButton.addEventListener("click", () => {
+  const outcome = dispatch({ type: "craftHatchet" }, { render: false });
+  // Crafting reveals the next step; it never silently arms a map placement.
+  if (outcome.ok) activeTool = "none";
+  render();
+});
 elements.repairButton.addEventListener("click", () => {
   const building = selectedBuilding();
   if (building) dispatch({ type: "repair", id: building.id });

@@ -231,6 +231,7 @@ button[hidden], [hidden] { display: none !important; }
 .day-action-list .opening-action { grid-column: 1 / -1; }
 .opening-action:not(:disabled):not(.is-active) { border-color: rgba(190, 137, 57, .55); background: linear-gradient(112deg, #fffdf8, #f8efd3); }
 .opening-action.is-active { border-color: #2f674c; color: #fffdf8; background: linear-gradient(135deg,#285f47,#4d8b59); box-shadow: inset 0 -3px rgba(0,0,0,.16),0 0 0 3px rgba(125,178,108,.27); }.opening-action.is-active .tool-icon { color: #24563e; background: #fffdf8; }.opening-action.is-active .tool-copy small { color: #e3f3d9; }
+.opening-action.shelter-button.is-ready { border-color: #946b32; color: #fffdf8; background: linear-gradient(135deg,#6f4e2c,#9b7440); box-shadow: inset 0 -3px rgba(0,0,0,.16),0 0 0 3px rgba(221,184,95,.25); }.opening-action.shelter-button.is-ready .tool-icon { color: #65401f; background: #fff5d2; }.opening-action.shelter-button.is-ready .tool-copy small { color: #fff0c4; }
 
 /* A Potato Patch reserves a future tower cell while remaining harmless to enemies. */
 .building.potatoPatch { z-index: 4; width: 56px; height: 56px; overflow: visible; filter: drop-shadow(0 3px 2px rgba(31,56,38,.2)); }

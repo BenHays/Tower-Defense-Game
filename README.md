@@ -18,7 +18,7 @@ Open [http://localhost:4173](http://localhost:4173). You can also open `index.ht
 
 ## How to play
 
-1. Level 1 begins with a visible **stick** and **rock** in the starting clearing. Click both (free), then **Craft axe** (free, one action) and **Place shelter** (free, one action) on any unoccupied grass. Every other control and **End Day** stays locked until the shelter stands.
+1. Level 1 begins with a visible **stick** and **rock** in the starting clearing. Click both (free), then **Craft axe** (free, one action). **Place shelter** immediately changes from its quiet locked state to a gold **ready** action; click it to arm the green **Choose shelter site** state, then click any unoccupied grass (free, one action). Every other control and **End Day** stays locked until the shelter stands.
 2. End the day. Scout handles the first raccoon, then returns to the watch post. The next day starts automatically—there is no Continue button or result popup.
 3. Every normal day has two actions. **Harvest Tree**, placing Scout, building a tower, repairing, and upgrading each use **one** action. Harvesting grants **2 wood** and turns the tree into open grass through a short wind-up, swing, chip burst, and stump-reveal animation. Scout's watch post reserves its cell: towers cannot overlap it, and Scout cannot be placed inside a structure.
 4. Level 1 unlocks the **Stick Launcher**. On Level 2, harvest a tree and build it for 2 wood on any unoccupied grass cell in the same day. It has 8 health, deals 1 damage, fires once every 2 seconds, and has short reach.
@@ -31,7 +31,9 @@ Open [http://localhost:4173](http://localhost:4173). You can also open `index.ht
 
 ## Configuration
 
-There are no environment variables. Content tuning, Medium Threat allocation, the fixed 15×15 map and its centered clearing, combat contracts, loot ranges, and levels live in `engine.js`. `talent-tree.js` is the executable Talent Tree catalog; `docs/talent-tree-workbench.md` is the plain-language collaboration sheet; and `talent-icons.js` with `talent-icons.html` owns the shared, viewable SVG icon catalog. `game.js` is the browser renderer, stable map-input layer, and full-screen Talent Tree overlay. The shared Stick Launcher and Potato Gun artwork lives in `assets/` and is used in both the meadow and Build strip.
+There are no environment variables. Content tuning, Medium Threat allocation, the fixed 15×15 map and its centered clearing, combat contracts, loot ranges, and levels currently live in `engine.js`. `talent-tree.js` is the executable Talent Tree catalog; `docs/talent-tree-workbench.md` is the plain-language collaboration sheet; and `talent-icons.js` with `talent-icons.html` owns the shared, viewable SVG icon catalog. `game.js` is the browser renderer, stable map-input layer, and full-screen Talent Tree overlay. The shared Stick Launcher and Potato Gun artwork lives in `assets/` and is used in both the meadow and Build strip.
+
+As the roster grows, use stable IDs—not JavaScript pointers—between a small set of catalogs: `units.js`, `enemies.js`, `buildings.js`, `levels.js`, `terrain.js`, `talent-tree.js`, and `talent-icons.js`. `engine.js` should consume those catalogs and retain only simulation/state logic. Units, enemies, and buildings are still centralized inside `engine.js` today, so extracting those three registries is the next organization refactor rather than creating duplicate sources of truth.
 
 ## Shared testing
 
