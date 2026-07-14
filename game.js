@@ -11,6 +11,7 @@ const elements = {
   board: document.querySelector("#game-board"),
   grid: document.querySelector("#board-grid"),
   entityLayer: document.querySelector("#entity-layer"),
+  effectLayer: document.querySelector("#effect-layer"),
   phaseChip: document.querySelector("#phase-chip"),
   phaseLabel: document.querySelector("#phase-label"),
   phaseDetail: document.querySelector("#phase-detail"),
@@ -87,8 +88,7 @@ let toolbarSize = "compact";
 let buildListSignature = "";
 let harvestEffect = null;
 let harvestTimer = null;
-const HARVEST_EFFECT_MS = 1200;
-const REDUCED_HARVEST_EFFECT_MS = 320;
+const HARVEST_EFFECT_MS = 1600;
 const BUILD_CARD_ICONS = {
   stickLauncher: "stick-launcher-icon",
   potatoPatch: "potato-patch-icon",
@@ -234,16 +234,26 @@ function clearHarvestEffect() {
   if (harvestTimer) window.clearTimeout(harvestTimer);
   harvestTimer = null;
   harvestEffect = null;
+  elements.effectLayer.replaceChildren();
 }
 
 function startHarvestEffect(x, y) {
   clearHarvestEffect();
   harvestEffect = { x, y, tone: (x * 7 + y * 3) % 6 };
+  const effect = createNode("div", `entity harvest-effect tone-${harvestEffect.tone}`);
+  effect.append(
+    createNode("span", "harvest-canopy tree-canopy"),
+    createNode("span", "harvest-trunk"),
+    createNode("span", "harvest-hatchet"),
+    createNode("span", "harvest-impact"),
+    createNode("span", "harvest-chips"),
+  );
+  place(effect, x, y);
+  elements.effectLayer.append(effect);
   harvestTimer = window.setTimeout(() => {
-    harvestEffect = null;
-    harvestTimer = null;
+    clearHarvestEffect();
     render();
-  }, window.matchMedia("(prefers-reduced-motion: reduce)").matches ? REDUCED_HARVEST_EFFECT_MS : HARVEST_EFFECT_MS);
+  }, HARVEST_EFFECT_MS);
 }
 
 function openTechnology() {
@@ -405,18 +415,6 @@ function renderEntities() {
     place(node, rubble.x, rubble.y);
     fragment.append(node);
   });
-
-  if (harvestEffect) {
-    const effect = createNode("div", `entity harvest-effect tone-${harvestEffect.tone}`);
-    effect.append(
-      createNode("span", "harvest-canopy tree-canopy"),
-      createNode("span", "harvest-hatchet"),
-      createNode("span", "harvest-impact"),
-      createNode("span", "harvest-chips"),
-    );
-    place(effect, harvestEffect.x, harvestEffect.y);
-    fragment.append(effect);
-  }
 
   if (needsShelter()) {
     state.openingPickups.filter((pickup) => !pickup.collected).forEach((pickup) => {
