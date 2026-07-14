@@ -71,7 +71,14 @@
             <button class="secondary-button" id="upgrade-button" type="button">Upgrade selected <span>Arrowcraft · 4 wood · 1 action</span></button>
           </div>
           <button class="primary-button wide" id="end-day-button" type="button">End Day</button>
-          <div class="always-settings"><label class="setting-toggle" id="health-bars-setting" for="health-bars-toggle"><input id="health-bars-toggle" type="checkbox" checked /> <span>Health bars</span></label></div>
+          <div class="always-settings">
+            <label class="setting-toggle" id="health-bars-setting" for="health-bars-toggle"><input id="health-bars-toggle" type="checkbox" checked /> <span>Health bars</span></label>
+            <div class="audio-settings" id="audio-settings" aria-label="Sound settings">
+              <button class="audio-mute-button" id="audio-mute-button" type="button" aria-pressed="false">Sound on</button>
+              <label class="audio-volume" for="effects-volume"><span>SFX</span><input id="effects-volume" type="range" min="0" max="100" value="55" /></label>
+              <label class="audio-volume" for="music-volume"><span>Music</span><input id="music-volume" type="range" min="0" max="100" value="22" /></label>
+            </div>
+          </div>
         </section>
 
         <aside class="planning-card" id="planning-card" aria-label="Planning and night controls">
@@ -156,6 +163,7 @@
     <script src="talent-icons.js?v=talent-workbench-1"></script>
     <script src="talent-tree.js?v=balance-pathing-1"></script>
     <script src="engine.js?v=night-speed-5x-1"></script>
+    <script src="audio.js?v=audio-controls-1"></script>
     <script src="game.js?v=night-speed-5x-1"></script>
   </body>
 </html>

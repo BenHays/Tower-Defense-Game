@@ -264,9 +264,16 @@ button[hidden], [hidden] { display: none !important; }
 .action-card > .always-settings {
   grid-column: 1 / -1;
   display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
   justify-content: flex-end;
   margin-top: -2px;
 }
+.audio-settings { display: inline-flex; align-items: center; gap: 6px; padding-left: 8px; border-left: 1px solid var(--line); }
+.audio-mute-button { min-height: 24px; padding: 4px 7px; border: 1px solid rgba(53,108,82,.34); border-radius: 7px; cursor: pointer; color: var(--moss-dark); background: #f4f8f0; font-size: .55rem; font-weight: 900; letter-spacing: .03em; text-transform: uppercase; }.audio-mute-button[aria-pressed="true"] { color: #866142; background: #fbf0dc; border-color: rgba(139,96,57,.4); }
+.audio-volume { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: .53rem; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; }.audio-volume input { width: 48px; height: 16px; margin: 0; accent-color: var(--moss); cursor: pointer; }
+@media(max-width:430px) { .action-card > .always-settings { justify-content: space-between; }.audio-settings { padding-left: 0; border-left: 0; }.audio-volume input { width: 40px; } }
 
 /* The opening teaches two concrete actions without introducing a new resource. */
 .day-action-list .opening-action { grid-column: 1 / -1; }

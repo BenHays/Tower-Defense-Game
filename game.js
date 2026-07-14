@@ -1,8 +1,10 @@
 const Engine = window.WildHearthEngine;
 const TalentIcons = window.WildHearthTalentIcons;
+const HearthAudio = window.WildHearthAudio;
 
 if (!Engine) throw new Error("Wild Hearth engine did not load.");
 if (!TalentIcons) throw new Error("Wild Hearth talent icons did not load.");
+if (!HearthAudio) throw new Error("Wild Hearth audio did not load.");
 
 const SAVE_KEY = "wild-hearth-save-v14";
 const LEGACY_SAVE_KEYS = ["wild-hearth-save-v13", "wild-hearth-save-v12", "wild-hearth-save-v11", "wild-hearth-save-v10"];
@@ -74,6 +76,9 @@ const elements = {
   speedControls: document.querySelector("#speed-controls"),
   healthBarsToggle: document.querySelector("#health-bars-toggle"),
   healthBarsSetting: document.querySelector("#health-bars-setting"),
+  audioMuteButton: document.querySelector("#audio-mute-button"),
+  effectsVolume: document.querySelector("#effects-volume"),
+  musicVolume: document.querySelector("#music-volume"),
   eventLogWrap: document.querySelector("#event-log-wrap"),
   eventLog: document.querySelector("#event-log"),
 };
@@ -91,6 +96,9 @@ let activeTechId = null;
 const gridCells = new Map();
 let techSignature = "";
 let preferredSpeed = 1;
+let audioMuted = false;
+let effectsVolume = 0.55;
+let musicVolume = 0.22;
 let lastFocusedElement = null;
 let lastEarlyEndFocusedElement = null;
 let lastSkillPointFocusedElement = null;
@@ -115,16 +123,33 @@ try {
   showHealthBars = settings.healthBarsPreferenceSet ? Boolean(settings.showHealthBars) : true;
   preferredSpeed = SPEED_OPTIONS.includes(settings.preferredSpeed) ? settings.preferredSpeed : 1;
   toolbarSize = TOOLBAR_SIZES.includes(settings.toolbarSize) ? settings.toolbarSize : "compact";
+  audioMuted = Boolean(settings.audioMuted);
+  effectsVolume = Number.isFinite(settings.effectsVolume) ? Math.max(0, Math.min(1, settings.effectsVolume)) : 0.55;
+  musicVolume = Number.isFinite(settings.musicVolume) ? Math.max(0, Math.min(1, settings.musicVolume)) : 0.22;
 } catch (error) {
   showHealthBars = true;
   preferredSpeed = 1;
   toolbarSize = "compact";
 }
+const sound = new HearthAudio.Director({ muted: audioMuted, effectsVolume, musicVolume });
 
 function saveSettings() {
   try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ showHealthBars, healthBarsPreferenceSet: true, preferredSpeed, toolbarSize }));
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ showHealthBars, healthBarsPreferenceSet: true, preferredSpeed, toolbarSize, audioMuted, effectsVolume, musicVolume }));
   } catch (error) { /* Settings still apply for this browser session. */ }
+}
+
+function syncAudioControls() {
+  elements.audioMuteButton.textContent = audioMuted ? "Sound off" : "Sound on";
+  elements.audioMuteButton.setAttribute("aria-pressed", String(audioMuted));
+  elements.effectsVolume.value = String(Math.round(effectsVolume * 100));
+  elements.musicVolume.value = String(Math.round(musicVolume * 100));
+}
+
+function applyAudioSettings() {
+  sound.setSettings({ muted: audioMuted, effectsVolume, musicVolume });
+  syncAudioControls();
+  saveSettings();
 }
 
 function syncToolbarSizeControls() {
@@ -240,9 +265,51 @@ function setEvent(message) {
 function dispatch(action, options = {}) {
   const outcome = Engine.dispatch(state, action);
   if (outcome.message) setEvent(outcome.message);
+  if (outcome.ok) {
+    const effect = {
+      collectOpeningPickup: "collect",
+      craftHatchet: "craft",
+      constructShelter: "build",
+      clear: "harvest",
+      build: "build",
+      scout: "scout",
+      repair: "repair",
+      upgradeLauncher: "upgrade",
+      upgradePotatoPatch: "upgrade",
+      refitBuilding: "upgrade",
+      research: "research",
+    }[action.type];
+    if (effect) sound.playEffect(effect);
+  }
   gridSignature = "";
   if (options.render !== false) render();
   return outcome;
+}
+
+function captureCombatAudioState() {
+  return {
+    phase: state.phase,
+    projectiles: new Set(state.projectiles.map((projectile) => `${projectile.id}:${projectile.type}`)),
+    impacts: new Set(state.impacts.map((impact) => `${impact.id}:${impact.type}`)),
+    kills: state.kills,
+    buildingHealth: new Map(state.buildings.filter((building) => !building.destroyed).map((building) => [building.id, building.health])),
+  };
+}
+
+function playSimulationAudio(before) {
+  if (before.phase !== state.phase) {
+    sound.setMood(state.phase);
+    if (state.phase === "night") sound.playEffect("night");
+    else if (state.phase === "day") sound.playEffect("dawn");
+  }
+  const newProjectile = state.projectiles.find((projectile) => !before.projectiles.has(`${projectile.id}:${projectile.type}`));
+  if (newProjectile) sound.playEffect(newProjectile.type === "fireball" ? "fireShot" : "towerShot");
+  if (state.impacts.some((impact) => !before.impacts.has(`${impact.id}:${impact.type}`))) sound.playEffect("hit");
+  if (state.kills > before.kills) sound.playEffect("defeat");
+  if ([...before.buildingHealth].some(([id, health]) => {
+    const building = state.buildings.find((item) => item.id === id);
+    return building && building.health < health;
+  })) sound.playEffect("structureHit");
 }
 
 function clearHarvestEffect() {
@@ -863,6 +930,7 @@ function renderControls() {
   elements.speedControls.hidden = opening;
   elements.healthBarsSetting.hidden = false;
   elements.healthBarsToggle.checked = showHealthBars;
+  syncAudioControls();
   elements.actionBadge.textContent = day ? `${state.actionPoints} action${state.actionPoints === 1 ? "" : "s"}` : night ? "Scout on watch" : "Dawn";
   elements.actionHint.textContent = day
     ? opening
@@ -911,6 +979,7 @@ function renderHeader() {
   const day = state.phase === "day";
   const night = state.phase === "night";
   const aftermath = state.phase === "aftermath";
+  sound.setMood(state.phase);
   elements.seed.textContent = state.seed;
   elements.phaseChip.classList.toggle("is-night", night || aftermath);
   elements.phaseChip.classList.toggle("is-result", !day && !night && !aftermath);
@@ -1154,6 +1223,25 @@ elements.healthBarsToggle.addEventListener("change", () => {
   saveSettings();
   render();
 });
+elements.audioMuteButton.addEventListener("click", () => {
+  sound.unlock();
+  audioMuted = !audioMuted;
+  applyAudioSettings();
+});
+elements.effectsVolume.addEventListener("input", () => {
+  effectsVolume = Number(elements.effectsVolume.value) / 100;
+  sound.unlock();
+  applyAudioSettings();
+});
+elements.musicVolume.addEventListener("input", () => {
+  musicVolume = Number(elements.musicVolume.value) / 100;
+  sound.unlock();
+  applyAudioSettings();
+});
+// Browsers require an intentional gesture before an AudioContext can speak.
+// This keeps the opening quiet until the player first interacts with the game.
+document.addEventListener("pointerdown", () => sound.unlock(), { once: true, capture: true });
+document.addEventListener("keydown", () => sound.unlock(), { once: true, capture: true });
 document.addEventListener("keydown", (event) => {
   if (!elements.earlyEndDialog.hidden) {
     if (event.key === "Escape") {
@@ -1205,7 +1293,9 @@ function frame(timestamp) {
     accumulator += (elapsed / 1000) * Engine.TICK_RATE * state.speed;
     let steps = 0;
     while (accumulator >= 1 && steps < MAX_SIMULATION_STEPS_PER_FRAME && ["night", "aftermath"].includes(state.phase)) {
+      const audioBefore = captureCombatAudioState();
       Engine.advanceTick(state);
+      playSimulationAudio(audioBefore);
       accumulator -= 1;
       steps += 1;
     }
