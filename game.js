@@ -137,6 +137,13 @@ function addHealthBar(node, entity, tone) {
   node.append(health);
 }
 
+function healthTone(entity) {
+  const ratio = entity.health / entity.maxHealth;
+  if (ratio < 0.3) return "red";
+  if (ratio < 1) return "yellow";
+  return "green";
+}
+
 function currentLevel() { return Engine.levelFor(state); }
 function selectedBuilding() { return selected.kind === "building" ? state.buildings.find((building) => building.id === selected.id && !building.destroyed) : null; }
 function selectedScout() { return selected.kind === "scout" ? state.scout : null; }
@@ -335,8 +342,7 @@ function renderEntities() {
     if (building.hitTicks > 0) node.classList.add("is-hit");
     place(node, building.x, building.y);
     addHealthBar(node, building, "building-health");
-    const condition = Engine.conditionFor(building);
-    if (condition !== "intact") node.append(createNode("span", `condition-tag ${condition}`, condition.replace("-", " ")));
+    node.append(createNode("span", `health-signal ${healthTone(building)}`));
     fragment.append(node);
   });
 
@@ -413,11 +419,10 @@ function renderSelection() {
   const building = selectedBuilding();
   if (building) {
     const recipe = Engine.buildingCombatStats(state, building.type, building);
-    const condition = Engine.conditionFor(building).replace("-", " ");
     elements.selectedTitle.textContent = recipe.label;
     elements.selectionMeterWrap.hidden = false;
     if (towerRecipe(building.type)) {
-      elements.selectedCopy.textContent = `Hit ${recipe.damage} · ${tempoLabel(recipe.attackSpeed)} · ${reachLabel(recipe.attackRange)} · ${condition}.`;
+      elements.selectedCopy.textContent = `Hit ${recipe.damage} · ${tempoLabel(recipe.attackSpeed)} · ${reachLabel(recipe.attackRange)}.`;
       elements.selectionFootnote.textContent = building.type === "stickLauncher"
         ? Engine.hasResearch(state, "arrowcraft")
           ? "Arrowcraft is ready: upgrade this launcher for 4 wood and 1 action."
@@ -434,7 +439,7 @@ function renderSelection() {
             : "Heavy shots push surviving enemies back. Potato Packing can add a brief slow."
           : "Stronger, faster, and farther than a Stick Launcher.";
     } else {
-      elements.selectedCopy.textContent = `Home · ${condition} · repair costs ${recipe.repairCost.wood || 0} wood and one day action.`;
+      elements.selectedCopy.textContent = `Home · repair costs ${recipe.repairCost.wood || 0} wood and one day action.`;
       elements.selectionFootnote.textContent = "The teepee is the homestead target. Fire arrives later through research.";
     }
     elements.selectionMeter.style.width = `${(building.health / building.maxHealth) * 100}%`;
