@@ -5,8 +5,8 @@
 - Medium uses a seeded Threat Budget that grows 25% per level, rounded up.
 - Level 1 unlocks Stick Launcher.
 - Holding Level 2 unlocks Potato Gun.
-- Level 2 reveals Scout Training I (4 XP, +1 Scout damage); Level 3 also reveals Arrowcraft (6 XP).
-- Level 4 reveals Hearthkeeping I (5 XP): at the next dawn, each surviving targetable building recovers 1 HP.
+- Level 2 reveals the first 1-Skill-Point choices: Scout Training I and Woodland Yield.
+- Level 3 reveals Huntcraft range, Arrowcraft after its dependencies, Field Mending, Hearthkeeping I, and Trail Sense. Level 4 continues those lanes with Quickcord and Reinforced Frames.
 - Level 5 has a guaranteed Boar showcase. The Potato Gun has therefore been available for two levels before its counter role is required.
 - Level 1 opens at a shelter site with only **Construct shelter** enabled; teepee construction is free but consumes the first full day. The first real clear/build choice begins after that tutorial action.
 

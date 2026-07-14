@@ -29,7 +29,7 @@ assert.deepEqual(Engine.SHELTER_SITE, { x: 7, y: 7 }, "the shelter stays centere
 assert.equal(run.terrain.length, 225, "the fixed terrain covers every expanded board cell");
 assert.equal(Engine.terrainAt(run, centralBuildSite.x, centralBuildSite.y), "open", "the centered opening still has an initial defense site");
 assert.equal(Engine.terrainAt(run, Engine.SHELTER_SITE.x + 3, Engine.SHELTER_SITE.y), "tree", "the added outer ring remains dense forest");
-assert.deepEqual(run.resources, { wood: 0 });
+assert.deepEqual(run.resources, { wood: 0, hides: 0 });
 assert.equal(run.actionPoints, 2);
 assert.equal(run.shelterBuilt, false);
 assert.equal(Engine.hasShelter(run), false);
@@ -56,11 +56,21 @@ assert.deepEqual(run.encounter.units, ["raccoon"]);
 settleToNextDay(run);
 assert.equal(run.levelIndex, 1);
 assert.equal(run.xp, 3, "the first kill and cleared night award only XP");
+assert.equal(run.skillPoints, 0, "Skill Points begin after a full 8 XP milestone");
+assert.equal(run.skillPointsEarned, 0);
+assert.ok(run.resources.hides >= 1 && run.resources.hides <= 2, "a raccoon rolls a small hide drop");
 assert.ok(run.unlocks.includes("stickLauncher"));
 assert.equal(run.telemetry.nightReports.length, 1, "each completed night records a balance report");
 assert.equal(run.telemetry.nightReports[0].spawned, 1);
 assert.equal(run.telemetry.nightReports[0].killsBySource.Scout, 1);
+assert.equal(run.telemetry.nightReports[0].hidesCollected, run.resources.hides, "the dawn report retains the rolled hide reward");
 assert.equal(run.telemetry.total.nights, 1);
+
+const sameSeedHideRun = Engine.createRun("HEARTH-1042");
+constructShelter(sameSeedHideRun);
+action(sameSeedHideRun, { type: "endDay" });
+settleToNextDay(sameSeedHideRun);
+assert.equal(sameSeedHideRun.resources.hides, run.resources.hides, "hide rolls are stable for the same seed and enemy id");
 
 // Playback speed is a run preference: it can be chosen in daylight and persists into the next watch and dawn.
 action(run, { type: "speed", speed: 2 });
@@ -89,7 +99,7 @@ legacyLauncher.health = 6;
 const migratedLauncher = Engine.hydrate(legacyLauncherSave).buildings.find((building) => building.id === launcher.id);
 assert.equal(migratedLauncher.maxHealth, 8, "saved Stick Launchers inherit the new maximum health without a save reset");
 assert.equal(migratedLauncher.health, 6, "the health-cap adjustment never grants a saved tower a free heal");
-assert.deepEqual(run.resources, { wood: 0 }, "unused legacy resources must not leak into a wood-only run");
+assert.equal(run.resources.wood, 0, "building still spends the whole first wood bundle");
 assert.equal(run.actionPoints, 0);
 assert.equal(Engine.BUILDINGS.stickLauncher.attackRange, 2.25);
 assert.equal(Engine.dispatch(run, { type: "finish", id: "not-a-step" }).ok, false, "Finish is not part of the MVP loop");
@@ -100,20 +110,66 @@ assert.equal(Engine.hydrate(Engine.serialize(run)).speed, 2, "chosen 2× speed s
 assert.ok(run.unlocks.includes("potatoGun"), "holding Level 2 unlocks the Potato Gun");
 assert.equal(Engine.BUILDINGS.potatoGun.damage, 3);
 assert.equal(Engine.BUILDINGS.potatoGun.knockback, 1);
+assert.equal(run.xp, 8, "Experience remains lifetime progress after a level resolves");
+assert.equal(run.skillPoints, 1, "8 XP creates the first spendable Skill Point");
+assert.equal(run.firstSkillPointReady, true, "the UI can announce the first Skill Point once");
+assert.equal(Engine.nextSkillPointThreshold(run), 16);
 
-// Tech is data-driven: XP-only Scout Training permanently modifies the calculated Scout stats.
+// Tech is data-driven: Skill Point Scout Training permanently modifies the calculated Scout stats.
 const scoutTechRun = Engine.createRun("TEST-SCOUT-TECH");
 constructShelter(scoutTechRun);
 scoutTechRun.levelIndex = 1;
-scoutTechRun.xp = 4;
+scoutTechRun.xp = 8;
+scoutTechRun.skillPoints = 1;
+scoutTechRun.skillPointsEarned = 1;
 const scoutResearchActions = scoutTechRun.actionPoints;
 assert.equal(Engine.techAvailability(scoutTechRun, "scoutTraining1").available, true);
 action(scoutTechRun, { type: "research", nodeId: "scoutTraining1" });
-assert.equal(scoutTechRun.xp, 0);
+assert.equal(scoutTechRun.xp, 8, "Experience is never spent by research");
+assert.equal(scoutTechRun.skillPoints, 0);
 assert.equal(scoutTechRun.actionPoints, scoutResearchActions, "research never consumes a day action");
 assert.equal(Engine.unitStats(scoutTechRun, "scout").damage, 2, "Scout Training adds damage without mutating the base recipe");
 assert.equal(Engine.UNITS.scout.damage, 1);
 assert.equal(Engine.dispatch(scoutTechRun, { type: "research", nodeId: "scoutTraining1" }).ok, false, "a technology cannot be bought twice");
+
+// Scout's day post reserves one grass cell, while structures reserve their own cells.
+const occupancyRun = Engine.createRun("TEST-SCOUT-OCCUPANCY");
+constructShelter(occupancyRun);
+occupancyRun.unlocks.push("stickLauncher");
+occupancyRun.resources.wood = 2;
+occupancyRun.actionPoints = 2;
+const oldPost = { x: occupancyRun.scout.postX, y: occupancyRun.scout.postY };
+assert.equal(Engine.validFootprint(occupancyRun, "stickLauncher", oldPost.x, oldPost.y), false, "a building cannot overlap Scout's reserved watch post");
+assert.equal(Engine.dispatch(occupancyRun, { type: "build", buildingType: "stickLauncher", ...oldPost }).ok, false);
+assert.equal(Engine.validScoutPost(occupancyRun, Engine.SHELTER_SITE.x, Engine.SHELTER_SITE.y), false, "Scout cannot stand inside a structure");
+const newPost = { x: Engine.SHELTER_SITE.x - 2, y: Engine.SHELTER_SITE.y - 1 };
+action(occupancyRun, { type: "scout", ...newPost });
+assert.equal(Engine.validFootprint(occupancyRun, "stickLauncher", oldPost.x, oldPost.y), true, "moving Scout frees the old watch post for construction");
+
+// Forager and Fortification branches use typed effects rather than special-case action rules.
+const foragerRun = Engine.createRun("TEST-FORAGER");
+constructShelter(foragerRun);
+foragerRun.levelIndex = 1;
+foragerRun.xp = 8;
+foragerRun.skillPoints = 1;
+foragerRun.skillPointsEarned = 1;
+action(foragerRun, { type: "research", nodeId: "woodlandYield" });
+foragerRun.actionPoints = 1;
+action(foragerRun, { type: "clear", x: 1, y: 3 });
+assert.equal(foragerRun.resources.wood, 3, "Woodland Yield raises a tree harvest by one wood");
+
+const fortificationRun = Engine.createRun("TEST-FORTIFICATION");
+constructShelter(fortificationRun);
+fortificationRun.levelIndex = 4;
+fortificationRun.xp = 32;
+fortificationRun.skillPoints = 4;
+fortificationRun.skillPointsEarned = 4;
+action(fortificationRun, { type: "research", nodeId: "hearthkeeping1" });
+action(fortificationRun, { type: "research", nodeId: "reinforcedFrames" });
+assert.equal(fortificationRun.buildings[0].maxHealth, 14, "Reinforced Frames adds maximum health to standing targetable structures");
+assert.equal(fortificationRun.buildings[0].health, 14, "new frame protection is granted immediately instead of creating a damaged upgrade");
+action(fortificationRun, { type: "research", nodeId: "barkArmor" });
+assert.equal(fortificationRun.skillPoints, 0, "Bark Armor consumes its two-point cost");
 
 // Forest remains dense, but every edge is a legal seeded spawn entry.
 assert.equal(Engine.isPassable(Engine.createRun("FOREST-PATH"), 0, 0), true);
@@ -162,7 +218,9 @@ const slowRun = Engine.createRun("TEST-POTATO-SLOW");
 constructShelter(slowRun);
 slowRun.levelIndex = 3;
 slowRun.unlocks.push("potatoGun");
-slowRun.xp = 5;
+slowRun.xp = 8;
+slowRun.skillPoints = 1;
+slowRun.skillPointsEarned = 1;
 action(slowRun, { type: "research", nodeId: "potatoPacking" });
 slowRun.resources.wood = 3;
 slowRun.actionPoints = 2;
@@ -174,18 +232,23 @@ Engine.advanceTick(slowRun);
 Engine.advanceTicks(slowRun, 16);
 assert.equal(slowRun.enemies[0].statuses.movementSlow.sources.potatoPacking.movementMultiplier, 0.55, "Potato Packing applies its brief movement slow");
 
-// Arrowcraft costs XP only; launcher upgrades use one day action.
+// Arrowcraft uses Skill Points only; launcher upgrades use one day action.
 const upgradeRun = Engine.createRun("TEST-ARROWCRAFT");
 constructShelter(upgradeRun);
 upgradeRun.levelIndex = 2;
 upgradeRun.unlocks.push("stickLauncher");
-upgradeRun.xp = 6;
-assert.equal(Engine.techAvailability(upgradeRun, "arrowcraft").available, true);
+upgradeRun.xp = 24;
+upgradeRun.skillPoints = 3;
+upgradeRun.skillPointsEarned = 3;
+action(upgradeRun, { type: "research", nodeId: "hardwoodThrows" });
+action(upgradeRun, { type: "research", nodeId: "launcherRange" });
+assert.equal(Engine.techAvailability(upgradeRun, "arrowcraft").available, true, "Arrowcraft appears after its Huntcraft dependencies");
 const researchActions = upgradeRun.actionPoints;
 action(upgradeRun, { type: "research", nodeId: "arrowcraft" });
-assert.equal(upgradeRun.xp, 0);
+assert.equal(upgradeRun.xp, 24);
+assert.equal(upgradeRun.skillPoints, 0);
 assert.ok(upgradeRun.research.includes("arrowcraft"));
-assert.equal(upgradeRun.actionPoints, researchActions, "research costs XP but no day action");
+assert.equal(upgradeRun.actionPoints, researchActions, "research costs Skill Points but no day action");
 upgradeRun.resources.wood = 2;
 upgradeRun.actionPoints = 2;
 action(upgradeRun, { type: "build", buildingType: "stickLauncher", ...centralBuildSite });
@@ -206,7 +269,9 @@ assert.deepEqual(
 const progressionRun = Engine.createRun("TEST-PROGRESSION");
 constructShelter(progressionRun);
 progressionRun.levelIndex = 3;
-progressionRun.xp = 14;
+progressionRun.xp = 24;
+progressionRun.skillPoints = 3;
+progressionRun.skillPointsEarned = 3;
 action(progressionRun, { type: "research", nodeId: "scoutTraining1" });
 action(progressionRun, { type: "research", nodeId: "trailSense" });
 action(progressionRun, { type: "research", nodeId: "hearthkeeping1" });
@@ -223,7 +288,11 @@ const quickcordRun = Engine.createRun("TEST-QUICKCORD");
 constructShelter(quickcordRun);
 quickcordRun.levelIndex = 3;
 quickcordRun.unlocks.push("stickLauncher");
-quickcordRun.xp = 11;
+quickcordRun.xp = 32;
+quickcordRun.skillPoints = 4;
+quickcordRun.skillPointsEarned = 4;
+action(quickcordRun, { type: "research", nodeId: "hardwoodThrows" });
+action(quickcordRun, { type: "research", nodeId: "launcherRange" });
 action(quickcordRun, { type: "research", nodeId: "arrowcraft" });
 action(quickcordRun, { type: "research", nodeId: "quickcord" });
 quickcordRun.resources.wood = 6;
@@ -302,7 +371,7 @@ settleToNextDay(replaySource);
 action(replaySource, { type: "clear", x: 1, y: 3 });
 action(replaySource, { type: "endDay" });
 settleToNextDay(replaySource);
-action(replaySource, { type: "research", nodeId: "arrowcraft" });
+action(replaySource, { type: "research", nodeId: "scoutTraining1" });
 const replayReport = Engine.replayReport(replaySource.seed, replaySource.actionLog);
 assert.equal(Engine.checksum(replayReport.state), Engine.checksum(replaySource));
 assert.equal(replayReport.checkpoints.length, 2, "replay exposes one checkpoint for each resolved night");

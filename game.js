@@ -2,7 +2,7 @@ const Engine = window.WildHearthEngine;
 
 if (!Engine) throw new Error("Wild Hearth engine did not load.");
 
-const SAVE_KEY = "wild-hearth-save-v9";
+const SAVE_KEY = "wild-hearth-save-v10";
 const SETTINGS_KEY = "wild-hearth-settings-v1";
 const elements = {
   board: document.querySelector("#game-board"),
@@ -18,6 +18,7 @@ const elements = {
   actionPoints: document.querySelector("#action-points"),
   wood: document.querySelector("#wood-value"),
   xp: document.querySelector("#xp-value"),
+  hides: document.querySelector("#hides-value"),
   controlPanel: document.querySelector("#control-panel"),
   actionCard: document.querySelector("#action-card"),
   planningCard: document.querySelector("#planning-card"),
@@ -37,7 +38,7 @@ const elements = {
   overlayButton: document.querySelector("#overlay-button"),
   previewCopy: document.querySelector("#preview-copy"),
   techButton: document.querySelector("#tech-button"),
-  techXp: document.querySelector("#tech-xp"),
+  techPoints: document.querySelector("#tech-points"),
   techDialog: document.querySelector("#tech-dialog"),
   techCloseButton: document.querySelector("#tech-close-button"),
   techDialogSubtitle: document.querySelector("#tech-dialog-subtitle"),
@@ -49,6 +50,9 @@ const elements = {
   earlyEndDialogCopy: document.querySelector("#early-end-dialog-copy"),
   earlyEndCancel: document.querySelector("#early-end-cancel"),
   earlyEndConfirm: document.querySelector("#early-end-confirm"),
+  skillPointDialog: document.querySelector("#skill-point-dialog"),
+  skillPointLater: document.querySelector("#skill-point-later"),
+  skillPointTech: document.querySelector("#skill-point-tech"),
   dawnReport: document.querySelector("#dawn-report"),
   utilityLabel: document.querySelector("#utility-label"),
   pauseButton: document.querySelector("#pause-button"),
@@ -76,6 +80,7 @@ let pointerActivation = null;
 let preferredSpeed = 1;
 let lastFocusedElement = null;
 let lastEarlyEndFocusedElement = null;
+let lastSkillPointFocusedElement = null;
 let earlyEndWarningDay = null;
 const TOOLBAR_SIZES = ["compact", "standard", "large"];
 let toolbarSize = "compact";
@@ -236,6 +241,23 @@ function closeTechnology(options = {}) {
   lastFocusedElement = null;
 }
 
+function closeSkillPointNotice(options = {}) {
+  if (elements.skillPointDialog.hidden) return;
+  Engine.acknowledgeFirstSkillPoint(state);
+  elements.skillPointDialog.hidden = true;
+  document.body.classList.remove("skill-point-dialog-open");
+  if (options.restoreFocus !== false && lastSkillPointFocusedElement instanceof HTMLElement) lastSkillPointFocusedElement.focus();
+  lastSkillPointFocusedElement = null;
+}
+
+function showSkillPointNotice() {
+  if (!state.firstSkillPointReady || !elements.skillPointDialog.hidden) return;
+  lastSkillPointFocusedElement = document.activeElement;
+  elements.skillPointDialog.hidden = false;
+  document.body.classList.add("skill-point-dialog-open");
+  requestAnimationFrame(() => elements.skillPointTech.focus());
+}
+
 function setPreferredSpeed(speed) {
   if (![1, 2].includes(speed) || needsShelter()) return;
   preferredSpeed = speed;
@@ -288,6 +310,7 @@ function beginNight() {
 function describeCell(x, y) {
   const building = Engine.buildingAt(state, x, y);
   if (building) return Engine.BUILDINGS[building.type].label;
+  if (Engine.scoutPostAt(state, x, y)) return "Scout watch post";
   if (Engine.hasRubble(state, x, y)) return "Rubble";
   const terrain = Engine.terrainAt(state, x, y);
   return terrain === "tree" ? "Tree" : terrain === "cleared" ? "Cleared grass" : "Open grass";
@@ -483,27 +506,26 @@ function renderPreview() {
 function renderTechnology() {
   const ready = !needsShelter();
   elements.techButton.hidden = !ready;
-  elements.techXp.textContent = `${state.xp} XP`;
-  elements.techButton.setAttribute("aria-label", `Technology, ${state.xp} XP`);
+  elements.techPoints.textContent = `${state.skillPoints} SP`;
+  elements.techButton.setAttribute("aria-label", `Technology, ${state.skillPoints} Skill Point${state.skillPoints === 1 ? "" : "s"} ready`);
   if (!ready) {
     closeTechnology({ restoreFocus: false });
     return;
   }
   const level = currentLevel().number;
-  const visibleNodes = Engine.techNodes().filter((node) => Engine.hasResearch(state, node.id)
-    || (node.requiredLevel <= level && (node.requiresNodes || []).every((requiredId) => Engine.hasResearch(state, requiredId))));
+  const visibleNodes = Engine.techNodes().filter((node) => Engine.hasResearch(state, node.id) || node.requiredLevel <= level);
   if (!visibleNodes.length) {
     elements.techBranches.replaceChildren(createNode("p", "tech-empty", "The first research reveals after you survive Level 1."));
     elements.techTitle.textContent = "Research unlocks soon";
-    elements.techCopy.textContent = "Clear the first watch to earn XP and reveal your first choice.";
+    elements.techCopy.textContent = "Clear the first watch. Every 8 XP earns one Skill Point for lasting research.";
     setButtonContent(elements.researchButton, "Research unavailable", "next level");
     elements.researchButton.disabled = true;
-    elements.techDialogSubtitle.textContent = "Spend earned XP during the day. Research does not use an action.";
+    elements.techDialogSubtitle.textContent = `Experience ${state.xp}/${Engine.nextSkillPointThreshold(state)} · research uses Skill Points, not actions.`;
     return;
   }
   const available = visibleNodes.find((node) => Engine.techAvailability(state, node.id).available);
   if (!visibleNodes.some((node) => node.id === activeTechId)) activeTechId = available?.id || visibleNodes[0].id;
-  const signature = [state.phase, level, state.xp, state.unlocks.join(","), state.research.join(","), activeTechId].join("|");
+  const signature = [state.phase, level, state.xp, state.skillPoints, state.skillPointsEarned, state.unlocks.join(","), state.research.join(","), activeTechId].join("|");
   if (signature === techSignature) return;
   techSignature = signature;
   const selectedNode = Engine.TECH_TREE[activeTechId];
@@ -524,7 +546,7 @@ function renderTechnology() {
       const button = createNode("button", `tech-node${node.id === activeTechId ? " is-selected" : ""}${Engine.hasResearch(state, node.id) ? " is-researched" : ""}`);
       button.type = "button";
       button.dataset.tech = node.id;
-      button.append(document.createTextNode(node.label), createNode("span", "", Engine.hasResearch(state, node.id) ? "researched" : `${node.costXp} XP`));
+      button.append(document.createTextNode(node.label), createNode("span", "", Engine.hasResearch(state, node.id) ? "researched" : `${node.costSkillPoints} SP`));
       button.title = check.reason;
       lane.append(button);
     });
@@ -534,16 +556,16 @@ function renderTechnology() {
   elements.techBranches.replaceChildren(fragment);
   elements.techTitle.textContent = selectedNode.label;
   elements.techDialogSubtitle.textContent = state.phase === "day"
-    ? `Level ${level} · ${state.xp} XP available · research uses no action.`
-    : `Level ${level} · ${state.xp} XP available · planning is read-only during the night.`;
+    ? `Level ${level} · ${state.skillPoints} Skill Point${state.skillPoints === 1 ? "" : "s"} ready · ${state.xp}/${Engine.nextSkillPointThreshold(state)} XP to the next point · no action.`
+    : `Level ${level} · ${state.skillPoints} Skill Point${state.skillPoints === 1 ? "" : "s"} ready · planning is read-only during the night.`;
   if (Engine.hasResearch(state, selectedNode.id)) {
-    elements.techCopy.textContent = `${selectedNode.completeCopy} Research uses XP only; no day action is spent.`;
+    elements.techCopy.textContent = `${selectedNode.completeCopy} Research uses Skill Points only; no day action is spent.`;
     setButtonContent(elements.researchButton, `${selectedNode.label} researched`, "ready");
     elements.researchButton.disabled = true;
     return;
   }
-  elements.techCopy.textContent = `${selectedNode.copy} ${research.reason} Research uses XP only; no day action is spent.`;
-  setButtonContent(elements.researchButton, `Research ${selectedNode.label}`, `${selectedNode.costXp} XP · no action`);
+  elements.techCopy.textContent = `${selectedNode.copy} ${research.reason} Research uses Skill Points only; no day action is spent.`;
+  setButtonContent(elements.researchButton, `Research ${selectedNode.label}`, `${selectedNode.costSkillPoints} SP · no action`);
   elements.researchButton.disabled = state.phase !== "day" || !research.available;
 }
 
@@ -553,7 +575,7 @@ function renderTelemetry() {
   elements.dawnReport.hidden = needsShelter() || !report || state.phase === "night";
   if (!report) return;
   const damage = report.buildingDamage > 0 ? `${report.buildingDamage.toFixed(1)} structure damage` : "no structure damage";
-  elements.dawnReport.textContent = `Dawn report · Level ${report.number}: ${report.spawned} stopped · ${damage}.`;
+  elements.dawnReport.textContent = `Dawn report · Level ${report.number}: ${report.spawned} stopped · +${report.hidesCollected || 0} hides · ${damage}.`;
 }
 
 function renderControls() {
@@ -580,6 +602,9 @@ function renderControls() {
     button.classList.toggle("is-active", tool === activeTool);
     button.disabled = opening || !day || state.actionPoints <= 0;
   });
+  const woodYield = 2 + Engine.techEffects(state).filter((effect) => effect.kind === "harvestWood").reduce((total, effect) => total + effect.amount, 0);
+  const clearDetail = elements.dayActionList.querySelector('[data-tool="clear"] small');
+  if (clearDetail) clearDetail.textContent = `+${woodYield} wood`;
   elements.buildList.querySelectorAll("[data-tool]").forEach((button) => {
     const tool = button.dataset.tool;
     button.classList.toggle("is-active", tool === activeTool);
@@ -621,7 +646,7 @@ function renderControls() {
       : level.number === 1
         ? "Scout can hold the first raccoon. Clear a tree for wood when ready."
       : level.number === 3 && !Engine.hasResearch(state, "arrowcraft")
-        ? "Choose Scout Training or Arrowcraft when you have enough XP."
+        ? "Spend earned Skill Points on a Scout, launcher, forager, or defense path."
         : state.unlocks.includes("potatoGun") && state.resources.wood < 3
           ? "Save wood for a Potato Gun, or build another first line."
           : "Place defenses on open grass; clear trees for wood and faster routes."
@@ -648,6 +673,7 @@ function renderHeader() {
   elements.actionPoints.textContent = state.actionPoints;
   elements.wood.textContent = state.resources.wood;
   elements.xp.textContent = state.xp;
+  elements.hides.textContent = state.resources.hides;
   const event = state.lastEvent || "";
   const duplicateContext = event === elements.levelCopy.textContent;
   elements.eventLogWrap.hidden = !day || !event || duplicateContext || needsShelter();
@@ -669,6 +695,7 @@ function render() {
   renderPreview();
   renderTechnology();
   renderTelemetry();
+  showSkillPointNotice();
 }
 
 function clickCell(x, y) {
@@ -829,6 +856,14 @@ elements.earlyEndConfirm.addEventListener("click", () => {
 elements.earlyEndDialog.addEventListener("click", (event) => {
   if (event.target === elements.earlyEndDialog) closeEarlyEndWarning();
 });
+elements.skillPointLater.addEventListener("click", () => closeSkillPointNotice());
+elements.skillPointTech.addEventListener("click", () => {
+  closeSkillPointNotice({ restoreFocus: false });
+  openTechnology();
+});
+elements.skillPointDialog.addEventListener("click", (event) => {
+  if (event.target === elements.skillPointDialog) closeSkillPointNotice();
+});
 elements.overlayButton.addEventListener("click", () => { planning = !planning; gridSignature = ""; render(); });
 elements.pauseButton.addEventListener("click", () => dispatch({ type: "pause" }));
 elements.speedButtons.forEach((button) => button.addEventListener("click", () => setPreferredSpeed(Number(button.dataset.speed))));
@@ -838,6 +873,13 @@ elements.healthBarsToggle.addEventListener("change", () => {
   render();
 });
 document.addEventListener("keydown", (event) => {
+  if (!elements.skillPointDialog.hidden) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeSkillPointNotice();
+    }
+    return;
+  }
   if (!elements.earlyEndDialog.hidden) {
     if (event.key === "Escape") {
       event.preventDefault();

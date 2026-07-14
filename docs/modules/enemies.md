@@ -7,7 +7,7 @@
 | Raccoon | 5 | Sneaks from any usable edge in seeded, staggered waves and attacks the closest reachable targetable building. | Stick Launcher and Scout. |
 | Boar | 10 | Trudges through forest and hits targetable buildings hard. Its first appearance is a guaranteed Level 5 showcase. | Potato Gun, especially Potato Packing slow. |
 
-Enemies award XP when defeated. They do not award meat, pelts, or another inventory resource.
+Enemies award XP when defeated and roll deterministic hide drops: Raccoons give 1–2 Hides and Boars give 2–4. Hides are visible inventory with no spending use until a later trade, food, or upgrade decision is designed.
 
 ## Proposed next
 

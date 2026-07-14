@@ -2,7 +2,7 @@
 
 ## MVP scope
 
-- The no-timer day still needs a fixed action budget: normal days have two actions, and clearing, building, repairing, upgrading, and Scout placement each use one. Research spends XP only.
+- The no-timer day still needs a fixed action budget: normal days have two actions, and clearing, building, repairing, upgrading, and Scout placement each use one. XP is lifetime progress; every 8 XP earns a Skill Point, and research spends points without an action.
 - Scout is fully automatic at night; player attention stays on daytime position, terrain, and building decisions rather than combat controls.
 
 ## Top-down expansion
@@ -19,7 +19,7 @@
 - Use a seeded Threat Budget rather than hard-coded enemy counts. Medium grows the previous budget by 25% rounded up, while each enemy’s Threat value makes later enemy pools compatible with the same allocator.
 - Keep new progression modules separate from combat simulation: XP tech should expose declarative effects and purchase validation, while the engine and UI remain separate consumers.
 - A deterministic balance probe should compare named build plans before changing pressure or tower values; an upgrade that arrives after its defense line reliably falls is not a real choice.
-- Keep the current resource loop narrow: wood is for construction and repair, while XP is the only enemy/level reward. Do not add food, pelts, or Scout health maintenance without a distinct decision it creates.
+- Keep the active resource loop narrow: wood is for construction and repair, XP produces Skill Points, and Hides are deterministic per-enemy drops held without a sink until trade, food, or upgrades creates a real choice.
 - Keep planning values explicitly separate from live values. The current early wood loop pairs one cleared tree (2 wood) with one Stick Launcher (2 wood), so expansion consumes a full normal day without creating excess tower capacity.
 - Keep the early Stick Launcher sturdy at 8 HP while its Arrow Shooter refit remains at 6 HP; Arrowcraft trades durability for damage, tempo, and reach instead of being a pure upgrade.
 - Model cleared forest as its own terrain value rather than generic open ground. It preserves the harvested-tree visual and faster movement while both terrain values remain valid grass for building placement.
@@ -40,3 +40,9 @@
 - Keep the Build strip as a one-row rail of square, icon-first tiles. Fixed tile dimensions and horizontal scrolling let the roster expand without making the play dock taller or less readable.
 - Let the optional building health bar communicate both condition and amount: green at full health, yellow below full, and red below 30%, with no separate dot or condition label.
 - Treat an unused-action end-day guard as presentation-only. Warn only on the first early-end attempt for a given day, while keeping the engine transition and replay action log unchanged.
+
+## Progression and occupancy
+
+- Scout reserves only the day-placed watch post: construction and Scout placement reject overlaps, while enemies still target only real targetable buildings and Scout retains no health economy.
+- Keep the technology catalog declarative by branch: Huntcraft, Forager, Fortification, and Scout use Skill Point costs, node dependencies, and typed effects so combat and daytime actions stay generic.
+- Roll hide drops from a seed, level id, and enemy id rather than runtime randomness. Saves and replay checksums can then reproduce rewards exactly.

@@ -11,8 +11,9 @@
   root.WildHearthEngine = engine;
 }(typeof globalThis !== "undefined" ? globalThis : this, function buildEngine(TechTree) {
   if (!TechTree) throw new Error("Wild Hearth tech tree did not load.");
-  const SAVE_VERSION = 9;
+  const SAVE_VERSION = 10;
   const TICK_RATE = 20;
+  const SKILL_POINT_XP = 8;
   const BOARD = { id: "hearth-meadow", label: "Hearth Meadow", width: 15, height: 15 };
   const STARTING_ACTIONS = 2;
   const DEFAULT_SEED = "HEARTH-1042";
@@ -54,6 +55,7 @@
       arrivalPauseTicks: 5,
       forestMoveCost: 1.32,
       xp: 1,
+      drops: { hides: { min: 1, max: 2 } },
     },
     boar: {
       id: "boar",
@@ -71,6 +73,7 @@
       arrivalPauseTicks: 0,
       forestMoveCost: 1.82,
       xp: 3,
+      drops: { hides: { min: 2, max: 4 } },
     },
   };
 
@@ -363,6 +366,27 @@
     });
     return stats;
   }
+  function maxHealthFor(state, type, building) {
+    const recipe = buildingRecipe(type);
+    if (!recipe) return 0;
+    const bonus = TechTree.effectValue(
+      state,
+      (effect) => effect.kind === "maxHealth"
+        && effect.target === "building"
+        && (!effect.scope || effect.scope !== "targetable" || isTargetableBuilding(building || { type })),
+      "amount",
+    );
+    return recipe.maxHealth + bonus;
+  }
+  function syncBuildingMaxHealth(state, grantAddedHealth) {
+    activeBuildings(state).forEach((building) => {
+      const previousMax = building.maxHealth;
+      const nextMax = maxHealthFor(state, building.type, building);
+      building.maxHealth = nextMax;
+      if (grantAddedHealth && nextMax > previousMax) building.health += nextMax - previousMax;
+      building.health = Math.min(building.health, building.maxHealth);
+    });
+  }
   function buildingCells(building) {
     const footprint = buildingRecipe(building.type).footprint;
     const cells = [];
@@ -377,6 +401,10 @@
     return buildings.find((building) => buildingCells(building).some((cell) => cell.x === x && cell.y === y));
   }
 
+  function scoutPostAt(state, x, y) {
+    return Math.round(state.scout.postX) === x && Math.round(state.scout.postY) === y;
+  }
+
   function hasRubble(state, x, y) {
     return state.rubble.some((rubble) => rubble.x === x && rubble.y === y);
   }
@@ -388,6 +416,10 @@
 
   function isBuildableGrass(state, x, y) {
     return ["open", "cleared"].includes(terrainAt(state, x, y));
+  }
+
+  function validScoutPost(state, x, y) {
+    return isPassable(state, x, y) && !buildingAt(state, x, y);
   }
 
   function travelCost(state, x, y, recipe) {
@@ -525,6 +557,7 @@
       buildingDamageByType: {},
       homesteadHits: 0,
       buildingsLost: 0,
+      hidesCollected: 0,
     };
     state.telemetry.total.nights += 1;
   }
@@ -552,6 +585,11 @@
     const report = currentNightTelemetry(state);
     if (report) increment(report.killsBySource, source);
     state.telemetry.total.kills += 1;
+  }
+  function recordHides(state, amount) {
+    const report = currentNightTelemetry(state);
+    if (report) report.hidesCollected += amount;
+    state.telemetry.total.hidesCollected += amount;
   }
   function recordBuildingDamage(state, building, amount) {
     const report = currentNightTelemetry(state);
@@ -594,7 +632,9 @@
       threatBudget: state.encounter?.threatBudget || level.threatBudget,
       kills: state.kills,
       xp: state.xp,
+      skillPoints: state.skillPoints,
       wood: state.resources.wood,
+      hides: state.resources.hides,
       buildings: activeBuildings(state).map((building) => ({ id: building.id, type: building.type, health: building.health, maxHealth: building.maxHealth, refits: buildingRefits(building) })),
       telemetry: state.telemetry.nightReports[state.telemetry.nightReports.length - 1] || null,
       checksum: checksum(state),
@@ -613,24 +653,51 @@
     return true;
   }
 
+  function nextSkillPointThreshold(state) {
+    return ((state.skillPointsEarned || 0) + 1) * SKILL_POINT_XP;
+  }
+
+  function grantExperience(state, amount) {
+    const gained = Math.max(0, Number(amount) || 0);
+    if (!gained) return { gained: 0, skillPoints: 0 };
+    const before = Math.floor(state.xp / SKILL_POINT_XP);
+    state.xp += gained;
+    const after = Math.floor(state.xp / SKILL_POINT_XP);
+    const earned = Math.max(0, after - before);
+    if (earned > 0) {
+      state.skillPoints += earned;
+      state.skillPointsEarned = (state.skillPointsEarned || 0) + earned;
+      if (!state.firstSkillPointAcknowledged) state.firstSkillPointReady = true;
+    }
+    return { gained, skillPoints: earned };
+  }
+
+  function acknowledgeFirstSkillPoint(state) {
+    if (!state.firstSkillPointReady) return false;
+    state.firstSkillPointReady = false;
+    state.firstSkillPointAcknowledged = true;
+    return true;
+  }
+
   function hasShelter(state) {
     return Boolean(state.shelterBuilt) && state.buildings.some((building) => building.type === "teepee" && !building.destroyed);
   }
 
-  function makeTeepee() {
-    return makeBuilding("b-teepee", "teepee", SHELTER_SITE.x, SHELTER_SITE.y);
+  function makeTeepee(state) {
+    return makeBuilding(state, "b-teepee", "teepee", SHELTER_SITE.x, SHELTER_SITE.y);
   }
 
-  function makeBuilding(id, type, x, y) {
+  function makeBuilding(state, id, type, x, y) {
     const recipe = buildingRecipe(type);
     if (!recipe) throw new Error(`Unknown building recipe: ${type}.`);
+    const maxHealth = maxHealthFor(state, type, { type });
     return {
       id,
       type,
       x,
       y,
-      health: recipe.maxHealth,
-      maxHealth: recipe.maxHealth,
+      health: maxHealth,
+      maxHealth,
       cooldown: 0,
       targetId: null,
       firingTicks: 0,
@@ -650,8 +717,12 @@
       tick: 0,
       nightTick: 0,
       actionPoints: STARTING_ACTIONS,
-      resources: { wood: 0 },
+      resources: { wood: 0, hides: 0 },
       xp: 0,
+      skillPoints: 0,
+      skillPointsEarned: 0,
+      firstSkillPointReady: false,
+      firstSkillPointAcknowledged: false,
       unlocks: [],
       research: [],
       terrain: FIXED_TERRAIN.slice(),
@@ -684,7 +755,7 @@
       speed: 1,
       history: [],
       telemetry: {
-        total: { nights: 0, enemiesSpawned: 0, kills: 0, damageDealt: 0, buildingDamage: 0, buildingsLost: 0 },
+        total: { nights: 0, enemiesSpawned: 0, kills: 0, hidesCollected: 0, damageDealt: 0, buildingDamage: 0, buildingsLost: 0 },
         currentNight: null,
         nightReports: [],
       },
@@ -782,7 +853,7 @@
     if (!recipe) return false;
     for (let row = y; row < y + recipe.footprint.height; row += 1) {
       for (let column = x; column < x + recipe.footprint.width; column += 1) {
-        if (!inBounds(column, row) || !isBuildableGrass(state, column, row) || hasRubble(state, column, row) || buildingAt(state, column, row)) return false;
+        if (!inBounds(column, row) || !isBuildableGrass(state, column, row) || hasRubble(state, column, row) || buildingAt(state, column, row) || scoutPostAt(state, column, row)) return false;
       }
     }
     return true;
@@ -818,8 +889,8 @@
       return { type, valid, affordable: true, reason: valid ? "Clear for 2 wood and one action." : "Choose a tree or rubble." };
     }
     if (type === "scout") {
-      const valid = isPassable(state, x, y);
-      return { type, valid, affordable: true, reason: valid ? "Scout can watch from this open cell." : "Scout needs an open cell." };
+      const valid = validScoutPost(state, x, y);
+      return { type, valid, affordable: true, reason: valid ? "Scout can watch from this open cell." : "Scout needs an unoccupied open cell." };
     }
     if (buildingRecipe(type)) {
       const preview = buildPreview(state, type, x, y);
@@ -850,7 +921,7 @@
       if (state.shelterBuilt || hasShelter(state)) return result(state, false, "The shelter is already built.");
       if (state.levelIndex !== 0) return result(state, false, "The shelter can only be built at the start of Level 1.");
       if (!consumeActions(state, STARTING_ACTIONS)) return result(state, false, "Constructing the shelter takes the full first day.");
-      state.buildings.push(makeTeepee());
+      state.buildings.push(makeTeepee(state));
       state.shelterBuilt = true;
       invalidatePaths(state);
       return result(state, true, "Shelter complete. End the day when Scout is ready for the first watch.", action, shouldRecord);
@@ -858,6 +929,7 @@
 
     if (action.type === "research") {
       const outcome = TechTree.research(state, action.nodeId);
+      if (outcome.ok) syncBuildingMaxHealth(state, true);
       return result(state, outcome.ok, outcome.message, action, shouldRecord);
     }
 
@@ -867,9 +939,10 @@
       if (terrain === "tree") {
         if (!consumeAction(state)) return result(state, false, "Both day actions are spent.");
         setTerrain(state, action.x, action.y, "cleared");
-        state.resources.wood += 2;
+        const harvestedWood = 2 + TechTree.effectValue(state, (effect) => effect.kind === "harvestWood", "amount");
+        state.resources.wood += harvestedWood;
         invalidatePaths(state);
-        return result(state, true, "Tree cleared: +2 wood. One day action spent; the grass is now open.", action, shouldRecord);
+        return result(state, true, `Tree cleared: +${harvestedWood} wood. One day action spent; the grass is now open.`, action, shouldRecord);
       }
       if (!consumeAction(state)) return result(state, false, "Both day actions are spent.");
       state.rubble = state.rubble.filter((rubble) => !(rubble.x === action.x && rubble.y === action.y));
@@ -885,12 +958,13 @@
       if (!hasResources(state, recipe.repairCost)) return result(state, false, "Repairing needs 1 wood.");
       if (!consumeAction(state)) return result(state, false, "Both day actions are spent.");
       spendResources(state, recipe.repairCost);
-      building.health = Math.min(building.maxHealth, building.health + recipe.repairAmount);
+      const repairBonus = TechTree.effectValue(state, (effect) => effect.kind === "repairAmount" && effect.target === "building", "amount");
+      building.health = Math.min(building.maxHealth, building.health + recipe.repairAmount + repairBonus);
       return result(state, true, `${recipe.label} repaired.`, action, shouldRecord);
     }
 
     if (action.type === "scout") {
-      if (!isPassable(state, action.x, action.y)) return result(state, false, "Scout needs an open cell.");
+      if (!validScoutPost(state, action.x, action.y)) return result(state, false, "Scout needs an unoccupied open cell.");
       if (!consumeAction(state)) return result(state, false, "Both day actions are spent.");
       state.scout.x = action.x;
       state.scout.y = action.y;
@@ -909,7 +983,7 @@
       if (!hasResources(state, recipe.cost)) return result(state, false, `Need ${recipe.cost.wood || 0} wood to build this.`);
       if (!consumeActions(state, recipe.actionCost || 1)) return result(state, false, "Both day actions are spent.");
       spendResources(state, recipe.cost);
-      state.buildings.push(makeBuilding(`b-${state.nextEntityId++}`, action.buildingType, action.x, action.y));
+      state.buildings.push(makeBuilding(state, `b-${state.nextEntityId++}`, action.buildingType, action.x, action.y));
       invalidatePaths(state);
       return result(state, true, `${recipe.label} built. One day action spent.`, action, shouldRecord);
     }
@@ -922,10 +996,9 @@
       if (!hasResources(state, cost)) return result(state, false, "An Arrow Shooter upgrade needs 4 wood.");
       if (!consumeAction(state)) return result(state, false, "Both day actions are spent.");
       spendResources(state, cost);
-      const recipe = buildingRecipe("arrowShooter");
       building.type = "arrowShooter";
-      building.maxHealth = recipe.maxHealth;
-      building.health = recipe.maxHealth;
+      building.maxHealth = maxHealthFor(state, "arrowShooter", building);
+      building.health = building.maxHealth;
       building.cooldown = 0;
       building.targetId = null;
       building.firingTicks = 0;
@@ -994,8 +1067,10 @@
   }
 
   function damageBuilding(state, building, amount, source) {
-    const appliedDamage = Math.min(building.health, amount);
-    building.health = Math.max(0, building.health - amount);
+    const armor = TechTree.effectsMatching(state, (effect) => effect.kind === "armor" && effect.target === "building" && (!effect.scope || effect.scope !== "targetable" || isTargetableBuilding(building)));
+    const reducedDamage = armor.reduce((damage, effect) => (damage > effect.threshold ? Math.max(effect.threshold, damage - effect.amount) : damage), amount);
+    const appliedDamage = Math.min(building.health, reducedDamage);
+    building.health = Math.max(0, building.health - reducedDamage);
     building.hitTicks = 7;
     recordBuildingDamage(state, building, appliedDamage);
     state.lastEvent = `${enemyRecipe(source.type).label} hits the ${buildingRecipe(building.type).label.toLowerCase()}.`;
@@ -1017,13 +1092,18 @@
   }
 
   function defeatEnemy(state, enemy, source) {
-    const reward = enemyRecipe(enemy.type).xp;
+    const recipe = enemyRecipe(enemy.type);
+    const reward = recipe.xp;
+    const hideRange = recipe.drops?.hides;
+    const hides = hideRange ? createRng(`${state.seed}|${levelFor(state).id}|${enemy.id}|hide`).int(hideRange.min, hideRange.max) : 0;
     state.kills += 1;
-    state.xp += reward;
+    grantExperience(state, reward);
+    state.resources.hides += hides;
     state.enemies = state.enemies.filter((item) => item.id !== enemy.id);
     state.remains.push({ id: `remains-${state.nextEntityId++}`, x: enemy.x, y: enemy.y, type: enemy.type, ticks: 12 });
     recordKill(state, source);
-    state.lastEvent = `${source} turns away the ${enemyRecipe(enemy.type).label.toLowerCase()}: +${reward} XP.`;
+    recordHides(state, hides);
+    state.lastEvent = `${source} turns away the ${recipe.label.toLowerCase()}: +${reward} XP, +${hides} hides.`;
   }
 
   function updateProjectiles(state) {
@@ -1305,12 +1385,13 @@
 
   function settleAftermath(state) {
     const level = levelFor(state);
-    state.xp += level.survivalXp;
+    const reward = grantExperience(state, level.survivalXp);
     const unlockedNow = Boolean(level.unlock) && !hasUnlock(state, level.unlock);
     if (unlockedNow) addUnlock(state, level.unlock);
+    const skillCopy = reward.skillPoints > 0 ? ` +${reward.skillPoints} Skill Point${reward.skillPoints === 1 ? "" : "s"}.` : "";
     const completionCopy = unlockedNow
-      ? `+${level.survivalXp} XP. ${level.unlockLabel} unlocked. ${level.unlockCopy}`
-      : `+${level.survivalXp} survival XP.`;
+      ? `+${level.survivalXp} XP.${skillCopy} ${level.unlockLabel} unlocked. ${level.unlockCopy}`
+      : `+${level.survivalXp} survival XP.${skillCopy}`;
     const report = finishNightTelemetry(state, "victory");
     state.history.push({ level: level.id, result: "victory", seed: state.seed, kills: state.kills, telemetry: report });
     captureReplaySnapshot(state, "victory");
@@ -1366,13 +1447,10 @@
     if (!Array.isArray(state.terrain) || state.terrain.length !== BOARD.width * BOARD.height) throw new Error("This save has an invalid meadow.");
     if (typeof state.shelterBuilt !== "boolean" || !Array.isArray(state.buildings)) throw new Error("This save has an invalid shelter state.");
     if (![1, 2].includes(state.speed)) throw new Error("This save has an invalid speed setting.");
+    if (!state.resources || !Number.isFinite(state.resources.wood) || !Number.isFinite(state.resources.hides) || !Number.isFinite(state.xp) || !Number.isInteger(state.skillPoints) || !Number.isInteger(state.skillPointsEarned)) throw new Error("This save has an invalid progression state.");
     if (!state.telemetry || !state.telemetry.total || !Array.isArray(state.telemetry.nightReports) || !Array.isArray(state.replaySnapshots) || !Array.isArray(state.remains)) throw new Error("This save has an invalid night record.");
     if (!state.buildings.every((building) => Array.isArray(building.refits || []) && buildingRefits(building).every((refitId) => refitDefinition(building.type, refitId)))) throw new Error("This save has an invalid building refit.");
-    state.buildings.forEach((building) => {
-      if (building.type !== "stickLauncher") return;
-      building.maxHealth = BUILDINGS.stickLauncher.maxHealth;
-      building.health = Math.min(building.health, building.maxHealth);
-    });
+    syncBuildingMaxHealth(state, false);
     const teepeeCount = state.buildings.filter((building) => building.type === "teepee" && !building.destroyed).length;
     if ((state.shelterBuilt && teepeeCount !== 1) || (!state.shelterBuilt && teepeeCount !== 0)) throw new Error("This save has an invalid shelter state.");
     pathCaches.delete(state);
@@ -1403,6 +1481,8 @@
       levelIndex: state.levelIndex,
       resources: state.resources,
       xp: state.xp,
+      skillPoints: state.skillPoints,
+      skillPointsEarned: state.skillPointsEarned,
       unlocks: state.unlocks,
       research: state.research,
       shelterBuilt: state.shelterBuilt,
@@ -1442,6 +1522,7 @@
     ENEMY_COUNTERS,
     LEVELS,
     STARTING_ACTIONS,
+    SKILL_POINT_XP,
     DEFAULT_SEED,
     SPAWN_CELLS,
     createRun,
@@ -1456,10 +1537,12 @@
     cellKey,
     buildingCells,
     buildingAt,
+    scoutPostAt,
     activeBuildings,
     isTargetableBuilding,
     isPassable,
     isBuildableGrass,
+    validScoutPost,
     hasShelter,
     hasRubble,
     validFootprint,
@@ -1478,6 +1561,9 @@
     hasBuildingUpgrade: TechTree.hasBuildingUpgrade,
     hasBuildingRefit: TechTree.hasBuildingRefit,
     telemetrySnapshot,
+    nextSkillPointThreshold,
+    grantExperience,
+    acknowledgeFirstSkillPoint,
     dispatch,
     advanceTick,
     advanceTicks,

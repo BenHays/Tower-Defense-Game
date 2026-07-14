@@ -3,7 +3,7 @@
 ## Live now
 
 - The fixed 15×15 map has a 21-cell clearing centered on the shelter site; trees cover every other cell. They slow enemies but are walkable.
-- Clearing a tree spends one action, grants 2 wood, and changes it into cleared grass.
+- Clearing a tree spends one action, grants 2 wood (3 after Woodland Yield), and changes it into cleared grass.
 - Both original meadow grass and cleared grass can hold defenses when unoccupied. Cleared ground is faster; trees remain a wood source and slower route.
 - The placement preview exposes nearby route cost so clearing remains a deliberate trade: wood and building room can also speed a route.
 - There is no fire in the current build. Fire remains an earned future research path.
