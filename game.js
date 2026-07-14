@@ -19,14 +19,8 @@ const elements = {
   wood: document.querySelector("#wood-value"),
   xp: document.querySelector("#xp-value"),
   controlPanel: document.querySelector("#control-panel"),
-  selectedCard: document.querySelector("#selected-card"),
   actionCard: document.querySelector("#action-card"),
   planningCard: document.querySelector("#planning-card"),
-  selectedTitle: document.querySelector("#selected-title"),
-  selectedCopy: document.querySelector("#selected-copy"),
-  selectionMeter: document.querySelector("#selection-meter"),
-  selectionMeterWrap: document.querySelector("#selection-meter-wrap"),
-  selectionFootnote: document.querySelector("#selection-footnote"),
   actionHint: document.querySelector("#action-hint"),
   actionBadge: document.querySelector("#action-badge"),
   dayActionList: document.querySelector("#day-action-list"),
@@ -175,8 +169,7 @@ function needsShelter() { return !Engine.hasShelter(state); }
 
 function buildCostCopy(recipe) {
   const wood = recipe.cost?.wood || 0;
-  const actionCost = recipe.actionCost || 1;
-  return `${wood} wood · ${actionCost} action${actionCost === 1 ? "" : "s"}`;
+  return wood === 0 ? "Free" : `${wood} wood`;
 }
 
 function renderBuildList() {
@@ -190,7 +183,8 @@ function renderBuildList() {
     const button = createNode("button", "build-button");
     button.type = "button";
     button.dataset.tool = tool;
-    button.setAttribute("aria-label", `Build ${recipe.label}`);
+    const actionCost = recipe.actionCost || 1;
+    button.setAttribute("aria-label", `Build ${recipe.label}, ${buildCostCopy(recipe)}, ${actionCost} action${actionCost === 1 ? "" : "s"}`);
     const icon = createNode("span", `build-icon ${BUILD_CARD_ICONS[tool] || "structure-icon"}`);
     icon.setAttribute("aria-hidden", "true");
     const copy = createNode("span", "build-copy");
@@ -464,93 +458,6 @@ function renderEntities() {
   elements.entityLayer.replaceChildren(fragment);
 }
 
-function tempoLabel(attackSpeed) {
-  if (attackSpeed <= 0.4) return "very slow";
-  if (attackSpeed <= 0.6) return "slow";
-  if (attackSpeed < 1.2) return "steady";
-  return "quick";
-}
-
-function reachLabel(attackRange) {
-  if (attackRange <= 2.4) return "short reach";
-  if (attackRange <= 3.4) return "medium reach";
-  return "long reach";
-}
-
-function renderSelection() {
-  if (needsShelter()) {
-    elements.selectedTitle.textContent = "Shelter site";
-    elements.selectedCopy.textContent = "Construct the free branch teepee before the first watch.";
-    elements.selectionMeterWrap.hidden = true;
-    elements.selectionFootnote.textContent = "It is the only action available on Level 1 Day 1.";
-    return;
-  }
-  if (selectedScout()) {
-    const stats = Engine.unitStats(state, "scout");
-    elements.selectedTitle.textContent = "Scout";
-    elements.selectedCopy.textContent = `Hit ${stats.damage} · ${tempoLabel(stats.attackSpeed)} · ${reachLabel(stats.attackRange)} watch.`;
-    elements.selectionMeterWrap.hidden = true;
-    elements.selectionFootnote.textContent = Engine.hasResearch(state, "scoutTraining1") ? "Scout Training I is active on every night watch." : "Scout Training I can improve this final line with XP.";
-    return;
-  }
-  const building = selectedBuilding();
-  if (building) {
-    const recipe = Engine.buildingCombatStats(state, building.type, building);
-    elements.selectedTitle.textContent = recipe.label;
-    elements.selectionMeterWrap.hidden = false;
-    if (towerRecipe(building.type)) {
-      elements.selectedCopy.textContent = `Hit ${recipe.damage} · ${tempoLabel(recipe.attackSpeed)} · ${reachLabel(recipe.attackRange)}.`;
-      elements.selectionFootnote.textContent = building.type === "stickLauncher"
-        ? Engine.hasResearch(state, "arrowcraft")
-          ? "Arrowcraft is ready: upgrade this launcher for 4 wood and 1 action."
-          : "Arrowcraft can turn this into a stronger Arrow Shooter."
-        : building.type === "arrowShooter"
-          ? availableRefit(building)
-            ? "Quickcord is ready: refit this Arrow Shooter for 2 wood and 1 action."
-            : Engine.buildingRefits(building).includes("quickcord")
-              ? "Quickcord is fitted: this Arrow Shooter fires faster."
-              : "Quickcord can make this Arrow Shooter fire faster."
-        : building.type === "potatoGun"
-          ? Engine.hasResearch(state, "potatoPacking")
-            ? "Potato Packing is active: heavy shots briefly slow surviving enemies."
-            : "Heavy shots push surviving enemies back. Potato Packing can add a brief slow."
-          : "Stronger, faster, and farther than a Stick Launcher.";
-    } else {
-      elements.selectedCopy.textContent = `Home · repair costs ${recipe.repairCost.wood || 0} wood and one day action.`;
-      elements.selectionFootnote.textContent = "The teepee is the homestead target. Fire arrives later through research.";
-    }
-    elements.selectionMeter.style.width = `${(building.health / building.maxHealth) * 100}%`;
-    return;
-  }
-  const cell = selectedCell();
-  if (cell) {
-    const terrain = Engine.terrainAt(state, cell.x, cell.y);
-    const rubble = Engine.hasRubble(state, cell.x, cell.y);
-    elements.selectedTitle.textContent = rubble ? "Rubble" : terrain === "tree" ? "Tree" : terrain === "cleared" ? "Cleared grass" : "Open grass";
-    elements.selectedCopy.textContent = rubble
-      ? "Clear rubble with one day action to reopen the grass."
-      : terrain === "tree"
-        ? "Clear for 2 wood. This takes 1 day action."
-        : terrain === "cleared"
-          ? "Open grass: a defense can be built here."
-          : "Unoccupied grass can hold a defense.";
-    elements.selectionMeterWrap.hidden = true;
-    elements.selectionFootnote.textContent = "Choose a day action only when you are ready to use it.";
-    return;
-  }
-  const toolCopy = {
-    none: ["Hearth Meadow", "Select a tree, grass, or building."],
-    clear: ["Clear tree", "1 action · gain 2 wood · open grass."],
-    scout: ["Place Scout", "Spend one action to set Scout’s night watch post."],
-    stickLauncher: ["Stick launcher", "2 wood · 1 action · steady protection."],
-    potatoGun: ["Potato gun", "3 wood · 1 action · heavy knockback shot."],
-  };
-  elements.selectedTitle.textContent = toolCopy[activeTool][0];
-  elements.selectedCopy.textContent = toolCopy[activeTool][1];
-  elements.selectionMeterWrap.hidden = true;
-  elements.selectionFootnote.textContent = "Defenses can stand on any unoccupied grass.";
-}
-
 function renderPreview() {
   const preview = currentPreview();
   elements.previewCopy.hidden = !preview && !planning;
@@ -657,13 +564,11 @@ function renderControls() {
   const refit = availableRefit(building);
   const arrowUpgradeReady = building && building.type === "stickLauncher" && Engine.hasBuildingUpgrade(state, "stickLauncher", "arrowShooter");
   const opening = needsShelter();
-  const hasInspector = opening || selected.kind !== "none" || activeTool !== "none";
   const hasPlanningTarget = Boolean(selectedScout() || towerRecipe(building?.type));
   const showPlanningCard = night || state.phase === "aftermath" || (day && hasPlanningTarget);
   elements.controlPanel.classList.toggle("is-day", day);
   elements.controlPanel.classList.toggle("is-night", night);
   elements.controlPanel.classList.toggle("is-aftermath", state.phase === "aftermath");
-  elements.selectedCard.hidden = !hasInspector || (!day && !opening);
   elements.actionCard.hidden = false;
   elements.planningCard.hidden = opening || !showPlanningCard;
   const unlockedBuildTools = renderBuildList();
@@ -761,7 +666,6 @@ function render() {
   renderHeader();
   renderGrid();
   renderEntities();
-  renderSelection();
   renderPreview();
   renderTechnology();
   renderTelemetry();

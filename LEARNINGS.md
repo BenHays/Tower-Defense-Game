@@ -32,10 +32,11 @@
 - Keep overnight recovery as a declarative tech effect: Hearthkeeping I heals each surviving targetable building by one at dawn, with no resurrection path.
 - Introduce a new enemy family through a guaranteed showcase, then fold it into the seeded Threat Budget. Its counter should be buildable at least two levels in advance and new families should be spaced three levels apart.
 - Put repeatable enemy-control effects behind one non-stacking status contract. Potato slow is short and heavy; Honeyed and Warmth can later be longer/lighter variants without ambiguous stacking.
-- Keep guidance in one place: the HUD owns the current objective, the map stays visual, and the inspector only appears for a selection or armed action. Phase-specific controls prevent day-planning text from competing with the night watch.
+- Keep guidance in one place: the HUD owns the current objective and the map stays visual. Avoid a separate terrain inspector when the selected action, map preview, and contextual repair/upgrade controls already explain the decision.
 - Derive central anchors from the board dimensions. The 15×15 meadow preserves the 21-cell opening and Scout's relative post while gaining a dense outer ring; board-size changes also require a save-version bump and a renderer grid update.
 - Treat toolbar density as a browser preference, not game state. Discrete compact, standard, and large layout tokens preserve clickable controls and interaction flow without making a strategy decision depend on a screen setting.
 - Keep day actions and the Build strip spatially stable through the night. Disabled controls preserve orientation, while fast combat events belong in animation and telemetry rather than a notification strip the player cannot read.
 - Drive the Build strip from `state.unlocks`: it should show only unlocked, directly constructible structures, beginning with Stick Launcher and growing horizontally as new construction unlocks arrive.
+- Keep the Build strip as a one-row rail of square, icon-first tiles. Fixed tile dimensions and horizontal scrolling let the roster expand without making the play dock taller or less readable.
 - Let the optional building health bar communicate both condition and amount: green at full health, yellow below full, and red below 30%, with no separate dot or condition label.
 - Treat an unused-action end-day guard as presentation-only. Warn only on the first early-end attempt for a given day, while keeping the engine transition and replay action log unchanged.
