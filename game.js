@@ -82,7 +82,7 @@ let toolbarSize = "compact";
 let buildListSignature = "";
 let harvestEffect = null;
 let harvestTimer = null;
-const HARVEST_EFFECT_MS = 760;
+const HARVEST_EFFECT_MS = 1200;
 const REDUCED_HARVEST_EFFECT_MS = 320;
 const BUILD_CARD_ICONS = {
   stickLauncher: "stick-launcher-icon",
@@ -405,7 +405,6 @@ function renderEntities() {
     const effect = createNode("div", `entity harvest-effect tone-${harvestEffect.tone}`);
     effect.append(
       createNode("span", "harvest-canopy tree-canopy"),
-      createNode("span", "harvest-swoosh"),
       createNode("span", "harvest-hatchet"),
       createNode("span", "harvest-impact"),
       createNode("span", "harvest-chips"),
