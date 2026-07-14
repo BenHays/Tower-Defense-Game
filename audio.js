@@ -31,9 +31,7 @@
   class Director {
     constructor(settings = {}) {
       this.context = null;
-      this.musicTimer = null;
-      this.musicStep = 0;
-      this.musicMood = "day";
+      this.music = null;
       this.lastEffectAt = {};
       this.settings = { muted: false, effectsVolume: 0.55, musicVolume: 0.22, ...settings };
     }
@@ -51,15 +49,18 @@
       if (!Context) return false;
       if (!this.context) this.context = new Context();
       if (this.context.state === "suspended") this.context.resume();
+      if (!this.music) {
+        this.music = new browserGlobal.Audio("assets/wild-hearth-title-sketch.wav");
+        this.music.loop = true;
+        this.music.preload = "auto";
+      }
       if (!this.settings.muted && this.settings.musicVolume > 0) this.startMusic();
       return true;
     }
 
     setMood(phase) {
-      const next = phase === "night" || phase === "aftermath" ? "night" : "day";
-      if (next === this.musicMood) return;
-      this.musicMood = next;
-      this.musicStep = 0;
+      // The title sketch remains one continuous player-selected track; phase
+      // changes still receive their own short effect cues.
     }
 
     tone(frequency, duration, volume, type = "sine", slide = 1, delay = 0) {
@@ -90,23 +91,14 @@
     }
 
     startMusic() {
-      if (!this.context || this.musicTimer || this.settings.muted || this.settings.musicVolume === 0) return;
-      const loop = () => {
-        if (!this.context || this.settings.muted || this.settings.musicVolume === 0) { this.musicTimer = null; return; }
-        const pattern = this.musicMood === "night"
-          ? [146.83, 174.61, 220, 174.61, 130.81, 174.61]
-          : [196, 246.94, 293.66, 246.94, 220, 293.66];
-        const note = pattern[this.musicStep % pattern.length];
-        this.musicStep += 1;
-        this.tone(note, this.musicMood === "night" ? 0.46 : 0.34, this.settings.musicVolume * 0.085, "sine", 1.005);
-        this.musicTimer = browserGlobal.setTimeout(loop, this.musicMood === "night" ? 720 : 590);
-      };
-      loop();
+      if (!this.music || this.settings.muted || this.settings.musicVolume === 0) return;
+      this.music.volume = this.settings.musicVolume;
+      const playback = this.music.play();
+      if (playback && typeof playback.catch === "function") playback.catch(() => {});
     }
 
     stopMusic() {
-      if (this.musicTimer) browserGlobal.clearTimeout(this.musicTimer);
-      this.musicTimer = null;
+      if (this.music) this.music.pause();
     }
   }
 

@@ -11,6 +11,7 @@
 - Level 3 reveals Arrowcraft as the first Hunting node (the first Skill Point normally arrives after this watch), plus its optional damage/range follow-ups, Field Mending, Hearthkeeping I, and Trail Sense. Level 4 continues those lanes with Quickcord and Reinforced Frames.
 - Level 5 has a guaranteed Boar showcase. A Potato Patch planted at Level 3 matures across two held nights and can convert into the Potato Gun before its counter role is required; Boars ignore Stick Launcher and Arrow Shooter shots.
 - Holding Level 6 unlocks the Campfire. Level 8 guarantees the first Bear, three levels after the Boar and with two full planning levels to build fire defense.
+- Holding Level 9 unlocks Scarecrow Tower. Level 10 is the air-defense planning window, and Level 11 guarantees the first Vulture; later levels fold Vultures into the seeded Threat Budget.
 - Level 1 opens with a clickable stick and rock. **Craft axe** becomes available after both pickups, then **Place shelter** is armed and can be placed on any valid grass. Crafting and placement each consume one action. The first real harvest/build choice begins after that tutorial pair.
 - From Level 7, the same 25%-growth budget arrives in tighter groups of up to three enemies. This raises pressure without changing the early counter setup.
 
@@ -18,7 +19,7 @@
 
 - A compact level strip shows only the present objective or newly relevant unlock.
 - Add Easy, Hard, and Very Hard only after Medium is balanced.
-- The Mushroom path is reserved for the next family no earlier than Level 11.
+- The Mushroom path is reserved for the family after Vultures.
 
 ## Open questions
 

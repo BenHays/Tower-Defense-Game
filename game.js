@@ -116,6 +116,7 @@ const BUILD_CARD_ICONS = {
   potatoPatch: "potato-patch-icon",
   potatoGun: "potato-gun-icon",
   campfire: "campfire-icon",
+  scarecrow: "scarecrow-icon",
 };
 
 try {
@@ -961,10 +962,16 @@ function renderControls() {
             ? "Your Potato Patch needs one more held night before it can become a heavy launcher."
           : level.number === 5 && state.buildings.some((item) => Engine.canUpgradePotatoPatch(state, item))
             ? "Upgrade a mature Potato Patch into a Potato Gun before tonight’s Boar."
-            : level.number === 7 && state.unlocks.includes("campfire") && !state.buildings.some((item) => item.type === "campfire" && !item.destroyed)
+        : level.number === 7 && state.unlocks.includes("campfire") && !state.buildings.some((item) => item.type === "campfire" && !item.destroyed)
               ? "Build a Campfire before the Bear arrives. Fireballs burn Bears for double damage."
               : level.number === 8
                 ? "Bears resist Potato knockback. Campfire burn is the answer."
+                : level.number === 9
+                  ? "Hold this watch to unlock the long-range Scarecrow Tower before the first Vulture."
+                  : level.number === 10 && state.unlocks.includes("scarecrow") && !state.buildings.some((item) => item.type === "scarecrow" && !item.destroyed)
+                    ? "Build a Scarecrow Tower now. It only attacks air, but its range covers the sky."
+                    : level.number === 11
+                      ? "Vultures fly straight to structures. Scarecrows are the dedicated answer; Arrow Shooters can help."
         : level.number === 3 && !Engine.hasResearch(state, "arrowcraft")
           ? "Spend earned Skill Points on Hunting, Farming, Building, Nurturing, or Scouting talents."
         : "Place defenses on open grass; harvest trees for wood and faster routes."

@@ -39,7 +39,7 @@ assert.equal(Engine.terrainAt(run, centralBuildSite.x, centralBuildSite.y), "ope
 assert.equal(Engine.terrainAt(run, Engine.SHELTER_SITE.x + 3, Engine.SHELTER_SITE.y), "tree", "the added outer ring remains dense forest");
 assert.deepEqual(run.resources, { wood: 0, hides: 0 });
 assert.equal(run.actionPoints, 2);
-assert.deepEqual(Object.keys(Engine.ENEMIES), ["mouse", "raccoon", "boar", "bear"], "the complete enemy roster lives in the single engine catalog");
+assert.deepEqual(Object.keys(Engine.ENEMIES), ["mouse", "raccoon", "boar", "bear", "vulture"], "the complete enemy roster lives in the single engine catalog");
 assert.equal(run.shelterBuilt, false);
 assert.equal(run.hatchetCrafted, false);
 assert.equal(Engine.hasShelter(run), false);
@@ -163,7 +163,7 @@ v13Save.version = 13;
 v13Save.state.version = 13;
 v13Save.state.research = ["woodlandYield"];
 const migratedV13 = Engine.hydrate(v13Save);
-assert.equal(migratedV13.version, 15, "v13 saves migrate into the current roster version");
+assert.equal(migratedV13.version, 16, "v13 saves migrate into the current roster version");
 assert.deepEqual(migratedV13.research, ["woodlandYield"], "a migrated v13 save keeps its learned talents");
 assert.equal(run.resources.wood, 0, "building still spends the whole first wood bundle");
 assert.equal(run.actionPoints, 0);
@@ -379,6 +379,61 @@ Engine.advanceTicks(campfireRun, 24);
 assert.ok(campfireRun.enemies[0].statuses.burn.sources.campfireBurn, "Campfire hits apply a refreshable Burn status");
 assert.equal(campfireRun.enemies[0].health, 27, "a Bear takes one fireball damage plus double first Burn damage");
 
+// Air is a declarative target layer: Scarecrows only fire upward while Arrow
+// Shooters remain flexible and ground-only weapons never acquire Vultures.
+const scarecrowRun = Engine.createRun("TEST-SCARECROW-AIR");
+constructShelter(scarecrowRun);
+scarecrowRun.unlocks.push("scarecrow");
+scarecrowRun.resources.wood = 3;
+scarecrowRun.actionPoints = 2;
+action(scarecrowRun, { type: "build", buildingType: "scarecrow", ...centralBuildSite });
+scarecrowRun.phase = "night";
+scarecrowRun.encounter = { waves: [{ spawned: true }], spawned: 1 };
+scarecrowRun.scout.x = scarecrowRun.scout.postX = 0;
+scarecrowRun.scout.y = scarecrowRun.scout.postY = 0;
+scarecrowRun.enemies = [
+  { id: "e-ground-near", type: "raccoon", x: centralBuildSite.x, y: centralBuildSite.y - 0.7, health: 8, maxHealth: 8, cooldown: 4, approachDelay: 0, statuses: {} },
+  { id: "e-vulture-far", type: "vulture", x: centralBuildSite.x, y: centralBuildSite.y - 4.2, health: 18, maxHealth: 18, cooldown: 4, approachDelay: 0, statuses: {} },
+];
+Engine.advanceTick(scarecrowRun);
+assert.equal(scarecrowRun.projectiles[0].type, "straw", "the Scarecrow fires its own visible straw projectile");
+assert.equal(scarecrowRun.projectiles[0].targetId, "e-vulture-far", "the Scarecrow ignores the closer ground target and acquires air");
+assert.equal(Engine.BUILDINGS.scarecrow.attackRange, 5.5, "the air-only counter starts with its intended very long range");
+
+const stickAirRun = Engine.createRun("TEST-STICK-GROUND");
+constructShelter(stickAirRun);
+stickAirRun.unlocks.push("stickLauncher");
+stickAirRun.resources.wood = 2;
+stickAirRun.actionPoints = 2;
+action(stickAirRun, { type: "build", buildingType: "stickLauncher", ...centralBuildSite });
+stickAirRun.phase = "night";
+stickAirRun.encounter = { waves: [{ spawned: true }], spawned: 1 };
+stickAirRun.enemies = [{ id: "e-vulture-stick", type: "vulture", x: centralBuildSite.x, y: centralBuildSite.y - 1, health: 18, maxHealth: 18, cooldown: 4, approachDelay: 0, statuses: {} }];
+Engine.advanceTick(stickAirRun);
+assert.equal(stickAirRun.projectiles.length, 0, "the basic Stick Launcher cannot target air");
+
+const arrowAirRun = Engine.createRun("TEST-ARROW-AIR");
+constructShelter(arrowAirRun);
+arrowAirRun.buildings.push({ id: "arrow-air", type: "arrowShooter", x: centralBuildSite.x, y: centralBuildSite.y, health: 6, maxHealth: 6, cooldown: 0, firingTicks: 0, hitTicks: 0, refits: [], growthNights: null, destroyed: false });
+arrowAirRun.phase = "night";
+arrowAirRun.encounter = { waves: [{ spawned: true }], spawned: 1 };
+arrowAirRun.enemies = [{ id: "e-vulture-arrow", type: "vulture", x: centralBuildSite.x, y: centralBuildSite.y - 1, health: 18, maxHealth: 18, cooldown: 4, approachDelay: 0, statuses: {} }];
+Engine.advanceTick(arrowAirRun);
+assert.equal(arrowAirRun.projectiles[0].type, "arrow", "Arrow Shooters remain a flexible anti-air support tower");
+
+const vultureFlightRun = Engine.createRun("TEST-VULTURE-FLIGHT");
+constructShelter(vultureFlightRun);
+vultureFlightRun.rubble = [{ x: 1, y: 1, health: 9 }, { x: 2, y: 2, health: 9 }, { x: 3, y: 3, health: 9 }];
+vultureFlightRun.phase = "night";
+vultureFlightRun.encounter = { waves: [{ spawned: true }], spawned: 1 };
+vultureFlightRun.enemies = [{ id: "e-flying", type: "vulture", x: 0, y: 0, health: 18, maxHealth: 18, cooldown: 4, approachDelay: 0, statuses: {} }];
+const teepee = vultureFlightRun.buildings.find((building) => building.type === "teepee");
+const vultureStartDistance = Math.hypot(teepee.x, teepee.y);
+Engine.advanceTick(vultureFlightRun);
+const flyingVulture = vultureFlightRun.enemies[0];
+assert.equal(flyingVulture.targetId, teepee.id, "a Vulture chooses the closest targetable structure directly");
+assert.ok(Math.hypot(flyingVulture.x - teepee.x, flyingVulture.y - teepee.y) < vultureStartDistance, "a Vulture advances over forest and rubble without ground pathing");
+
 // Potato Packing adds one short, strongest-only slow status without changing the basic Potato Gun contract.
 const slowRun = Engine.createRun("TEST-POTATO-SLOW");
 constructShelter(slowRun);
@@ -573,6 +628,15 @@ constructShelter(bearIntroRun);
 bearIntroRun.levelIndex = 7;
 action(bearIntroRun, { type: "endDay" });
 assert.ok(bearIntroRun.encounter.units.includes("bear"), "Level 8 guarantees the first Bear after Campfires are available");
+const vultureIntroRun = Engine.createRun("FIRST-VULTURE");
+constructShelter(vultureIntroRun);
+vultureIntroRun.levelIndex = 10;
+action(vultureIntroRun, { type: "endDay" });
+assert.deepEqual(vultureIntroRun.encounter.units, ["vulture"], "Level 11 guarantees one Vulture showcase after the Scarecrow planning window");
+const vultureMixRun = Engine.createRun("VULTURE-MIX");
+constructShelter(vultureMixRun);
+vultureMixRun.levelIndex = 11;
+assert.ok(Engine.levelFor(vultureMixRun).enemyPool.includes("vulture"), "Level 12 folds Vultures into the seeded Threat Budget");
 
 // Replay includes research and automatic between-level continuation, with no manual Continue action.
 const replaySource = Engine.createRun("REPLAY-SEED");

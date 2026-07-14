@@ -11,7 +11,7 @@
   root.WildHearthEngine = engine;
 }(typeof globalThis !== "undefined" ? globalThis : this, function buildEngine(TechTree) {
   if (!TechTree) throw new Error("Wild Hearth Talent Tree did not load.");
-  const SAVE_VERSION = 15;
+  const SAVE_VERSION = 16;
   const TICK_RATE = 20;
   const SPEED_OPTIONS = [1, 2, 5];
   const FIRST_SKILL_POINT_XP = 10;
@@ -121,6 +121,25 @@
       knockbackMultiplier: 0.25,
       statusDamageMultipliers: { burn: 2 },
     },
+    vulture: {
+      id: "vulture",
+      label: "Vulture",
+      layer: "air",
+      movement: "air",
+      threat: 13,
+      health: 18,
+      damage: 1.5,
+      attackSpeed: 0.55,
+      moveSpeed: 1.3,
+      attackRange: 0.86,
+      collisionRadius: 0.42,
+      targetRule: "closest-targetable-building",
+      targetType: "building",
+      approach: "swoop",
+      arrivalPauseTicks: 1,
+      xp: 4,
+      drops: { hides: { min: 3, max: 5 } },
+    },
   };
 
   const BUILDINGS = {
@@ -152,6 +171,7 @@
       attackSpeed: 0.5,
       attackRange: 1.75,
       projectile: { type: "stick", speed: 4.5 },
+      targetLayers: ["ground"],
       targetRule: "nearest-enemy-in-range",
       repairAmount: 3,
       repairCost: { wood: 1 },
@@ -169,6 +189,7 @@
       attackSpeed: 0.75,
       attackRange: 2.625,
       projectile: { type: "arrow", speed: 6.5 },
+      targetLayers: ["ground", "air"],
       targetRule: "nearest-enemy-in-range",
       repairAmount: 3,
       repairCost: { wood: 1 },
@@ -212,6 +233,7 @@
       attackSpeed: 0.45,
       attackRange: 3,
       projectile: { type: "potato", speed: 3.5 },
+      targetLayers: ["ground"],
       knockback: 1,
       targetRule: "nearest-enemy-in-range",
       repairAmount: 3,
@@ -232,6 +254,7 @@
       attackSpeed: 0.5,
       attackRange: 2.5,
       projectile: { type: "fireball", speed: 4.8 },
+      targetLayers: ["ground"],
       statuses: [{
         status: "burn",
         statusSource: "campfireBurn",
@@ -244,6 +267,26 @@
       repairAmount: 3,
       repairCost: { wood: 1 },
     },
+    scarecrow: {
+      id: "scarecrow",
+      label: "Scarecrow tower",
+      footprint: { width: 1, height: 1 },
+      maxHealth: 7,
+      cost: { wood: 3 },
+      actionCost: 1,
+      role: "air tower",
+      targetable: true,
+      blocksPath: true,
+      tags: ["defense", "air", "vulture-counter"],
+      damage: 2,
+      attackSpeed: 0.65,
+      attackRange: 5.5,
+      projectile: { type: "straw", speed: 7 },
+      targetLayers: ["air"],
+      targetRule: "nearest-enemy-in-range",
+      repairAmount: 3,
+      repairCost: { wood: 1 },
+    },
   };
   const TOWER_TYPES = Object.values(BUILDINGS).filter((recipe) => recipe.projectile && recipe.damage > 0).map((recipe) => recipe.id);
 
@@ -252,6 +295,7 @@
     raccoon: { building: "stickLauncher", explanation: "Stick Launchers are the first reliable answer to raccoons." },
     boar: { building: "potatoGun", explanation: "Boars ignore Stick and Arrow tower shots; a Potato Gun is the heavy answer." },
     bear: { building: "campfire", explanation: "Campfire fireballs burn bears for double damage over time." },
+    vulture: { building: "scarecrow", explanation: "Scarecrow Towers cover the sky; Arrow Shooters help bring down a Vulture's large health pool." },
   };
 
   const LEVELS = [
@@ -330,6 +374,34 @@
       enemyPool: ["mouse", "raccoon", "boar", "bear"],
       minimumEnemies: { bear: 1 },
       survivalXp: 11,
+      unlock: null,
+    },
+    {
+      id: "high-watch",
+      number: 9,
+      title: "High watch",
+      enemyPool: ["mouse", "raccoon", "boar", "bear"],
+      survivalXp: 12,
+      unlock: "scarecrow",
+      unlockLabel: "Scarecrow Tower",
+      unlockCopy: "Build this 3-wood long-range tower before the first Vulture. It only attacks air.",
+    },
+    {
+      id: "winds-rising",
+      number: 10,
+      title: "Winds rising",
+      enemyPool: ["mouse", "raccoon", "boar", "bear"],
+      minimumEnemies: { bear: 1 },
+      survivalXp: 13,
+      unlock: null,
+    },
+    {
+      id: "first-vulture",
+      number: 11,
+      title: "First vulture",
+      enemyPool: ["vulture"],
+      minimumEnemies: { vulture: 1 },
+      survivalXp: 15,
       unlock: null,
     },
   ];
@@ -429,7 +501,7 @@
       id: `night-${number}`,
       number,
       title: "Growing pressure",
-      enemyPool: number >= 8 ? ["mouse", "raccoon", "boar", "bear"] : number >= 5 ? ["mouse", "raccoon", "boar"] : ["mouse", "raccoon"],
+      enemyPool: number >= 12 ? ["mouse", "raccoon", "boar", "bear", "vulture"] : number >= 8 ? ["mouse", "raccoon", "boar", "bear"] : number >= 5 ? ["mouse", "raccoon", "boar"] : ["mouse", "raccoon"],
       minimumEnemies: {},
       survivalXp: Math.max(3, Math.ceil(number * 1.25)),
       unlock: null,
@@ -441,6 +513,8 @@
   function activeBuildings(state) { return state.buildings.filter((building) => !building.destroyed); }
   function buildingBlocksPath(building) { return buildingRecipe(building.type)?.blocksPath !== false; }
   function isTargetableBuilding(building) { return buildingRecipe(building.type)?.targetable !== false; }
+  function enemyLayer(enemy) { return enemyRecipe(enemy.type)?.layer || "ground"; }
+  function towerCanTarget(towerRecipe, enemy) { return (towerRecipe.targetLayers || ["ground", "air"]).includes(enemyLayer(enemy)); }
   function unitStats(state, id) {
     const base = UNITS[id];
     if (!base) return null;
@@ -628,6 +702,13 @@
       || left.approach.y - right.approach.y
       || left.approach.x - right.approach.x);
     return candidates[0] || null;
+  }
+
+  function closestTargetableBuildingByDistance(state, entity) {
+    return activeBuildings(state)
+      .filter(isTargetableBuilding)
+      .map((building) => ({ building, approach: { x: building.x, y: building.y }, cost: distance(entity, building) }))
+      .sort((left, right) => left.cost - right.cost || String(left.building.id).localeCompare(String(right.building.id)))[0] || null;
   }
 
   function closestReachableRubble(state, entity, recipeOverride) {
@@ -1463,6 +1544,7 @@
       tower.firingTicks = Math.max(0, (tower.firingTicks || 0) - 1);
       tower.hitTicks = Math.max(0, (tower.hitTicks || 0) - 1);
       const targets = state.enemies
+        .filter((enemy) => towerCanTarget(recipe, enemy))
         .filter((enemy) => distance(tower, enemy) <= recipe.attackRange + enemyRecipe(enemy.type).collisionRadius)
         .sort((left, right) => distance(tower, left) - distance(tower, right) || String(left.id).localeCompare(String(right.id)));
       const target = targets[0];
@@ -1493,6 +1575,8 @@
       tower.firingTicks = 5;
       state.lastEvent = tower.type === "campfire"
         ? "The Campfire hurls a fireball through the trees."
+        : tower.type === "scarecrow"
+          ? "The Scarecrow Tower flings a straw dart into the sky."
         : tower.type === "arrowShooter"
         ? "The Arrow Shooter sends an arrow through the trees."
         : tower.type === "potatoGun"
@@ -1506,7 +1590,7 @@
     const stats = unitStats(state, "scout");
     scout.cooldown = Math.max(0, scout.cooldown - 1);
     const post = { x: scout.postX, y: scout.postY };
-    const targets = state.enemies.filter((enemy) => distance(post, enemy) <= stats.attackRange + enemyRecipe(enemy.type).collisionRadius)
+    const targets = state.enemies.filter((enemy) => enemyLayer(enemy) === "ground" && distance(post, enemy) <= stats.attackRange + enemyRecipe(enemy.type).collisionRadius)
       .sort((left, right) => distance(post, left) - distance(post, right) || String(left.id).localeCompare(String(right.id)));
     const target = targets[0];
 
@@ -1569,7 +1653,10 @@
       enemy.intent = "sneaking";
       return;
     }
-    const target = closestReachableBuilding(state, enemy) || closestReachableRubble(state, enemy);
+    const airborne = recipe.movement === "air";
+    const target = airborne
+      ? closestTargetableBuildingByDistance(state, enemy)
+      : closestReachableBuilding(state, enemy) || closestReachableRubble(state, enemy);
     if (!target) {
       enemy.intent = "searching";
       return;
@@ -1588,6 +1675,10 @@
       return;
     }
     enemy.intent = `moving-${targetId}`;
+    if (airborne) {
+      moveTowards(enemy, target.approach, recipe.moveSpeed * statusMovementMultiplier(enemy) / TICK_RATE);
+      return;
+    }
     const nextStep = target.path.length > 1 ? target.path[1] : target.approach;
     const stepCost = travelCost(state, nextStep.x, nextStep.y, recipe);
     moveTowards(enemy, nextStep, recipe.moveSpeed * statusMovementMultiplier(enemy) / TICK_RATE / stepCost);
@@ -1761,7 +1852,7 @@
 
   function hydrate(serialized) {
     const parsed = typeof serialized === "string" ? JSON.parse(serialized) : serialized;
-    if (!parsed || !parsed.state || ![10, 11, 12, 13, 14, SAVE_VERSION].includes(parsed.version)) throw new Error("This save belongs to a different version of Wild Hearth.");
+    if (!parsed || !parsed.state || ![10, 11, 12, 13, 14, 15, SAVE_VERSION].includes(parsed.version)) throw new Error("This save belongs to a different version of Wild Hearth.");
     const state = parsed.version === SAVE_VERSION ? parsed.state : migrateLegacyState(parsed.state, parsed.version);
     if (state.version !== SAVE_VERSION) throw new Error("This save belongs to a different version of Wild Hearth.");
     if (!Array.isArray(state.terrain) || state.terrain.length !== BOARD.width * BOARD.height) throw new Error("This save has an invalid meadow.");
@@ -1867,6 +1958,8 @@
     scoutPostAt,
     activeBuildings,
     isTargetableBuilding,
+    enemyLayer,
+    towerCanTarget,
     isPassable,
     isBuildableGrass,
     validScoutPost,

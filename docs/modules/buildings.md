@@ -10,6 +10,7 @@
 | Potato Patch | 1 wood, 1 action | Non-targetable, non-blocking setup that matures after two held nights. |
 | Potato Gun | 3 wood, 1 action conversion | Converts a mature Potato Patch after Level 4; 8 health, 4 hit, slow medium reach, one-cell knockback; Potato Packing adds a short non-stacking slow. |
 | Campfire | 4 wood, 1 action | Unlocks after Level 6. A targetable fire tower whose fireballs apply refreshable Burn; the Bear takes 2× Burn damage. |
+| Scarecrow Tower | 3 wood, 1 action | Unlocks after Level 9. A 7-health, air-only tower with very long range; the dedicated Vulture counter. |
 
 All defenses must be built on unoccupied grass. Both original meadow grass and grass revealed by harvesting a tree are valid; trees, water, rubble, and buildings are not.
 
@@ -17,7 +18,7 @@ All live building recipes use one shared contract: footprint, health, repair, ta
 
 ## Proposed next
 
-- **Bee Hive:** Hivecraft research becomes available on Level 6, before its dedicated Level 8 enemy. It shoots bees for light damage and applies the longer, lighter non-stacking Honeyed slow.
+- **Bee Hive:** Hivecraft research becomes available after the Vulture counter chain. It shoots bees for light damage and applies the longer, lighter non-stacking Honeyed slow.
 - Mushroom Launcher after Fungal Craft research.
 
 ## Open questions
