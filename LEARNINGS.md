@@ -35,3 +35,4 @@
 - Keep guidance in one place: the HUD owns the current objective, the map stays visual, and the inspector only appears for a selection or armed action. Phase-specific controls prevent day-planning text from competing with the night watch.
 - Derive central anchors from the board dimensions. The 15×15 meadow preserves the 21-cell opening and Scout's relative post while gaining a dense outer ring; board-size changes also require a save-version bump and a renderer grid update.
 - Treat toolbar density as a browser preference, not game state. Discrete compact, standard, and large layout tokens preserve clickable controls and interaction flow without making a strategy decision depend on a screen setting.
+- Keep the Field Kit spatially stable through the night. Disabled day tools preserve orientation, while fast combat events belong in animation and telemetry rather than a notification strip the player cannot read.

@@ -582,7 +582,7 @@ function renderControls() {
   elements.controlPanel.classList.toggle("is-night", night);
   elements.controlPanel.classList.toggle("is-aftermath", state.phase === "aftermath");
   elements.selectedCard.hidden = !hasInspector || (!day && !opening);
-  elements.actionCard.hidden = !day;
+  elements.actionCard.hidden = false;
   elements.planningCard.hidden = opening || !showPlanningCard;
   elements.shelterButton.hidden = !opening;
   elements.shelterButton.disabled = !day || !opening;
@@ -595,12 +595,12 @@ function renderControls() {
   elements.repairButton.disabled = opening || !day || !building || building.health >= building.maxHealth || state.resources.wood < 1 || state.actionPoints <= 0;
   const upgradeCost = arrowUpgradeReady ? 4 : refit?.cost?.wood || 0;
   elements.upgradeButton.disabled = opening || !day || (!arrowUpgradeReady && !refit) || state.resources.wood < upgradeCost || state.actionPoints <= 0;
-  elements.actionRow.hidden = !building;
+  elements.actionRow.hidden = !building || !day;
   if (arrowUpgradeReady) setButtonContent(elements.upgradeButton, "Upgrade selected", "Arrowcraft · 4 wood · 1 action");
   else if (refit) setButtonContent(elements.upgradeButton, `Refit ${refit.label}`, `${upgradeCost} wood · 1 action · full HP`);
   else setButtonContent(elements.upgradeButton, "Upgrade selected", "Arrowcraft · 4 wood · 1 action");
   elements.endDayButton.disabled = opening || !day;
-  setButtonContent(elements.endDayButton, day ? "End day" : "Night in progress", day ? "Begin night watch →" : "Scout is on watch");
+  setButtonContent(elements.endDayButton, day ? "End day" : night ? "Night watch" : "Dawn", day ? "Begin night watch →" : "Automatic defense");
   elements.overlayButton.hidden = !day || !hasPlanningTarget;
   elements.overlayButton.disabled = opening || !day;
   elements.overlayButton.textContent = planning ? "Hide planning overlay" : "Show planning overlay";
@@ -613,7 +613,7 @@ function renderControls() {
   elements.speedControls.hidden = !night;
   elements.healthBarsSetting.hidden = !night;
   elements.healthBarsToggle.checked = showHealthBars;
-  elements.actionBadge.textContent = day ? `${state.actionPoints} action${state.actionPoints === 1 ? "" : "s"}` : "Scout on watch";
+  elements.actionBadge.textContent = day ? `${state.actionPoints} action${state.actionPoints === 1 ? "" : "s"}` : night ? "Scout on watch" : "Dawn";
   elements.actionHint.textContent = day
     ? opening
       ? "Required to begin the first watch."
@@ -657,7 +657,7 @@ function renderHeader() {
   elements.xp.textContent = state.xp;
   const event = state.lastEvent || "";
   const duplicateContext = event === elements.levelCopy.textContent;
-  elements.eventLogWrap.hidden = !event || duplicateContext || needsShelter();
+  elements.eventLogWrap.hidden = !day || !event || duplicateContext || needsShelter();
   elements.eventLog.textContent = event;
   elements.boardCaption.textContent = day
     ? elements.levelCopy.textContent
