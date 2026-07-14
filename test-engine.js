@@ -49,14 +49,23 @@ settleToNextDay(run);
 assert.equal(run.levelIndex, 1);
 assert.equal(run.xp, 3, "the first kill and cleared night award only XP");
 assert.ok(run.unlocks.includes("stickLauncher"));
+assert.equal(run.telemetry.nightReports.length, 1, "each completed night records a balance report");
+assert.equal(run.telemetry.nightReports[0].spawned, 1);
+assert.equal(run.telemetry.nightReports[0].killsBySource.Scout, 1);
+assert.equal(run.telemetry.total.nights, 1);
 
 // Level 2 permits a clear and a launcher in the same day: each uses one action.
+const unaffordableLauncher = Engine.toolPreview(run, "stickLauncher", 4, 5);
+assert.equal(unaffordableLauncher.siteValid, true);
+assert.equal(unaffordableLauncher.valid, false, "placement feedback includes material affordability");
+assert.equal(Engine.toolPreview(run, "clear", 1, 3).valid, true);
 action(run, { type: "clear", x: 1, y: 3 });
 assert.equal(Engine.terrainAt(run, 1, 3), "cleared");
 assert.equal(run.resources.wood, 2);
 assert.equal(Engine.validFootprint(run, "stickLauncher", 1, 3), true, "cleared-tree grass remains buildable");
 assert.equal(run.actionPoints, 1, "clearing a tree consumes one daylight action");
 assert.equal(Engine.BUILDINGS.stickLauncher.cost.wood, 2, "a cleared tree funds exactly one basic launcher");
+assert.equal(Engine.toolPreview(run, "stickLauncher", 4, 5).valid, true, "the same preview turns valid after the clear");
 action(run, { type: "build", buildingType: "stickLauncher", x: 4, y: 5 });
 const launcher = run.buildings.find((building) => building.type === "stickLauncher");
 assert.ok(launcher);
@@ -69,6 +78,20 @@ settleToNextDay(run);
 assert.ok(run.unlocks.includes("potatoGun"), "holding Level 2 unlocks the Potato Gun");
 assert.equal(Engine.BUILDINGS.potatoGun.damage, 3);
 assert.equal(Engine.BUILDINGS.potatoGun.knockback, 1);
+
+// Tech is data-driven: XP-only Scout Training permanently modifies the calculated Scout stats.
+const scoutTechRun = Engine.createRun("TEST-SCOUT-TECH");
+constructShelter(scoutTechRun);
+scoutTechRun.levelIndex = 1;
+scoutTechRun.xp = 4;
+const scoutResearchActions = scoutTechRun.actionPoints;
+assert.equal(Engine.techAvailability(scoutTechRun, "scoutTraining1").available, true);
+action(scoutTechRun, { type: "research", nodeId: "scoutTraining1" });
+assert.equal(scoutTechRun.xp, 0);
+assert.equal(scoutTechRun.actionPoints, scoutResearchActions, "research never consumes a day action");
+assert.equal(Engine.unitStats(scoutTechRun, "scout").damage, 2, "Scout Training adds damage without mutating the base recipe");
+assert.equal(Engine.UNITS.scout.damage, 1);
+assert.equal(Engine.dispatch(scoutTechRun, { type: "research", nodeId: "scoutTraining1" }).ok, false, "a technology cannot be bought twice");
 
 // Forest remains dense, but every edge is a legal seeded spawn entry.
 assert.equal(Engine.isPassable(Engine.createRun("FOREST-PATH"), 0, 0), true);
@@ -91,6 +114,7 @@ assert.equal(towerRun.enemies[0].health, 5);
 Engine.advanceTicks(towerRun, 12);
 assert.equal(towerRun.enemies[0].health, 4, "the branch should deal damage on impact");
 assert.ok(towerRun.impacts.length > 0, "an impact is exposed for the renderer");
+assert.ok(towerRun.enemies[0].hitTicks > 0, "hits expose a brief readable reaction");
 
 // Potato Gun is a separate heavy building: one visible slow projectile deals three damage and pushes a survivor back.
 const potatoRun = Engine.createRun("TEST-POTATO");
@@ -146,6 +170,21 @@ Engine.advanceTick(guardianRun);
 assert.equal(guardianRun.scout.mode, "chasing");
 assert.ok(guardianRun.scout.x > guardianRun.scout.postX);
 
+// Defeats leave a short renderer-only marker instead of vanishing with no feedback.
+const remainsRun = Engine.createRun("TEST-REMAINS");
+constructShelter(remainsRun);
+remainsRun.unlocks.push("stickLauncher");
+remainsRun.resources.wood = 2;
+remainsRun.actionPoints = 2;
+action(remainsRun, { type: "build", buildingType: "stickLauncher", x: 4, y: 5 });
+remainsRun.phase = "night";
+remainsRun.encounter = { waves: [{ spawned: true }], spawned: 1 };
+remainsRun.enemies = [{ id: "e-remains", type: "raccoon", x: 4, y: 3.9, health: 1, maxHealth: 5, cooldown: 4, approachDelay: 0 }];
+Engine.advanceTick(remainsRun);
+Engine.advanceTicks(remainsRun, 12);
+assert.equal(remainsRun.enemies.length, 0);
+assert.equal(remainsRun.remains.length, 1, "a defeated enemy leaves a short-lived remains marker");
+
 // Seeded pacing remains deterministic, including wave entries and timings.
 const encounterOne = Engine.createRun("SAME-SEED");
 const encounterTwo = Engine.createRun("SAME-SEED");
@@ -155,6 +194,13 @@ action(encounterOne, { type: "endDay" });
 action(encounterTwo, { type: "endDay" });
 assert.deepEqual(encounterOne.encounter, encounterTwo.encounter);
 assert.ok(encounterOne.encounter.waves[0].spawnTick >= 18);
+const multiWaveRun = Engine.createRun("MULTI-ANGLE");
+constructShelter(multiWaveRun);
+multiWaveRun.levelIndex = 6;
+action(multiWaveRun, { type: "endDay" });
+const earlyEdges = multiWaveRun.encounter.waves.slice(0, 4).map((wave) => wave.entry.edge);
+assert.equal(new Set(earlyEdges).size, earlyEdges.length, "early waves rotate through different forest edges");
+assert.ok(multiWaveRun.encounter.waves.every((wave) => wave.entries.length === wave.units.length && wave.staggerTicks.length === wave.units.length));
 
 // Replay includes research and automatic between-level continuation, with no manual Continue action.
 const replaySource = Engine.createRun("REPLAY-SEED");
@@ -165,11 +211,14 @@ action(replaySource, { type: "clear", x: 1, y: 3 });
 action(replaySource, { type: "endDay" });
 settleToNextDay(replaySource);
 action(replaySource, { type: "research", nodeId: "arrowcraft" });
-assert.equal(Engine.checksum(Engine.replay(replaySource.seed, replaySource.actionLog)), Engine.checksum(replaySource));
+const replayReport = Engine.replayReport(replaySource.seed, replaySource.actionLog);
+assert.equal(Engine.checksum(replayReport.state), Engine.checksum(replaySource));
+assert.equal(replayReport.checkpoints.length, 2, "replay exposes one checkpoint for each resolved night");
+assert.deepEqual(replayReport.checkpoints, Engine.replayReport(replaySource.seed, replaySource.actionLog).checkpoints, "replay checkpoints are deterministic");
 
 const restored = Engine.hydrate(Engine.serialize(replaySource));
 assert.equal(Engine.checksum(restored), Engine.checksum(replaySource));
 assert.throws(() => Engine.hydrate({ version: 3, state: {} }), /different version/);
-assert.throws(() => Engine.hydrate({ version: 5, state: {} }), /different version/);
+assert.throws(() => Engine.hydrate({ version: 6, state: {} }), /different version/);
 
 console.log("Wild Hearth engine checks passed.");

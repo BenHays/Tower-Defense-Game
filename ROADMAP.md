@@ -26,7 +26,7 @@ This roadmap protects the core loop: use the day to shape a small homestead, the
 - **All-angle invasion:** enemies can spawn from any usable perimeter cell.
 - **Scout:** a mobile melee final line. His watch radius stays centered on the daytime post; he chases, bites, and returns automatically.
 - **Stick Launcher:** the first fixed tower. It costs 2 wood and one action, has 6 health, short 2.25-cell reach, 1 damage, and fires once every 2 seconds at the nearest enemy in range.
-- **XP only:** enemies and cleared nights award XP. Research spends XP but no day action. There are no meat, pelt, food, or Scout-health maintenance systems.
+- **XP branches:** enemies and cleared nights award XP. Research spends XP but no day action. Scout Training I (4 XP) and Arrowcraft (6 XP) are competing early choices; there are no meat, pelt, food, or Scout-health maintenance systems.
 - **No barricade yet:** boars and their dedicated counter remain deferred until the first tower loop is proven.
 - **No blueprint state:** selecting Build creates a finished structure immediately when the site, materials, and action are valid.
 
@@ -49,24 +49,24 @@ Later difficulty modes will multiply this budget: Easy 0.8×, Medium 1.0×, Hard
 
 ## Delivered engine foundation
 
-- Dependency-free, fixed-tick browser simulation with deterministic seeds, save/load, replay, and a headless test runner.
-- Hidden square board, weighted forest movement, shortest reachable-building targeting, building destruction, and rubble.
+- Dependency-free, fixed-tick browser simulation with deterministic seeds, save/load, replay checkpoints, night telemetry, and a headless test runner.
+- Hidden square board, weighted forest movement, route-cost placement preview, shortest reachable-building targeting, building destruction, and rubble.
 - Day-only actions, automatic Scout combat, pause/1×/2× playback, optional building/enemy health bars, and no end-of-night popup.
-- Passive click-to-inspect selection, a ground-hugging terrain highlight, selected-tower combat stats, and no Scout health UI.
-- Visible stick and arrow projectiles, hit flashes, and deterministic raccoon pacing: short entry pauses, varied seeded entry edges, and readable wave gaps.
-- A DOM-free `tech-tree.js` module. Its first node, **Arrowcraft**, costs 6 XP, becomes available on Level 3, and unlocks an individual tower upgrade.
+- Stable one-click map input, outline-only placement feedback, selected unit/building combat stats, and no Scout health UI.
+- Visible projectiles, recoil, hit flashes, brief defeat remains, and deterministic raccoon pacing: staggered groups rotate across seeded forest edges.
+- A DOM-free, data-driven `tech-tree.js` module. **Scout Training I** costs 4 XP on Level 2 (+1 Scout damage); **Arrowcraft** costs 6 XP on Level 3 and unlocks an individual tower upgrade.
 - **Arrow Shooter:** spend 4 wood and one action to convert one Stick Launcher. It has 1.5× damage, attack speed, and range; it does not gain extra health.
-- `balance-sim.js` compares named deterministic plans before a Threat Budget or tower stat is changed.
+- Shared building recipes specify health, repair, targetability, path blocking, and optional combat. `balance-sim.js` compares named plans and verifies their replay checkpoints before a Threat Budget or tower stat is changed.
 
 ## Current challenge arc
 
-Level 1 is intentionally safe. From Level 2 forward, the player is under real pressure and chooses between more basic launchers and saving wood for Arrowcraft.
+Level 1 is intentionally safe. From Level 2 forward, the player is under real pressure and chooses between basic launchers, Scout Training, and saving XP for Arrowcraft.
 
 | Level | Player decision | Pressure |
 | --- | --- | --- |
 | 1 | Construct the shelter; watch Scout defeat one raccoon | Tutorial / easy |
-| 2 | Clear a tree and build the first Stick Launcher | 2 raccoons |
-| 3 | Research Arrowcraft without spending an action; clear for wood | 3 raccoons |
+| 2 | Clear a tree and build the first Stick Launcher; Scout Training appears | 2 raccoons |
+| 3 | Choose Scout Training or Arrowcraft without spending an action; clear for wood | 3 raccoons |
 | 4 | Save for an Arrow Shooter or add a second launcher | 4 raccoons |
 | 5+ | Build placement and upgrade timing determine survival | Growing seeded Threat Budget |
 
@@ -98,9 +98,9 @@ Its job is not crowd control or a universal replacement for launchers. It gives 
 - **Hearthcraft / Fire Pit (roadmap, not live contract):** research should unlock an earned Fire Pit, rather than placing a free campfire. Proposed purpose: a non-targetable, non-damaging one-cell warmth zone that slows enemies by a small amount. It is a narrow late safety net that buys Scout or a nearby tower one more attack, not a replacement for a defense. Proposed build contract: research with XP, then spend **2 wood and one action** to construct it at the homestead. Its research cost and unlock level remain open for playtesting.
 - **Water:** do not add a water inventory. Later, water should be an environmental moisture source that enables fungal/garden structures near it; its first real purpose is to create location-specific choices for the Mushroom branch rather than another generic currency.
 
-### Tree and placement UX corrections (roadmap)
+### Tree and placement UX corrections (delivered)
 
-- **One clear, one target:** clicking **Clear** should arm the next tree click and clear it immediately. The present extra-click behavior is a UI bug caused by rebuilding the board during hover; replace it with stable cell input before the next gameplay slice.
+- **One clear, one target:** the map grid remains mounted while hover feedback updates, so one armed tool click followed by one terrain click completes the action. Invalid clicks keep the tool armed.
 - **Neutral cleared plots:** flattened grass, muted soil, and a small stump/log replace the old yellow glow. Yellow must never represent permanent terrain or selection.
 - **Explicit terrain grammar:** standing tree = wood source and slower route; any open or cleared grass = defense site; water, fire, and future structures will introduce their own placement rules when they exist. The visual treatment and tool copy must explain this rule before a player tries to build.
 
@@ -154,9 +154,9 @@ Every module should use the same four headings: **Live now**, **Proposed next**,
 
 ## Next implementation order
 
-1. Fix the clear/build click flow and validate the neutral cleared-tree art with player testing.
+1. Validate Scout Training versus Arrowcraft versus extra-launcher choices across deterministic Medium seeds and player testing.
 2. Validate the Potato Gun's cost, unlock timing, and counter role across deterministic Medium seeds and player testing.
-3. Tune Arrowcraft and Potato Gun so neither becomes a universal answer.
-4. Add the next tech branch only after those choices create a reliable but challenging progression.
+3. Tune the early wave director so grouped multi-angle pressure is challenging but legible.
+4. Add the next tech branch only after the Scout and Launcher branches create a reliable but challenging progression.
 5. Add the next enemy only with its own readable building counter.
 6. Add Easy, Hard, and Very Hard as Threat Budget multipliers after Medium is balanced.

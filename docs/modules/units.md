@@ -4,13 +4,14 @@
 
 | Unit | Hit | Role |
 | --- | --- | --- |
-| Scout | 1 | Mobile automatic final line within a day-placed watch radius. |
+| Scout | 1 base, 2 after Scout Training I | Mobile automatic final line within a day-placed watch radius. |
 
 Scout has internal health for the simulation but no player health bar or upkeep system.
 
 ## Proposed next
 
 - Keep friendly-unit controls out of the MVP. Scout positioning remains the only friendly placement decision.
+- Future Scout upgrades use declarative XP effects, calculated at combat time rather than written into saved unit state.
 
 ## Open questions
 

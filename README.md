@@ -23,13 +23,13 @@ Open [http://localhost:4173](http://localhost:4173). You can also open `index.ht
 3. Every normal day has two actions. Clearing a tree, placing Scout, building a tower, repairing, and upgrading each use **one** action. Clearing grants **2 wood** and turns the tree into open grass.
 4. Level 1 unlocks the **Stick Launcher**. On Level 2, clear a tree and build it for 2 wood on any unoccupied grass cell in the same day. It deals 1 damage, fires once every 2 seconds, and has short reach.
 5. Holding Level 2 unlocks the **Potato Gun**: 3 wood and one action for a slow, heavy 3-damage shot that knocks surviving enemies back.
-6. Defeated enemies and held nights grant **XP**. On Level 3, spend 6 XP on **Arrowcraft**—research costs no day action—then spend 4 wood and one action to upgrade one Stick Launcher into an Arrow Shooter (1.5× damage, tempo, and reach).
-7. Forest is dense and walkable but slower than cleared ground. Enemies can enter from any usable map edge and attack the closest reachable finished building. Fire is not in the current build; it remains an earned future research path.
-8. Medium uses a seeded **Threat Budget** that grows 25% per level, rounded up. Health bars are optional for buildings and enemies; Scout has no health-maintenance system.
+6. Defeated enemies and held nights grant **XP**. **Scout Training I** appears on Level 2 for 4 XP and gives Scout +1 damage; **Arrowcraft** appears on Level 3 for 6 XP and unlocks the Arrow Shooter. Research costs XP only—never a day action.
+7. Forest is dense and walkable but slower than cleared ground. Placement previews show whether a site is valid, affordable, and how costly the nearby enemy route is. Enemies enter in seeded, staggered groups that rotate across forest edges.
+8. Medium uses a seeded **Threat Budget** that grows 25% per level, rounded up. Health bars are optional; the compact Night Record retains spawned enemies, defense damage, and homestead damage for each watch.
 
 ## Configuration
 
-There are no environment variables. Content tuning, Medium Threat allocation, fixed-map terrain, combat contracts, and levels live in `engine.js`. `tech-tree.js` holds declarative research requirements and effects. `game.js` is the browser renderer and input layer.
+There are no environment variables. Content tuning, Medium Threat allocation, fixed-map terrain, combat contracts, and levels live in `engine.js`. `tech-tree.js` is the editable catalog of branches, node dependencies, XP costs, and typed effects. `game.js` is the browser renderer and stable map-input layer.
 
 ## Key commands
 

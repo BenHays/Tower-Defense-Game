@@ -11,6 +11,8 @@
 
 All defenses must be built on unoccupied grass. Both original meadow grass and grass revealed by clearing a tree are valid; trees, water, rubble, and buildings are not.
 
+All live building recipes use one shared contract: footprint, health, repair, targetability, path blocking, and optional combat fields. This lets future support buildings opt out of enemy targeting without creating a second building system.
+
 ## Proposed next
 
 - **Fire Pit:** unlocked by future Hearthcraft research; costs 2 wood and one action. It is an earned, non-targetable support feature at the homestead, not a free starting map object. Its sole initial effect is a small enemy slow zone; it deals no damage.

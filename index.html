@@ -76,10 +76,15 @@
           <p class="preview-copy" id="preview-copy">Choose a tool, then select unoccupied grass.</p>
           <section class="tech-card" id="tech-card" aria-label="Technology">
             <p class="eyebrow">Technology</p>
-            <strong id="tech-title">Arrowcraft</strong>
+            <div class="tech-branches" id="tech-branches"></div>
+            <strong id="tech-title">Research</strong>
             <p id="tech-copy">Clear levels and turn XP into lasting knowledge.</p>
-            <button class="secondary-button wide" id="research-button" type="button">Research Arrowcraft <span>6 XP</span></button>
+            <button class="secondary-button wide" id="research-button" type="button">Research <span>XP only · no action</span></button>
           </section>
+          <details class="telemetry-card" id="telemetry-card">
+            <summary>Night record</summary>
+            <p id="telemetry-copy">The next night will record pressure, defense damage, and homestead damage.</p>
+          </details>
           <div class="speed-controls" id="speed-controls" aria-label="Night speed">
             <button class="speed-button" id="pause-button" type="button">Pause</button>
             <button class="speed-button is-active" data-speed="1" type="button">1×</button>

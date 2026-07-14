@@ -7,6 +7,7 @@
 - Research costs XP only and does not use a day action.
 - Level 1 begins at a shelter site. **Construct shelter** is the only enabled first-day action; it costs 0 wood, uses the full opening day, and unlocks every other control. **End day** stays disabled until the teepee exists.
 - The player ends the day; night combat is automatic. Scout returns before the next day begins.
+- Every resolved night creates a deterministic replay checkpoint and a compact Night Record for balance testing.
 
 ## Proposed next
 
@@ -20,4 +21,5 @@
 
 - There is one authored map. Seeds vary encounters, not terrain.
 - A level message should only explain the current objective or a new unlock.
+- Research is strategic and XP-only; construction remains the physical use of day actions.
 - The teepee is the sole zero-cost building, but it is earned through the forced opening action rather than granted on map load.

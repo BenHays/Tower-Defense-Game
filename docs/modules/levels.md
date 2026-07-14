@@ -5,7 +5,7 @@
 - Medium uses a seeded Threat Budget that grows 25% per level, rounded up.
 - Level 1 unlocks Stick Launcher.
 - Holding Level 2 unlocks Potato Gun.
-- Level 3 makes Arrowcraft relevant when the player has 6 XP.
+- Level 2 reveals Scout Training I (4 XP, +1 Scout damage); Level 3 also reveals Arrowcraft (6 XP).
 - Level 1 opens at a shelter site with only **Construct shelter** enabled; teepee construction is free but consumes the first full day. The first real clear/build choice begins after that tutorial action.
 
 ## Proposed next
@@ -19,4 +19,4 @@
 
 ## Decisions made
 
-- There is one fixed map. Seeds vary spawn edge, grouping, timing, and encounter allocation.
+- There is one fixed map. Seeds vary spawn edge, entry cell, group stagger, timing, and encounter allocation.

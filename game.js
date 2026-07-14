@@ -2,7 +2,7 @@ const Engine = window.WildHearthEngine;
 
 if (!Engine) throw new Error("Wild Hearth engine did not load.");
 
-const SAVE_KEY = "wild-hearth-save-v6";
+const SAVE_KEY = "wild-hearth-save-v7";
 const SETTINGS_KEY = "wild-hearth-settings-v1";
 const elements = {
   board: document.querySelector("#game-board"),
@@ -35,7 +35,10 @@ const elements = {
   techTitle: document.querySelector("#tech-title"),
   techCopy: document.querySelector("#tech-copy"),
   techCard: document.querySelector("#tech-card"),
+  techBranches: document.querySelector("#tech-branches"),
   researchButton: document.querySelector("#research-button"),
+  telemetryCard: document.querySelector("#telemetry-card"),
+  telemetryCopy: document.querySelector("#telemetry-copy"),
   pauseButton: document.querySelector("#pause-button"),
   speedButtons: [...document.querySelectorAll("[data-speed]")],
   speedControls: document.querySelector("#speed-controls"),
@@ -52,6 +55,10 @@ let lastFrame = 0;
 let accumulator = 0;
 let gridSignature = "";
 let showHealthBars = false;
+let activeTechId = null;
+const gridCells = new Map();
+let techSignature = "";
+let pointerActivation = null;
 
 try {
   showHealthBars = Boolean(JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}").showHealthBars);
@@ -86,6 +93,7 @@ function addHealthBar(node, entity, tone) {
 
 function currentLevel() { return Engine.levelFor(state); }
 function selectedBuilding() { return selected.kind === "building" ? state.buildings.find((building) => building.id === selected.id && !building.destroyed) : null; }
+function selectedScout() { return selected.kind === "scout" ? state.scout : null; }
 function selectedCell() { return selected.kind === "cell" ? selected : null; }
 function sameCell(left, right) { return left && right && left.x === right.x && left.y === right.y; }
 function cellId(x, y) { return `${x},${y}`; }
@@ -94,15 +102,12 @@ function towerRecipe(type) { return Engine.TOWER_TYPES.includes(type) ? Engine.B
 function needsShelter() { return !Engine.hasShelter(state); }
 
 function toolCellValid(x, y) {
-  if (activeTool === "clear") return Engine.terrainAt(state, x, y) === "tree" || Engine.hasRubble(state, x, y);
-  if (activeTool === "scout") return Engine.isPassable(state, x, y);
-  if (isBuildTool(activeTool)) return Engine.buildPreview(state, activeTool, x, y).valid;
-  return false;
+  return Engine.toolPreview(state, activeTool, x, y).valid;
 }
 
 function currentPreview() {
-  if (!isBuildTool(activeTool) || !hoverCell || state.phase !== "day") return null;
-  return Engine.buildPreview(state, activeTool, hoverCell.x, hoverCell.y);
+  if (activeTool === "none" || !hoverCell || state.phase !== "day") return null;
+  return Engine.toolPreview(state, activeTool, hoverCell.x, hoverCell.y);
 }
 
 function setEvent(message) {
@@ -126,42 +131,74 @@ function describeCell(x, y) {
   return terrain === "tree" ? "Tree" : terrain === "cleared" ? "Cleared grass" : "Open grass";
 }
 
-function renderGrid() {
-  const preview = currentPreview();
-  const previewPath = planning && preview ? new Set(preview.path.map((cell) => cellId(cell.x, cell.y))) : new Set();
-  const previewSignature = preview ? `${preview.valid}|${preview.affordable}|${preview.targetId}|${preview.path.map((cell) => cellId(cell.x, cell.y)).join("/")}` : "";
-  const focusedBuilding = selectedBuilding();
-  const chosen = selectedCell() || (focusedBuilding ? { x: focusedBuilding.x, y: focusedBuilding.y } : null);
-  const signature = [state.topologyVersion, state.phase, activeTool, hoverCell ? cellId(hoverCell.x, hoverCell.y) : "", chosen ? cellId(chosen.x, chosen.y) : "", planning, previewSignature, state.rubble.map((item) => cellId(item.x, item.y)).join(",")].join("|");
-  if (signature === gridSignature) return;
-  gridSignature = signature;
+function ensureGrid() {
+  if (gridCells.size) return;
   const fragment = document.createDocumentFragment();
   for (let y = 0; y < Engine.BOARD.height; y += 1) {
     for (let x = 0; x < Engine.BOARD.width; x += 1) {
       const cell = createNode("button", "cell");
-      const terrain = Engine.terrainAt(state, x, y);
       cell.type = "button";
       cell.dataset.x = String(x);
       cell.dataset.y = String(y);
-      cell.disabled = state.phase !== "day" || needsShelter();
-      cell.setAttribute("aria-label", describeCell(x, y));
-      cell.classList.add(`terrain-${terrain}`);
-      if (terrain === "tree") {
-        cell.classList.add(`tree-tone-${(x * 7 + y * 3) % 6}`);
-        const canopy = createNode("span", "tree-canopy");
-        canopy.setAttribute("aria-hidden", "true");
-        cell.append(canopy);
-      }
-      if (sameCell(chosen, { x, y })) cell.classList.add("is-selected");
-      if (sameCell(hoverCell, { x, y }) && state.phase === "day" && activeTool !== "none") {
-        cell.classList.add("is-hover", toolCellValid(x, y) ? "valid" : "invalid");
-      }
-      if (previewPath.has(cellId(x, y))) cell.classList.add("is-route");
-      if (planning && preview?.targetId === "preview" && sameCell(hoverCell, { x, y })) cell.classList.add("is-target");
+      cell.addEventListener("pointerdown", (event) => {
+        if (event.button === 2 || cell.disabled) return;
+        pointerActivation = { x: String(x), y: String(y), until: Date.now() + 500 };
+        clickCell(x, y);
+      });
+      cell.addEventListener("click", () => {
+        const isPointerFollowup = pointerActivation
+          && pointerActivation.x === String(x)
+          && pointerActivation.y === String(y)
+          && Date.now() <= pointerActivation.until;
+        pointerActivation = null;
+        if (!isPointerFollowup) clickCell(x, y);
+      });
+      gridCells.set(cellId(x, y), cell);
       fragment.append(cell);
     }
   }
   elements.grid.replaceChildren(fragment);
+}
+
+function patchCell(cell, x, y, chosen, previewPath, preview) {
+  const terrain = Engine.terrainAt(state, x, y);
+  const wasTree = cell.dataset.terrain === "tree";
+  cell.dataset.terrain = terrain;
+  cell.disabled = state.phase !== "day" || needsShelter();
+  cell.setAttribute("aria-label", describeCell(x, y));
+  cell.className = `cell terrain-${terrain}`;
+  if (terrain === "tree") {
+    cell.classList.add(`tree-tone-${(x * 7 + y * 3) % 6}`);
+    if (!wasTree) {
+      const canopy = createNode("span", "tree-canopy");
+      canopy.setAttribute("aria-hidden", "true");
+      cell.replaceChildren(canopy);
+    }
+  } else if (wasTree) {
+    cell.replaceChildren();
+  }
+  if (sameCell(chosen, { x, y })) cell.classList.add("is-selected");
+  if (sameCell(hoverCell, { x, y }) && state.phase === "day" && activeTool !== "none") {
+    cell.classList.add("is-hover", preview?.valid ? "valid" : "invalid");
+  }
+  if (previewPath.has(cellId(x, y))) cell.classList.add("is-route");
+  if (planning && preview?.targetId === "preview" && sameCell(hoverCell, { x, y })) cell.classList.add("is-target");
+}
+
+function renderGrid() {
+  ensureGrid();
+  const preview = currentPreview();
+  const previewPath = planning && Array.isArray(preview?.path) ? new Set(preview.path.map((cell) => cellId(cell.x, cell.y))) : new Set();
+  const previewSignature = preview ? `${preview.valid}|${preview.affordable}|${preview.targetId || ""}|${(preview.path || []).map((cell) => cellId(cell.x, cell.y)).join("/")}` : "";
+  const focusedBuilding = selectedBuilding();
+  const scout = selectedScout();
+  const chosen = selectedCell() || (focusedBuilding ? { x: focusedBuilding.x, y: focusedBuilding.y } : scout ? { x: Math.round(scout.x), y: Math.round(scout.y) } : null);
+  const signature = [state.topologyVersion, state.phase, state.actionPoints, state.resources.wood, activeTool, hoverCell ? cellId(hoverCell.x, hoverCell.y) : "", chosen ? cellId(chosen.x, chosen.y) : "", planning, previewSignature, state.rubble.map((item) => cellId(item.x, item.y)).join(",")].join("|");
+  if (signature === gridSignature) return;
+  gridSignature = signature;
+  for (let y = 0; y < Engine.BOARD.height; y += 1) {
+    for (let x = 0; x < Engine.BOARD.width; x += 1) patchCell(gridCells.get(cellId(x, y)), x, y, chosen, previewPath, preview);
+  }
 }
 
 function addLabel(node, text) {
@@ -172,8 +209,9 @@ function addLabel(node, text) {
 function renderEntities() {
   const fragment = document.createDocumentFragment();
   if (planning && state.phase === "day") {
+    const scoutStats = Engine.unitStats(state, "scout");
     const ring = createNode("div", "range-ring");
-    const diameter = ((state.scout.attackRange * 2 + 1) / Engine.BOARD.width) * 100;
+    const diameter = ((scoutStats.attackRange * 2 + 1) / Engine.BOARD.width) * 100;
     ring.style.width = `${diameter}%`;
     ring.style.height = `${diameter}%`;
     place(ring, state.scout.postX, state.scout.postY);
@@ -182,7 +220,7 @@ function renderEntities() {
 
   const focusedTower = selectedBuilding();
   if (planning && focusedTower && towerRecipe(focusedTower.type)) {
-    const recipe = Engine.BUILDINGS[focusedTower.type];
+    const recipe = Engine.buildingCombatStats(state, focusedTower.type);
     const ring = createNode("div", "range-ring tower-range");
     const diameter = ((recipe.attackRange * 2 + 1) / Engine.BOARD.width) * 100;
     ring.style.width = `${diameter}%`;
@@ -209,6 +247,7 @@ function renderEntities() {
     const node = createNode("div", `entity building ${building.type} ${Engine.conditionFor(building)}`);
     if (selected.kind === "building" && selected.id === building.id) node.classList.add("is-selected");
     if (building.firingTicks > 0) node.classList.add("is-firing");
+    if (building.hitTicks > 0) node.classList.add("is-hit");
     place(node, building.x, building.y);
     addHealthBar(node, building, "building-health");
     addLabel(node, recipe.label);
@@ -216,6 +255,7 @@ function renderEntities() {
   });
 
   const scout = createNode("div", `entity scout is-${state.scout.mode || "idle"}`);
+  if (selectedScout()) scout.classList.add("is-selected");
   place(scout, state.scout.x, state.scout.y);
   addLabel(scout, "Scout");
   fragment.append(scout);
@@ -225,6 +265,7 @@ function renderEntities() {
     if (enemy.intent === "sneaking") node.classList.add("is-sneaking");
     if (enemy.inWarmth) node.classList.add("is-warmed");
     if (enemy.knockbackTicks > 0) node.classList.add("is-knocked");
+    if (enemy.hitTicks > 0) node.classList.add("is-hit");
     addHealthBar(node, enemy, "enemy-health");
     place(node, enemy.x, enemy.y);
     fragment.append(node);
@@ -240,6 +281,17 @@ function renderEntities() {
     place(node, impact.x, impact.y);
     fragment.append(node);
   });
+  state.remains.forEach((remains) => {
+    const node = createNode("div", `entity remains ${remains.type}`);
+    place(node, remains.x, remains.y);
+    fragment.append(node);
+  });
+  const preview = currentPreview();
+  if (state.phase === "day" && hoverCell && activeTool !== "none") {
+    const ghost = createNode("div", `entity placement-ghost ${activeTool} ${preview?.valid ? "is-valid" : "is-invalid"}`);
+    place(ghost, hoverCell.x, hoverCell.y);
+    fragment.append(ghost);
+  }
   elements.entityLayer.replaceChildren(fragment);
 }
 
@@ -264,9 +316,17 @@ function renderSelection() {
     elements.selectionFootnote.textContent = "It is the only action available on Level 1 Day 1.";
     return;
   }
+  if (selectedScout()) {
+    const stats = Engine.unitStats(state, "scout");
+    elements.selectedTitle.textContent = "Scout";
+    elements.selectedCopy.textContent = `Hit ${stats.damage} · ${tempoLabel(stats.attackSpeed)} · ${reachLabel(stats.attackRange)} watch.`;
+    elements.selectionMeterWrap.hidden = true;
+    elements.selectionFootnote.textContent = Engine.hasResearch(state, "scoutTraining1") ? "Scout Training I is active on every night watch." : "Scout Training I can improve this final line with XP.";
+    return;
+  }
   const building = selectedBuilding();
   if (building) {
-    const recipe = Engine.BUILDINGS[building.type];
+    const recipe = Engine.buildingCombatStats(state, building.type);
     const condition = Engine.conditionFor(building).replace("-", " ");
     elements.selectedTitle.textContent = recipe.label;
     elements.selectionMeterWrap.hidden = false;
@@ -324,15 +384,16 @@ function renderPreview() {
     return;
   }
   if (!preview.valid) {
-    elements.previewCopy.textContent = "Build on unoccupied grass. Trees, water, rubble, and buildings block placement.";
+    elements.previewCopy.textContent = preview.reason;
+    return;
+  }
+  if (activeTool === "clear" || activeTool === "scout") {
+    elements.previewCopy.textContent = preview.reason;
     return;
   }
   const recipe = Engine.BUILDINGS[activeTool];
-  if (!preview.affordable) {
-    elements.previewCopy.textContent = `Need ${recipe.cost.wood} wood for ${recipe.label}.`;
-    return;
-  }
-  elements.previewCopy.textContent = `${recipe.label} is ready here. It takes 1 day action.`;
+  const route = preview.routeCost ? ` Route cost ${preview.routeCost.toFixed(1)}; forest slows enemies.` : "";
+  elements.previewCopy.textContent = `${recipe.label} is ready here. It takes 1 day action.${route}`;
 }
 
 function renderTechnology() {
@@ -340,21 +401,57 @@ function renderTechnology() {
     elements.techCard.hidden = true;
     return;
   }
-  const research = Engine.techAvailability(state, "arrowcraft");
-  const node = research.node || Engine.TECH_TREE.arrowcraft;
-  const relevant = Engine.hasResearch(state, "arrowcraft") || currentLevel().number >= node.requiredLevel;
-  elements.techCard.hidden = !relevant;
-  if (!relevant) return;
-  elements.techTitle.textContent = node.label;
-  if (Engine.hasResearch(state, "arrowcraft")) {
-    elements.techCopy.textContent = "Researched. Select a Stick Launcher to upgrade it into an Arrow Shooter for 4 wood and 1 action.";
-    setButtonContent(elements.researchButton, "Arrowcraft researched", "ready");
+  const level = currentLevel().number;
+  const visibleNodes = Engine.techNodes().filter((node) => node.requiredLevel <= level || Engine.hasResearch(state, node.id));
+  elements.techCard.hidden = !visibleNodes.length;
+  if (!visibleNodes.length) return;
+  const available = visibleNodes.find((node) => Engine.techAvailability(state, node.id).available);
+  if (!visibleNodes.some((node) => node.id === activeTechId)) activeTechId = available?.id || visibleNodes[0].id;
+  const signature = [state.phase, level, state.xp, state.unlocks.join(","), state.research.join(","), activeTechId].join("|");
+  if (signature === techSignature) return;
+  techSignature = signature;
+  const selectedNode = Engine.TECH_TREE[activeTechId];
+  const research = Engine.techAvailability(state, activeTechId);
+  const branches = new Map();
+  visibleNodes.forEach((node) => {
+    if (!branches.has(node.branch)) branches.set(node.branch, []);
+    branches.get(node.branch).push(node);
+  });
+  const fragment = document.createDocumentFragment();
+  [...branches.entries()].forEach(([branchId, nodes]) => {
+    const branch = createNode("div", "tech-branch");
+    branch.append(createNode("span", "tech-branch-label", Engine.TECH_BRANCHES[branchId].label));
+    nodes.forEach((node) => {
+      const check = Engine.techAvailability(state, node.id);
+      const button = createNode("button", `tech-node${node.id === activeTechId ? " is-selected" : ""}${Engine.hasResearch(state, node.id) ? " is-researched" : ""}`);
+      button.type = "button";
+      button.dataset.tech = node.id;
+      button.append(document.createTextNode(node.label), createNode("span", "", Engine.hasResearch(state, node.id) ? "researched" : `${node.costXp} XP`));
+      button.title = check.reason;
+      branch.append(button);
+    });
+    fragment.append(branch);
+  });
+  elements.techBranches.replaceChildren(fragment);
+  elements.techTitle.textContent = selectedNode.label;
+  if (Engine.hasResearch(state, selectedNode.id)) {
+    elements.techCopy.textContent = `${selectedNode.completeCopy} Research uses XP only; no day action is spent.`;
+    setButtonContent(elements.researchButton, `${selectedNode.label} researched`, "ready");
     elements.researchButton.disabled = true;
     return;
   }
-  elements.techCopy.textContent = `${node.copy} ${research.reason} Research costs XP only; it uses no day action.`;
-  setButtonContent(elements.researchButton, "Research Arrowcraft", `${node.costXp} XP · no action`);
-  elements.researchButton.disabled = needsShelter() || state.phase !== "day" || !research.available;
+  elements.techCopy.textContent = `${selectedNode.copy} ${research.reason} Research uses XP only; no day action is spent.`;
+  setButtonContent(elements.researchButton, `Research ${selectedNode.label}`, `${selectedNode.costXp} XP · no action`);
+  elements.researchButton.disabled = state.phase !== "day" || !research.available;
+}
+
+function renderTelemetry() {
+  const telemetry = Engine.telemetrySnapshot(state);
+  const report = telemetry.currentNight || telemetry.nightReports[telemetry.nightReports.length - 1];
+  elements.telemetryCard.hidden = needsShelter() || !report;
+  if (!report) return;
+  const result = report.result ? ` · ${report.result}` : "";
+  elements.telemetryCopy.textContent = `Level ${report.number}: ${report.spawned} spawned, ${report.peakEnemies} at once, ${report.buildingDamage.toFixed(1)} structure damage${result}.`;
 }
 
 function renderControls() {
@@ -368,10 +465,10 @@ function renderControls() {
   elements.toolGrid.querySelectorAll("[data-tool]").forEach((button) => {
     const tool = button.dataset.tool;
     button.classList.toggle("is-active", tool === activeTool);
-    button.disabled = opening || (isBuildTool(tool) ? !day || !state.unlocks.includes(tool) : !day);
+    button.disabled = opening || !day || state.actionPoints <= 0 || (isBuildTool(tool) && !state.unlocks.includes(tool));
   });
   elements.repairButton.disabled = opening || !day || !building || building.health >= building.maxHealth || state.resources.wood < 1 || state.actionPoints <= 0;
-  elements.upgradeButton.disabled = opening || !day || !building || building.type !== "stickLauncher" || !Engine.hasResearch(state, "arrowcraft") || state.resources.wood < 4 || state.actionPoints <= 0;
+  elements.upgradeButton.disabled = opening || !day || !building || building.type !== "stickLauncher" || !Engine.hasBuildingUpgrade(state, "stickLauncher", "arrowShooter") || state.resources.wood < 4 || state.actionPoints <= 0;
   elements.endDayButton.disabled = opening || !day;
   setButtonContent(elements.endDayButton, day ? "End day" : "Night in progress", day ? "Begin night watch →" : "Scout is on watch");
   elements.overlayButton.disabled = opening || !day;
@@ -397,7 +494,7 @@ function renderControls() {
       : level.number === 1
         ? "Scout can hold the first raccoon. Clear a tree for wood when ready."
       : level.number === 3 && !Engine.hasResearch(state, "arrowcraft")
-        ? "Arrowcraft research is available when you have enough XP."
+        ? "Choose Scout Training or Arrowcraft when you have enough XP."
         : state.unlocks.includes("potatoGun") && state.resources.wood < 3
           ? "Save wood for a Potato Gun, or build another first line."
           : "Place defenses on open grass; clear trees for wood and faster routes."
@@ -418,7 +515,9 @@ function renderHeader() {
   elements.board.classList.toggle("night-scene", night || aftermath);
   elements.board.classList.remove("dawn-scene");
   elements.phaseLabel.textContent = day ? "Day planning" : night ? state.paused ? "Night paused" : "Night watch" : aftermath ? "Night settling" : "Homestead lost";
-  elements.phaseDetail.textContent = day ? "Untimed" : night ? `${state.speed}× fixed tick` : aftermath ? "Scout returning" : "Seed recorded";
+  const spawnedWaves = state.encounter?.waves.filter((wave) => wave.spawned).length || 0;
+  const waveDetail = state.encounter ? `Wave ${Math.max(1, spawnedWaves)}/${state.encounter.waves.length}` : "Watch";
+  elements.phaseDetail.textContent = day ? "Untimed" : night ? `${waveDetail} · ${state.speed}×` : aftermath ? "Scout returning" : "Seed recorded";
   elements.actionPoints.textContent = state.actionPoints;
   elements.wood.textContent = state.resources.wood;
   elements.xp.textContent = state.xp;
@@ -440,6 +539,7 @@ function render() {
   renderSelection();
   renderPreview();
   renderTechnology();
+  renderTelemetry();
 }
 
 function clickCell(x, y) {
@@ -451,26 +551,33 @@ function clickCell(x, y) {
     render();
     return;
   }
+  if (activeTool === "none" && Math.round(state.scout.x) === x && Math.round(state.scout.y) === y) {
+    selected = { kind: "scout" };
+    render();
+    return;
+  }
   if (activeTool === "clear") {
     selected = { kind: "cell", x, y };
-    activeTool = "none";
-    dispatch({ type: "clear", x, y });
+    const outcome = dispatch({ type: "clear", x, y });
+    if (outcome.ok) activeTool = "none";
+    render();
     return;
   }
   if (activeTool === "scout") {
-    activeTool = "none";
-    dispatch({ type: "scout", x, y });
+    const outcome = dispatch({ type: "scout", x, y });
+    if (outcome.ok) activeTool = "none";
+    render();
     return;
   }
   if (isBuildTool(activeTool)) {
     const buildingType = activeTool;
-    activeTool = "none";
     const outcome = dispatch({ type: "build", buildingType, x, y });
     if (outcome.ok) {
+      activeTool = "none";
       const building = Engine.buildingAt(state, x, y);
       if (building) selected = { kind: "building", id: building.id };
-      render();
     }
+    render();
     return;
   }
   selected = { kind: "cell", x, y };
@@ -485,6 +592,8 @@ function resetRun(seed) {
   planning = false;
   accumulator = 0;
   gridSignature = "";
+  techSignature = "";
+  activeTechId = null;
   render();
 }
 
@@ -508,6 +617,8 @@ function loadGame() {
     hoverCell = null;
     accumulator = 0;
     gridSignature = "";
+    techSignature = "";
+    activeTechId = null;
     setEvent(`Loaded seed ${state.seed}.`);
     render();
   } catch (error) {
@@ -527,11 +638,6 @@ elements.grid.addEventListener("pointermove", (event) => {
 });
 elements.grid.addEventListener("pointerleave", () => {
   if (hoverCell) { hoverCell = null; gridSignature = ""; render(); }
-});
-elements.grid.addEventListener("click", (event) => {
-  const cell = event.target.closest(".cell");
-  if (!cell) return;
-  clickCell(Number(cell.dataset.x), Number(cell.dataset.y));
 });
 elements.toolGrid.addEventListener("click", (event) => {
   const button = event.target.closest("[data-tool]");
@@ -556,7 +662,16 @@ elements.upgradeButton.addEventListener("click", () => {
   const building = selectedBuilding();
   if (building) dispatch({ type: "upgradeLauncher", id: building.id });
 });
-elements.researchButton.addEventListener("click", () => dispatch({ type: "research", nodeId: "arrowcraft" }));
+elements.techCard.addEventListener("click", (event) => {
+  const node = event.target.closest("[data-tech]");
+  if (!node) return;
+  activeTechId = node.dataset.tech;
+  techSignature = "";
+  render();
+});
+elements.researchButton.addEventListener("click", () => {
+  if (activeTechId) dispatch({ type: "research", nodeId: activeTechId });
+});
 elements.endDayButton.addEventListener("click", () => dispatch({ type: "endDay" }));
 elements.overlayButton.addEventListener("click", () => { planning = !planning; gridSignature = ""; render(); });
 elements.pauseButton.addEventListener("click", () => dispatch({ type: "pause" }));

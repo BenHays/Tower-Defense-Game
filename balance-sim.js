@@ -42,6 +42,9 @@ function runPlan(label, chooseDayAction) {
     if (state.phase === "day") Engine.dispatch(state, { type: "endDay" });
     settleNight(state);
   }
+  const replay = Engine.replayReport(seed, state.actionLog);
+  if (Engine.checksum(replay.state) !== Engine.checksum(state)) throw new Error(`${label} failed deterministic replay validation.`);
+  const latest = replay.checkpoints[replay.checkpoints.length - 1];
   return {
     plan: label,
     reachedLevel: state.levelIndex + 1,
@@ -50,6 +53,8 @@ function runPlan(label, chooseDayAction) {
     xp: state.xp,
     wood: state.resources.wood,
     towers: state.buildings.filter((building) => Engine.TOWER_TYPES.includes(building.type)).map((building) => building.type),
+    checkpoints: replay.checkpoints.length,
+    lastNight: latest ? `${latest.number}:${latest.result} · ${latest.telemetry?.buildingDamage?.toFixed(1) || "0.0"} structure dmg` : "none",
   };
 }
 

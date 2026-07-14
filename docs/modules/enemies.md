@@ -4,7 +4,7 @@
 
 | Enemy | Health | Approach | Counter |
 | --- | ---: | --- | --- |
-| Raccoon | 5 | Sneaks from any usable edge and attacks the closest reachable finished building. | Stick Launcher and Scout. |
+| Raccoon | 5 | Sneaks from any usable edge in seeded, staggered waves and attacks the closest reachable targetable building. | Stick Launcher and Scout. |
 
 Enemies award XP when defeated. They do not award meat, pelts, or another inventory resource.
 
@@ -20,3 +20,4 @@ Enemies award XP when defeated. They do not award meat, pelts, or another invent
 ## Decisions made
 
 - New enemy families arrive no more often than one every three levels and always have a readable counter first.
+- Wave direction is deterministic per seed. The early edge bag rotates north, east, south, and west before an edge repeats.

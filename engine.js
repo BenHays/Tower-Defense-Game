@@ -11,7 +11,7 @@
   root.WildHearthEngine = engine;
 }(typeof globalThis !== "undefined" ? globalThis : this, function buildEngine(TechTree) {
   if (!TechTree) throw new Error("Wild Hearth tech tree did not load.");
-  const SAVE_VERSION = 6;
+  const SAVE_VERSION = 7;
   const TICK_RATE = 20;
   const BOARD = { id: "hearth-meadow", label: "Hearth Meadow", width: 13, height: 13 };
   const STARTING_ACTIONS = 2;
@@ -80,6 +80,8 @@
       maxHealth: 12,
       cost: { wood: 0 },
       role: "home",
+      targetable: true,
+      blocksPath: true,
       tags: ["home"],
       repairAmount: 4,
       repairCost: { wood: 1 },
@@ -92,6 +94,8 @@
       cost: { wood: 2 },
       actionCost: 1,
       role: "tower",
+      targetable: true,
+      blocksPath: true,
       tags: ["defense", "first-line"],
       damage: 1,
       attackSpeed: 0.5,
@@ -107,6 +111,8 @@
       footprint: { width: 1, height: 1 },
       maxHealth: 6,
       role: "tower",
+      targetable: true,
+      blocksPath: true,
       tags: ["defense", "first-line", "arrowcraft"],
       damage: 1.5,
       attackSpeed: 0.75,
@@ -124,6 +130,8 @@
       cost: { wood: 3 },
       actionCost: 1,
       role: "heavy tower",
+      targetable: true,
+      blocksPath: true,
       tags: ["defense", "heavy"],
       damage: 3,
       attackSpeed: 1 / 3,
@@ -135,7 +143,7 @@
       repairCost: { wood: 1 },
     },
   };
-  const TOWER_TYPES = ["stickLauncher", "arrowShooter", "potatoGun"];
+  const TOWER_TYPES = Object.values(BUILDINGS).filter((recipe) => recipe.projectile && recipe.damage > 0).map((recipe) => recipe.id);
 
   const ENEMY_COUNTERS = {
     raccoon: { building: "stickLauncher", explanation: "A stick launcher weakens a raccoon before Scout needs to intercept." },
@@ -200,6 +208,7 @@
   }
 
   const SPAWN_CELLS = perimeterSpawnCells();
+  function spawnCellsOnEdge(edge) { return SPAWN_CELLS.filter((cell) => cell.edge === edge); }
 
   function hashSeed(value) {
     let hash = 2166136261;
@@ -228,6 +237,15 @@
         return items[this.int(0, items.length - 1)];
       },
     };
+  }
+
+  function shuffled(items, rng) {
+    const result = items.slice();
+    for (let index = result.length - 1; index > 0; index -= 1) {
+      const swap = rng.int(0, index);
+      [result[index], result[swap]] = [result[swap], result[index]];
+    }
+    return result;
   }
 
   function nextSeed(seed) {
@@ -266,6 +284,27 @@
   }
   function buildingRecipe(type) { return BUILDINGS[type]; }
   function enemyRecipe(type) { return ENEMIES[type]; }
+  function activeBuildings(state) { return state.buildings.filter((building) => !building.destroyed); }
+  function buildingBlocksPath(building) { return buildingRecipe(building.type)?.blocksPath !== false; }
+  function isTargetableBuilding(building) { return buildingRecipe(building.type)?.targetable !== false; }
+  function unitStats(state, id) {
+    const base = UNITS[id];
+    if (!base) return null;
+    const stats = { ...base };
+    ["damage", "attackSpeed", "moveSpeed", "attackRange", "attackReach"].forEach((stat) => {
+      if (typeof base[stat] === "number") stats[stat] = TechTree.statValue(state, "unit", id, stat, base[stat]);
+    });
+    return stats;
+  }
+  function buildingCombatStats(state, type) {
+    const base = buildingRecipe(type);
+    if (!base) return null;
+    const stats = { ...base };
+    ["damage", "attackSpeed", "attackRange"].forEach((stat) => {
+      if (typeof base[stat] === "number") stats[stat] = TechTree.statValue(state, "building", type, stat, base[stat]);
+    });
+    return stats;
+  }
   function buildingCells(building) {
     const footprint = buildingRecipe(building.type).footprint;
     const cells = [];
@@ -276,7 +315,7 @@
   }
 
   function buildingAt(state, x, y) {
-    const buildings = state.buildings.filter((building) => !building.destroyed);
+    const buildings = activeBuildings(state);
     return buildings.find((building) => buildingCells(building).some((cell) => cell.x === x && cell.y === y));
   }
 
@@ -286,7 +325,7 @@
 
   function isPassable(state, x, y) {
     if (!inBounds(x, y) || !["open", "tree", "cleared"].includes(terrainAt(state, x, y)) || hasRubble(state, x, y)) return false;
-    return !buildingAt(state, x, y);
+    return !activeBuildings(state).some((building) => buildingBlocksPath(building) && buildingCells(building).some((cell) => cell.x === x && cell.y === y));
   }
 
   function isBuildableGrass(state, x, y) {
@@ -371,7 +410,7 @@
   }
 
   function closestReachableBuilding(state, entity, extraBuilding, recipeOverride) {
-    const buildings = state.buildings.filter((building) => !building.destroyed).concat(extraBuilding ? [extraBuilding] : []);
+    const buildings = activeBuildings(state).filter(isTargetableBuilding).concat(extraBuilding && isTargetableBuilding(extraBuilding) ? [extraBuilding] : []);
     const recipe = recipeOverride || (entity?.type ? enemyRecipe(entity.type) : ENEMIES.raccoon);
     const candidates = [];
     for (const building of buildings) {
@@ -408,6 +447,102 @@
     return { ok, message };
   }
 
+  function beginNightTelemetry(state) {
+    const level = levelFor(state);
+    state.telemetry.currentNight = {
+      level: level.id,
+      number: level.number,
+      seed: state.seed,
+      threatBudget: level.threatBudget,
+      startedTick: state.tick,
+      elapsedTicks: 0,
+      spawned: 0,
+      spawnEdges: {},
+      peakEnemies: 0,
+      shotsBySource: {},
+      damageBySource: {},
+      killsBySource: {},
+      buildingHits: 0,
+      buildingDamage: 0,
+      buildingDamageByType: {},
+      homesteadHits: 0,
+      buildingsLost: 0,
+    };
+    state.telemetry.total.nights += 1;
+  }
+
+  function currentNightTelemetry(state) { return state.telemetry?.currentNight || null; }
+  function increment(record, key, amount = 1) { record[key] = (record[key] || 0) + amount; }
+  function recordSpawn(state, edge) {
+    const report = currentNightTelemetry(state);
+    if (!report) return;
+    report.spawned += 1;
+    increment(report.spawnEdges, edge);
+    state.telemetry.total.enemiesSpawned += 1;
+  }
+  function recordShot(state, source) {
+    const report = currentNightTelemetry(state);
+    if (report) increment(report.shotsBySource, source);
+  }
+  function recordDamageDealt(state, source, amount) {
+    const report = currentNightTelemetry(state);
+    if (!report || amount <= 0) return;
+    increment(report.damageBySource, source, amount);
+    state.telemetry.total.damageDealt += amount;
+  }
+  function recordKill(state, source) {
+    const report = currentNightTelemetry(state);
+    if (report) increment(report.killsBySource, source);
+    state.telemetry.total.kills += 1;
+  }
+  function recordBuildingDamage(state, building, amount) {
+    const report = currentNightTelemetry(state);
+    if (!report || amount <= 0) return;
+    report.buildingHits += 1;
+    report.buildingDamage += amount;
+    increment(report.buildingDamageByType, building.type, amount);
+    if (building.type === "teepee") report.homesteadHits += 1;
+    state.telemetry.total.buildingDamage += amount;
+  }
+  function recordPeakEnemies(state) {
+    const report = currentNightTelemetry(state);
+    if (report) report.peakEnemies = Math.max(report.peakEnemies, state.enemies.length);
+  }
+  function finishNightTelemetry(state, result) {
+    const report = currentNightTelemetry(state);
+    if (!report) return null;
+    report.elapsedTicks = state.nightTick;
+    report.result = result;
+    report.remainingEnemies = state.enemies.length;
+    if (result === "lost") report.buildingsLost += 1;
+    state.telemetry.total.buildingsLost += report.buildingsLost;
+    const snapshot = clone(report);
+    state.telemetry.nightReports.push(snapshot);
+    state.telemetry.currentNight = null;
+    return snapshot;
+  }
+
+  function telemetrySnapshot(state) {
+    return clone({ total: state.telemetry.total, currentNight: state.telemetry.currentNight, nightReports: state.telemetry.nightReports });
+  }
+
+  function captureReplaySnapshot(state, result) {
+    const level = levelFor(state);
+    state.replaySnapshots.push({
+      level: level.id,
+      number: level.number,
+      result,
+      actions: state.actionLog.length,
+      threatBudget: state.encounter?.threatBudget || level.threatBudget,
+      kills: state.kills,
+      xp: state.xp,
+      wood: state.resources.wood,
+      buildings: activeBuildings(state).map((building) => ({ id: building.id, type: building.type, health: building.health, maxHealth: building.maxHealth })),
+      telemetry: state.telemetry.nightReports[state.telemetry.nightReports.length - 1] || null,
+      checksum: checksum(state),
+    });
+  }
+
   function consumeAction(state) {
     if (state.actionPoints <= 0) return false;
     state.actionPoints -= 1;
@@ -425,13 +560,23 @@
   }
 
   function makeTeepee() {
+    return makeBuilding("b-teepee", "teepee", SHELTER_SITE.x, SHELTER_SITE.y);
+  }
+
+  function makeBuilding(id, type, x, y) {
+    const recipe = buildingRecipe(type);
+    if (!recipe) throw new Error(`Unknown building recipe: ${type}.`);
     return {
-      id: "b-teepee",
-      type: "teepee",
-      x: SHELTER_SITE.x,
-      y: SHELTER_SITE.y,
-      health: BUILDINGS.teepee.maxHealth,
-      maxHealth: BUILDINGS.teepee.maxHealth,
+      id,
+      type,
+      x,
+      y,
+      health: recipe.maxHealth,
+      maxHealth: recipe.maxHealth,
+      cooldown: 0,
+      targetId: null,
+      firingTicks: 0,
+      hitTicks: 0,
       destroyed: false,
     };
   }
@@ -467,6 +612,7 @@
       enemies: [],
       projectiles: [],
       impacts: [],
+      remains: [],
       encounter: null,
       topologyVersion: 0,
       nextEntityId: 1,
@@ -478,6 +624,12 @@
       paused: false,
       speed: 1,
       history: [],
+      telemetry: {
+        total: { nights: 0, enemiesSpawned: 0, kills: 0, damageDealt: 0, buildingDamage: 0, buildingsLost: 0 },
+        currentNight: null,
+        nightReports: [],
+      },
+      replaySnapshots: [],
     };
   }
 
@@ -516,17 +668,29 @@
     }
 
     const waves = [];
+    let edgeBag = shuffled(["north", "east", "south", "west"], rng);
+    let lastEdge = null;
     let cursor = 0;
     let spawnTick = 18 + rng.int(0, 8);
     while (cursor < units.length) {
       const remainingUnits = units.length - cursor;
-      const groupSize = Math.min(remainingUnits, remainingUnits >= 4 && rng.next() > 0.62 ? 2 : 1);
-      const entry = clone(rng.pick(SPAWN_CELLS));
+      const groupSize = Math.min(remainingUnits, remainingUnits >= 3 && rng.next() > 0.48 ? 2 : 1);
+      if (!edgeBag.length) {
+        edgeBag = shuffled(["north", "east", "south", "west"], rng);
+        if (edgeBag[0] === lastEdge) edgeBag.push(edgeBag.shift());
+      }
+      const edge = edgeBag.shift();
+      lastEdge = edge;
+      const entryBag = shuffled(spawnCellsOnEdge(edge), rng);
+      const entries = units.slice(cursor, cursor + groupSize).map((unused, index) => clone(entryBag[index % entryBag.length]));
       waves.push({
         id: `wave-${waves.length + 1}`,
         spawnTick,
-        entry,
+        entry: entries[0],
+        entries,
         units: units.slice(cursor, cursor + groupSize),
+        staggerTicks: entries.map((unused, index) => index * rng.int(3, 6)),
+        spawnedCount: 0,
         spawned: false,
       });
       cursor += groupSize;
@@ -561,7 +725,7 @@
     const level = levelFor(state);
     const encounter = buildEncounter(state);
     const target = closestReachableBuilding(state, encounter.waves[0].entry, candidate, ENEMIES.raccoon);
-    const coverage = distance({ x: state.scout.postX, y: state.scout.postY }, { x, y }) <= state.scout.attackRange + 0.5;
+    const coverage = distance({ x: state.scout.postX, y: state.scout.postY }, { x, y }) <= unitStats(state, "scout").attackRange + 0.5;
     return {
       valid,
       affordable,
@@ -569,9 +733,33 @@
       targetId: target?.building.id || null,
       targetLabel: target?.building.id === "preview" ? recipe.label : target ? buildingRecipe(target.building.type).label : "none",
       path: target?.path || [],
+      routeCost: target?.cost || 0,
+      terrain: terrainAt(state, x, y),
       cost: recipe.cost,
       level: level.number,
     };
+  }
+
+  function toolPreview(state, type, x, y) {
+    if (type === "clear") {
+      const valid = terrainAt(state, x, y) === "tree" || hasRubble(state, x, y);
+      return { type, valid, affordable: true, reason: valid ? "Clear for 2 wood and one action." : "Choose a tree or rubble." };
+    }
+    if (type === "scout") {
+      const valid = isPassable(state, x, y);
+      return { type, valid, affordable: true, reason: valid ? "Scout can watch from this open cell." : "Scout needs an open cell." };
+    }
+    if (buildingRecipe(type)) {
+      const preview = buildPreview(state, type, x, y);
+      return {
+        ...preview,
+        type,
+        siteValid: preview.valid,
+        valid: preview.valid && preview.affordable,
+        reason: !preview.valid ? "Build on unoccupied grass." : !preview.affordable ? `Need ${preview.cost.wood || 0} wood.` : "Ready to build.",
+      };
+    }
+    return { type, valid: false, affordable: false, reason: "Unknown tool." };
   }
 
   function dispatch(state, action, options) {
@@ -649,18 +837,7 @@
       if (!hasResources(state, recipe.cost)) return result(state, false, `Need ${recipe.cost.wood || 0} wood to build this.`);
       if (!consumeActions(state, recipe.actionCost || 1)) return result(state, false, "Both day actions are spent.");
       spendResources(state, recipe.cost);
-      state.buildings.push({
-        id: `b-${state.nextEntityId++}`,
-        type: action.buildingType,
-        x: action.x,
-        y: action.y,
-        health: recipe.maxHealth,
-        maxHealth: recipe.maxHealth,
-        cooldown: 0,
-        targetId: null,
-        firingTicks: 0,
-        destroyed: false,
-      });
+      state.buildings.push(makeBuilding(`b-${state.nextEntityId++}`, action.buildingType, action.x, action.y));
       invalidatePaths(state);
       return result(state, true, `${recipe.label} built. One day action spent.`, action, shouldRecord);
     }
@@ -668,7 +845,7 @@
     if (action.type === "upgradeLauncher") {
       const building = state.buildings.find((item) => item.id === action.id && !item.destroyed);
       if (!building || building.type !== "stickLauncher") return result(state, false, "Choose a standing Stick Launcher to upgrade.");
-      if (TechTree.effectsFor(state).unlocksBuildingUpgrade !== "arrowShooter") return result(state, false, "Research Arrowcraft before upgrading a launcher.");
+      if (!TechTree.hasBuildingUpgrade(state, "stickLauncher", "arrowShooter")) return result(state, false, "Research Arrowcraft before upgrading a launcher.");
       const cost = { wood: 4 };
       if (!hasResources(state, cost)) return result(state, false, "An Arrow Shooter upgrade needs 4 wood.");
       if (!consumeAction(state)) return result(state, false, "Both day actions are spent.");
@@ -687,6 +864,7 @@
       state.phase = "night";
       state.nightTick = 0;
       state.paused = false;
+      beginNightTelemetry(state);
       state.encounter = buildEncounter(state);
       state.lastEvent = "Night falls. The first group is moving through the trees.";
       return result(state, true, state.lastEvent, action, shouldRecord);
@@ -709,28 +887,40 @@
 
   function spawnWaves(state) {
     for (const wave of state.encounter.waves) {
-      if (!wave.spawned && wave.spawnTick <= state.nightTick) {
-        wave.spawned = true;
-        wave.units.forEach((type) => state.enemies.push(createEnemy(state, type, wave.entry)));
-        state.encounter.spawned += wave.units.length;
-        const names = wave.units.map((type) => enemyRecipe(type).label.toLowerCase()).join(" and ");
-        state.lastEvent = `A ${names} enters from the ${wave.entry.edge} forest.`;
+      if (wave.spawned || wave.spawnTick > state.nightTick) continue;
+      while (wave.spawnedCount < wave.units.length && state.nightTick >= wave.spawnTick + wave.staggerTicks[wave.spawnedCount]) {
+        const spawnIndex = wave.spawnedCount;
+        const type = wave.units[spawnIndex];
+        const entry = wave.entries[spawnIndex] || wave.entry;
+        state.enemies.push(createEnemy(state, type, entry));
+        wave.spawnedCount += 1;
+        state.encounter.spawned += 1;
+        recordSpawn(state, entry.edge);
+        state.lastEvent = `A ${enemyRecipe(type).label.toLowerCase()} enters from the ${entry.edge} forest.`;
       }
+      wave.spawned = wave.spawnedCount === wave.units.length;
     }
   }
 
   function damageBuilding(state, building, amount, source) {
+    const appliedDamage = Math.min(building.health, amount);
     building.health = Math.max(0, building.health - amount);
+    building.hitTicks = 7;
+    recordBuildingDamage(state, building, appliedDamage);
     state.lastEvent = `${enemyRecipe(source.type).label} hits the ${buildingRecipe(building.type).label.toLowerCase()}.`;
     if (building.health > 0) return;
     building.destroyed = true;
     if (building.type === "teepee") {
       state.phase = "lost";
       state.outcome = { victory: false, title: "The teepee falls.", copy: "Scout retreats into the trees. Try the same seed again with a different plan." };
-      state.history.push({ level: levelFor(state).id, result: "lost", seed: state.seed });
+      const report = finishNightTelemetry(state, "lost");
+      state.history.push({ level: levelFor(state).id, result: "lost", seed: state.seed, telemetry: report });
+      captureReplaySnapshot(state, "lost");
       return;
     }
     buildingCells(building).forEach((cell) => state.rubble.push({ x: cell.x, y: cell.y }));
+    const report = currentNightTelemetry(state);
+    if (report) report.buildingsLost += 1;
     invalidatePaths(state);
     state.lastEvent = `The ${buildingRecipe(building.type).label.toLowerCase()} becomes rubble and blocks the ground.`;
   }
@@ -740,11 +930,14 @@
     state.kills += 1;
     state.xp += reward;
     state.enemies = state.enemies.filter((item) => item.id !== enemy.id);
+    state.remains.push({ id: `remains-${state.nextEntityId++}`, x: enemy.x, y: enemy.y, type: enemy.type, ticks: 12 });
+    recordKill(state, source);
     state.lastEvent = `${source} turns away the ${enemyRecipe(enemy.type).label.toLowerCase()}: +${reward} XP.`;
   }
 
   function updateProjectiles(state) {
     state.impacts = state.impacts.filter((impact) => impact.ticks > 1).map((impact) => ({ ...impact, ticks: impact.ticks - 1 }));
+    state.remains = state.remains.filter((remains) => remains.ticks > 1).map((remains) => ({ ...remains, ticks: remains.ticks - 1 }));
     const remaining = [];
     state.projectiles.forEach((projectile) => {
       const target = state.enemies.find((enemy) => enemy.id === projectile.targetId);
@@ -753,7 +946,10 @@
       if (distance(projectile, target) <= travel + enemyRecipe(target.type).collisionRadius) {
         projectile.x = target.x;
         projectile.y = target.y;
+        const appliedDamage = Math.min(target.health, projectile.damage);
         target.health = Math.max(0, target.health - projectile.damage);
+        target.hitTicks = 6;
+        recordDamageDealt(state, projectile.sourceLabel, appliedDamage);
         if (target.health > 0 && projectile.knockback) applyKnockback(state, target, projectile);
         state.impacts.push({ id: `impact-${state.nextEntityId++}`, x: target.x, y: target.y, ticks: 6, type: projectile.type });
         if (target.health === 0) defeatEnemy(state, target, projectile.sourceLabel);
@@ -784,9 +980,10 @@
 
   function updateTowers(state) {
     state.buildings.filter((building) => !building.destroyed && TOWER_TYPES.includes(building.type)).forEach((tower) => {
-      const recipe = buildingRecipe(tower.type);
+      const recipe = buildingCombatStats(state, tower.type);
       tower.cooldown = Math.max(0, (tower.cooldown || 0) - 1);
       tower.firingTicks = Math.max(0, (tower.firingTicks || 0) - 1);
+      tower.hitTicks = Math.max(0, (tower.hitTicks || 0) - 1);
       const targets = state.enemies
         .filter((enemy) => distance(tower, enemy) <= recipe.attackRange + enemyRecipe(enemy.type).collisionRadius)
         .sort((left, right) => distance(tower, left) - distance(tower, right) || String(left.id).localeCompare(String(right.id)));
@@ -809,6 +1006,7 @@
         angle: Math.atan2(target.y - tower.y, target.x - tower.x) * (180 / Math.PI),
         age: 0,
       });
+      recordShot(state, recipe.label);
       tower.cooldown = Math.max(1, Math.round(TICK_RATE / recipe.attackSpeed));
       tower.firingTicks = 5;
       state.lastEvent = tower.type === "arrowShooter"
@@ -821,9 +1019,10 @@
 
   function updateScout(state) {
     const scout = state.scout;
+    const stats = unitStats(state, "scout");
     scout.cooldown = Math.max(0, scout.cooldown - 1);
     const post = { x: scout.postX, y: scout.postY };
-    const targets = state.enemies.filter((enemy) => distance(post, enemy) <= scout.attackRange + enemyRecipe(enemy.type).collisionRadius)
+    const targets = state.enemies.filter((enemy) => distance(post, enemy) <= stats.attackRange + enemyRecipe(enemy.type).collisionRadius)
       .sort((left, right) => distance(post, left) - distance(post, right) || String(left.id).localeCompare(String(right.id)));
     const target = targets[0];
 
@@ -831,7 +1030,7 @@
       scout.targetId = null;
       if (distance(scout, post) > 0.03) {
         scout.mode = "returning";
-        moveTowards(scout, post, scout.moveSpeed / TICK_RATE);
+        moveTowards(scout, post, stats.moveSpeed / TICK_RATE);
       } else {
         scout.mode = "idle";
         scout.x = post.x;
@@ -841,17 +1040,21 @@
     }
 
     scout.targetId = target.id;
-    const reach = scout.attackReach + enemyRecipe(target.type).collisionRadius;
+    const reach = stats.attackReach + enemyRecipe(target.type).collisionRadius;
     if (distance(scout, target) > reach) {
       scout.mode = "chasing";
-      moveTowards(scout, target, scout.moveSpeed / TICK_RATE);
+      moveTowards(scout, target, stats.moveSpeed / TICK_RATE);
       return;
     }
 
     scout.mode = "attacking";
     if (scout.cooldown > 0) return;
-    target.health = Math.max(0, target.health - scout.damage);
-    scout.cooldown = Math.max(1, Math.round(TICK_RATE / scout.attackSpeed));
+    const appliedDamage = Math.min(target.health, stats.damage);
+    target.health = Math.max(0, target.health - stats.damage);
+    target.hitTicks = 6;
+    recordShot(state, "Scout");
+    recordDamageDealt(state, "Scout", appliedDamage);
+    scout.cooldown = Math.max(1, Math.round(TICK_RATE / stats.attackSpeed));
     state.lastEvent = `Scout lunges at the ${enemyRecipe(target.type).label.toLowerCase()} inside his watch radius.`;
     if (target.health === 0) {
       scout.targetId = null;
@@ -875,6 +1078,7 @@
   function updateEnemy(state, enemy) {
     const recipe = enemyRecipe(enemy.type);
     enemy.knockbackTicks = Math.max(0, (enemy.knockbackTicks || 0) - 1);
+    enemy.hitTicks = Math.max(0, (enemy.hitTicks || 0) - 1);
     if (enemy.approachDelay > 0) {
       enemy.approachDelay -= 1;
       enemy.intent = "sneaking";
@@ -918,6 +1122,7 @@
     state.enemies = [];
     state.projectiles = [];
     state.impacts = [];
+    state.remains = [];
     state.paused = false;
     state.speed = 1;
     state.outcome = null;
@@ -934,13 +1139,16 @@
     const completionCopy = unlockedNow
       ? `+${level.survivalXp} XP. ${level.unlockLabel} unlocked. ${level.unlockCopy}`
       : `+${level.survivalXp} survival XP.`;
-    state.history.push({ level: level.id, result: "victory", seed: state.seed, kills: state.kills });
+    const report = finishNightTelemetry(state, "victory");
+    state.history.push({ level: level.id, result: "victory", seed: state.seed, kills: state.kills, telemetry: report });
+    captureReplaySnapshot(state, "victory");
     startNextDay(state, level, completionCopy);
   }
 
   function advanceTick(state) {
     if (!["night", "aftermath"].includes(state.phase) || state.paused) return state;
     state.tick += 1;
+    state.buildings.forEach((building) => { building.hitTicks = Math.max(0, (building.hitTicks || 0) - 1); });
     if (state.phase === "aftermath") {
       state.aftermathTicks += 1;
       updateScout(state);
@@ -950,6 +1158,7 @@
     }
     state.nightTick += 1;
     spawnWaves(state);
+    recordPeakEnemies(state);
     updateProjectiles(state);
     updateTowers(state);
     updateScout(state);
@@ -984,6 +1193,7 @@
     const state = parsed.state;
     if (!Array.isArray(state.terrain) || state.terrain.length !== BOARD.width * BOARD.height) throw new Error("This save has an invalid meadow.");
     if (typeof state.shelterBuilt !== "boolean" || !Array.isArray(state.buildings)) throw new Error("This save has an invalid shelter state.");
+    if (!state.telemetry || !state.telemetry.total || !Array.isArray(state.telemetry.nightReports) || !Array.isArray(state.replaySnapshots) || !Array.isArray(state.remains)) throw new Error("This save has an invalid night record.");
     const teepeeCount = state.buildings.filter((building) => building.type === "teepee" && !building.destroyed).length;
     if ((state.shelterBuilt && teepeeCount !== 1) || (!state.shelterBuilt && teepeeCount !== 0)) throw new Error("This save has an invalid shelter state.");
     pathCaches.delete(state);
@@ -991,15 +1201,21 @@
   }
 
   function replay(seed, actionLog) {
+    return replayReport(seed, actionLog).state;
+  }
+
+  function replayReport(seed, actionLog) {
     const state = createRun(seed);
     for (const action of actionLog) {
-      dispatch(state, action, { record: false });
+      const outcome = dispatch(state, action, { record: false });
+      if (!outcome.ok) throw new Error(`Replay action failed: ${action.type}. ${outcome.message}`);
       if (action.type === "endDay") {
         let guard = 14000;
         while (["night", "aftermath"].includes(state.phase) && guard > 0) { advanceTick(state); guard -= 1; }
+        if (guard === 0) throw new Error("Replay night did not settle.");
       }
     }
-    return state;
+    return { state, checkpoints: clone(state.replaySnapshots) };
   }
 
   function checksum(state) {
@@ -1016,6 +1232,8 @@
       buildings: state.buildings.map((building) => ({ id: building.id, type: building.type, x: building.x, y: building.y, health: building.health, maxHealth: building.maxHealth, destroyed: building.destroyed })),
       rubble: state.rubble,
       outcome: state.outcome,
+      telemetry: { total: state.telemetry?.total || {}, nightReports: state.telemetry?.nightReports || [] },
+      history: state.history,
       scout: {
         x: state.scout.x,
         y: state.scout.y,
@@ -1041,6 +1259,7 @@
     TOWER_TYPES,
     SHELTER_SITE,
     TECH_TREE: TechTree.NODES,
+    TECH_BRANCHES: TechTree.BRANCHES,
     ENEMY_COUNTERS,
     LEVELS,
     STARTING_ACTIONS,
@@ -1058,20 +1277,32 @@
     cellKey,
     buildingCells,
     buildingAt,
+    activeBuildings,
+    isTargetableBuilding,
     isPassable,
     isBuildableGrass,
     hasShelter,
     hasRubble,
     validFootprint,
     buildPreview,
+    toolPreview,
     closestReachableBuilding,
     conditionFor,
+    unitStats,
+    buildingCombatStats,
+    techNodes: TechTree.nodes,
+    techNodesForBranch: TechTree.nodesForBranch,
+    techEffects: TechTree.effectsFor,
+    hasTechEffect: TechTree.hasEffect,
+    hasBuildingUpgrade: TechTree.hasBuildingUpgrade,
+    telemetrySnapshot,
     dispatch,
     advanceTick,
     advanceTicks,
     serialize,
     hydrate,
     replay,
+    replayReport,
     checksum,
     simulate,
   };
