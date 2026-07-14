@@ -9,7 +9,7 @@
   if (typeof module !== "undefined" && module.exports) module.exports = engine;
   root.WildHearthEngine = engine;
 }(typeof globalThis !== "undefined" ? globalThis : this, function buildEngine() {
-  const SAVE_VERSION = 2;
+  const SAVE_VERSION = 3;
   const TICK_RATE = 20;
   const BOARD = { id: "hearth-meadow", label: "Hearth Meadow", width: 13, height: 13 };
   const STARTING_ACTIONS = 2;
@@ -36,7 +36,7 @@
     raccoon: {
       id: "raccoon",
       label: "Raccoon",
-      cost: 2,
+      threat: 1,
       health: 4,
       damage: 1,
       attackSpeed: 0.85,
@@ -52,7 +52,7 @@
     boar: {
       id: "boar",
       label: "Boar",
-      cost: 4,
+      threat: 5,
       health: 10,
       damage: 2,
       attackSpeed: 0.72,
@@ -79,15 +79,19 @@
       repairAmount: 4,
       repairCost: { wood: 1 },
     },
-    barricade: {
-      id: "barricade",
-      label: "Wooden barricade",
+    stickLauncher: {
+      id: "stickLauncher",
+      label: "Stick launcher",
       footprint: { width: 1, height: 1 },
-      maxHealth: 12,
-      cost: { wood: 2, stone: 0 },
-      role: "blocker",
-      tags: ["defense", "bait", "boar-counter"],
-      repairAmount: 4,
+      maxHealth: 6,
+      cost: { wood: 1, stone: 0 },
+      role: "tower",
+      tags: ["defense", "first-line"],
+      damage: 1,
+      attackSpeed: 1,
+      attackRange: 4.5,
+      targetRule: "nearest-enemy-in-range",
+      repairAmount: 3,
       repairCost: { wood: 1 },
     },
   };
@@ -104,8 +108,8 @@
   };
 
   const ENEMY_COUNTERS = {
-    raccoon: { building: "teepee", explanation: "Scout's early range is enough for a lone raccoon." },
-    boar: { building: "barricade", explanation: "A wooden barricade becomes the boar's closest target while Scout attacks." },
+    raccoon: { building: "stickLauncher", explanation: "A stick launcher weakens a raccoon before Scout needs to intercept." },
+    boar: { building: null, explanation: "The boar is reserved for a future defense counter." },
   };
 
   const LEVELS = [
@@ -113,40 +117,19 @@
       id: "first-watch",
       number: 1,
       title: "First watch",
-      difficulty: 2,
-      variance: 0,
-      required: ["raccoon"],
-      choices: ["raccoon"],
+      enemyPool: ["raccoon"],
       survivalXp: 2,
-      unlock: "barricade",
-      unlockLabel: "Wooden barricade",
-      unlockCopy: "Build it between the forest and teepee so a boar has something else to smash first.",
+      unlock: "stickLauncher",
+      unlockLabel: "Stick launcher",
+      unlockCopy: "Use 1 wood and one daylight action to build the first line outside Scout's watch radius.",
     },
     {
-      id: "boar-at-dusk",
+      id: "first-line",
       number: 2,
-      title: "Boar at dusk",
-      difficulty: 4,
-      variance: 2,
-      required: ["boar"],
-      choices: ["raccoon"],
+      title: "First line",
+      enemyPool: ["raccoon"],
       survivalXp: 3,
-      unlock: "stonework",
-      unlockLabel: "Stone teepee brace",
-      unlockCopy: "Boulders can now become a stronger home instead of wasted space.",
-    },
-    {
-      id: "long-evening",
-      number: 3,
-      title: "The long evening",
-      difficulty: 6,
-      variance: 4,
-      required: ["boar"],
-      choices: ["raccoon", "boar"],
-      survivalXp: 4,
-      unlock: "replay",
-      unlockLabel: "Recorded replays",
-      unlockCopy: "Run the exact same seed and actions again to test a plan.",
+      unlock: null,
     },
   ];
 
@@ -222,7 +205,26 @@
   function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
   function clone(value) { return JSON.parse(JSON.stringify(value)); }
 
-  function levelFor(state) { return LEVELS[Math.min(state.levelIndex, LEVELS.length - 1)]; }
+  function mediumThreatBudget(levelNumber) {
+    let budget = 1;
+    for (let number = 2; number <= levelNumber; number += 1) budget = Math.ceil(budget * 1.25);
+    return budget;
+  }
+
+  function levelFor(state) {
+    const number = state.levelIndex + 1;
+    const authored = LEVELS[state.levelIndex];
+    if (authored) return { ...authored, threatBudget: mediumThreatBudget(number) };
+    return {
+      id: `night-${number}`,
+      number,
+      title: "Growing pressure",
+      enemyPool: ["raccoon"],
+      survivalXp: Math.max(3, Math.ceil(number * 1.25)),
+      unlock: null,
+      threatBudget: mediumThreatBudget(number),
+    };
+  }
   function buildingRecipe(type) { return BUILDINGS[type]; }
   function enemyRecipe(type) { return ENEMIES[type]; }
   function buildingCells(building) {
@@ -234,10 +236,9 @@
     return cells;
   }
 
-  function buildingAt(state, x, y, includeBlueprints) {
+  function buildingAt(state, x, y) {
     const buildings = state.buildings.filter((building) => !building.destroyed);
-    const candidates = includeBlueprints ? buildings.concat(state.blueprints) : buildings;
-    return candidates.find((building) => buildingCells(building).some((cell) => cell.x === x && cell.y === y));
+    return buildings.find((building) => buildingCells(building).some((cell) => cell.x === x && cell.y === y));
   }
 
   function hasRubble(state, x, y) {
@@ -246,7 +247,7 @@
 
   function isPassable(state, x, y) {
     if (!inBounds(x, y) || !["open", "tree"].includes(terrainAt(state, x, y)) || hasRubble(state, x, y)) return false;
-    return !buildingAt(state, x, y, false);
+    return !buildingAt(state, x, y);
   }
 
   function travelCost(state, x, y, recipe) {
@@ -370,13 +371,19 @@
     return true;
   }
 
+  function consumeActions(state, count) {
+    if (state.actionPoints < count) return false;
+    state.actionPoints -= count;
+    return true;
+  }
+
   function createRun(seed) {
     const teepee = {
       id: "b-teepee",
       type: "teepee",
       x: 6,
       y: 6,
-      health: 10,
+      health: BUILDINGS.teepee.maxHealth,
       maxHealth: BUILDINGS.teepee.maxHealth,
       destroyed: false,
     };
@@ -389,12 +396,11 @@
       tick: 0,
       nightTick: 0,
       actionPoints: STARTING_ACTIONS,
-      resources: { wood: 4, stone: 0 },
+      resources: { wood: 0, stone: 0 },
       xp: 0,
       unlocks: [],
       terrain: FIXED_TERRAIN.slice(),
       buildings: [teepee],
-      blueprints: [],
       rubble: [],
       scout: {
         ...clone(UNITS.scout),
@@ -443,17 +449,16 @@
   function buildEncounter(state) {
     const level = levelFor(state);
     const rng = createRng(`${state.seed}|${level.id}`);
-    const units = level.required.slice();
-    const rolledDifficulty = level.difficulty + rng.int(0, level.variance);
-    let remaining = rolledDifficulty - units.reduce((sum, type) => sum + enemyRecipe(type).cost, 0);
-    let attempts = 12;
-    while (remaining >= 2 && attempts > 0) {
+    const units = [];
+    let remaining = level.threatBudget;
+    let attempts = 24;
+    while (remaining > 0 && attempts > 0) {
       attempts -= 1;
-      const affordable = level.choices.filter((type) => enemyRecipe(type).cost <= remaining);
-      if (!affordable.length || rng.next() < 0.33) break;
+      const affordable = level.enemyPool.filter((type) => enemyRecipe(type).threat <= remaining);
+      if (!affordable.length) break;
       const type = rng.pick(affordable);
       units.push(type);
-      remaining -= enemyRecipe(type).cost;
+      remaining -= enemyRecipe(type).threat;
     }
 
     const waves = [];
@@ -473,7 +478,7 @@
       spawnTick += rng.int(34, 54);
     }
     return {
-      difficulty: rolledDifficulty,
+      threatBudget: level.threatBudget,
       units,
       waves,
       total: units.length,
@@ -486,13 +491,13 @@
     if (!recipe) return false;
     for (let row = y; row < y + recipe.footprint.height; row += 1) {
       for (let column = x; column < x + recipe.footprint.width; column += 1) {
-        if (!inBounds(column, row) || terrainAt(state, column, row) !== "open" || hasRubble(state, column, row) || buildingAt(state, column, row, true)) return false;
+        if (!inBounds(column, row) || terrainAt(state, column, row) !== "open" || hasRubble(state, column, row) || buildingAt(state, column, row)) return false;
       }
     }
     return true;
   }
 
-  function blueprintPreview(state, type, x, y) {
+  function buildPreview(state, type, x, y) {
     const recipe = buildingRecipe(type);
     if (!recipe) return { valid: false, message: "Unknown building." };
     const valid = validFootprint(state, type, x, y);
@@ -518,23 +523,6 @@
     const shouldRecord = options?.record !== false;
     if (!action || !action.type) return result(state, false, "That action is not understood.");
 
-    if (action.type === "nextLevel") {
-      if (state.phase !== "dawn") return result(state, false, "Let the night settle before continuing.");
-      if (state.levelIndex >= LEVELS.length - 1) return result(state, false, "The current meadow story is complete. Try a new seed.");
-      state.levelIndex += 1;
-      state.phase = "day";
-      state.actionPoints = STARTING_ACTIONS;
-      state.nightTick = 0;
-      state.encounter = null;
-      state.enemies = [];
-      state.paused = false;
-      state.speed = 1;
-      state.outcome = null;
-      state.aftermathTicks = 0;
-      state.lastEvent = `Level ${levelFor(state).number}: ${levelFor(state).title}. Avery has two actions before dusk.`;
-      return result(state, true, state.lastEvent, action, shouldRecord);
-    }
-
     if (state.phase !== "day" && action.type !== "speed" && action.type !== "pause") {
       return result(state, false, "Avery can only work during daylight.");
     }
@@ -542,13 +530,14 @@
     if (action.type === "clear") {
       const terrain = terrainAt(state, action.x, action.y);
       if (!["tree", "boulder"].includes(terrain) && !hasRubble(state, action.x, action.y)) return result(state, false, "Only a tree, boulder, or rubble can be cleared there.");
-      if (!consumeAction(state)) return result(state, false, "Avery has used both daylight actions.");
       if (terrain === "tree") {
+        if (!consumeActions(state, 2)) return result(state, false, "Clearing a tree takes both daylight actions.");
         setTerrain(state, action.x, action.y, "open");
         state.resources.wood += 1;
         invalidatePaths(state);
-        return result(state, true, "Avery clears a tree: +1 wood and a new buildable cell.", action, shouldRecord);
+        return result(state, true, "Avery clears a tree: +1 wood. The day is spent, but the first build site is ready.", action, shouldRecord);
       }
+      if (!consumeAction(state)) return result(state, false, "Avery has used both daylight actions.");
       if (terrain === "boulder") {
         setTerrain(state, action.x, action.y, "open");
         state.resources.stone += 1;
@@ -584,34 +573,28 @@
       return result(state, true, "Scout settles into a new watch position.", action, shouldRecord);
     }
 
-    if (action.type === "blueprint") {
+    if (action.type === "build") {
       const recipe = buildingRecipe(action.buildingType);
       if (!recipe || action.buildingType === "teepee") return result(state, false, "That building cannot be placed here.");
       if (!hasUnlock(state, action.buildingType)) return result(state, false, `${recipe.label} has not been unlocked yet.`);
-      if (!validFootprint(state, action.buildingType, action.x, action.y)) return result(state, false, "That footprint is blocked or reserved.");
-      if (!hasResources(state, recipe.cost)) return result(state, false, `Need ${recipe.cost.wood || 0} wood for this blueprint.`);
-      spendResources(state, recipe.cost);
-      state.blueprints.push({ id: `p-${state.nextEntityId++}`, type: action.buildingType, x: action.x, y: action.y });
-      return result(state, true, `${recipe.label} blueprint placed. Finish it with one Avery action.`, action, shouldRecord);
-    }
-
-    if (action.type === "finish") {
-      const blueprint = state.blueprints.find((item) => item.id === action.id);
-      if (!blueprint) return result(state, false, "Choose an unfinished blueprint.");
+      if (!validFootprint(state, action.buildingType, action.x, action.y)) return result(state, false, "That build site is blocked or occupied.");
+      if (!hasResources(state, recipe.cost)) return result(state, false, `Need ${recipe.cost.wood || 0} wood to build this.`);
       if (!consumeAction(state)) return result(state, false, "Avery has used both daylight actions.");
-      const recipe = buildingRecipe(blueprint.type);
-      state.blueprints = state.blueprints.filter((item) => item.id !== blueprint.id);
+      spendResources(state, recipe.cost);
       state.buildings.push({
         id: `b-${state.nextEntityId++}`,
-        type: blueprint.type,
-        x: blueprint.x,
-        y: blueprint.y,
+        type: action.buildingType,
+        x: action.x,
+        y: action.y,
         health: recipe.maxHealth,
         maxHealth: recipe.maxHealth,
+        cooldown: 0,
+        targetId: null,
+        firingTicks: 0,
         destroyed: false,
       });
       invalidatePaths(state);
-      return result(state, true, `Avery finishes the ${recipe.label.toLowerCase()}.`, action, shouldRecord);
+      return result(state, true, `Avery builds the ${recipe.label.toLowerCase()}.`, action, shouldRecord);
     }
 
     if (action.type === "stonework") {
@@ -678,6 +661,31 @@
     buildingCells(building).forEach((cell) => state.rubble.push({ x: cell.x, y: cell.y }));
     invalidatePaths(state);
     state.lastEvent = `The ${buildingRecipe(building.type).label.toLowerCase()} becomes rubble and blocks the ground.`;
+  }
+
+  function updateStickLaunchers(state) {
+    state.buildings.filter((building) => !building.destroyed && building.type === "stickLauncher").forEach((launcher) => {
+      const recipe = buildingRecipe(launcher.type);
+      launcher.cooldown = Math.max(0, (launcher.cooldown || 0) - 1);
+      launcher.firingTicks = Math.max(0, (launcher.firingTicks || 0) - 1);
+      const targets = state.enemies
+        .filter((enemy) => distance(launcher, enemy) <= recipe.attackRange + enemyRecipe(enemy.type).collisionRadius)
+        .sort((left, right) => distance(launcher, left) - distance(launcher, right) || String(left.id).localeCompare(String(right.id)));
+      const target = targets[0];
+      launcher.targetId = target?.id || null;
+      if (!target || launcher.cooldown > 0) return;
+      target.health = Math.max(0, target.health - recipe.damage);
+      launcher.cooldown = Math.max(1, Math.round(TICK_RATE / recipe.attackSpeed));
+      launcher.firingTicks = 5;
+      state.lastEvent = `The stick launcher snaps a sharpened branch at the ${enemyRecipe(target.type).label.toLowerCase()}.`;
+      if (target.health === 0) {
+        state.kills += 1;
+        state.xp += enemyRecipe(target.type).xp;
+        state.enemies = state.enemies.filter((enemy) => enemy.id !== target.id);
+        launcher.targetId = null;
+        state.lastEvent = `The stick launcher turns away the ${enemyRecipe(target.type).label.toLowerCase()}: +${enemyRecipe(target.type).xp} XP.`;
+      }
+    });
   }
 
   function updateScout(state) {
@@ -766,22 +774,31 @@
     state.lastEvent = "The forest goes quiet. Scout makes his way back to the watch post.";
   }
 
+  function startNextDay(state, completedLevel, completionCopy) {
+    state.levelIndex += 1;
+    state.phase = "day";
+    state.actionPoints = STARTING_ACTIONS;
+    state.nightTick = 0;
+    state.encounter = null;
+    state.enemies = [];
+    state.paused = false;
+    state.speed = 1;
+    state.outcome = null;
+    state.aftermathTicks = 0;
+    const nextLevel = levelFor(state);
+    state.lastEvent = `${completedLevel.title} held. ${completionCopy} Level ${nextLevel.number}: ${nextLevel.title}. Avery has two actions before dusk.`;
+  }
+
   function settleAftermath(state) {
     const level = levelFor(state);
     state.xp += level.survivalXp;
-    const unlockedNow = !hasUnlock(state, level.unlock);
-    addUnlock(state, level.unlock);
-    state.phase = "dawn";
-    state.outcome = {
-      victory: true,
-      title: `${level.title} held.`,
-      copy: unlockedNow ? `${level.unlockLabel} unlocked. ${level.unlockCopy}` : "The meadow holds through another night.",
-      unlock: unlockedNow ? level.unlock : null,
-      unlockLabel: unlockedNow ? level.unlockLabel : null,
-      survivalXp: level.survivalXp,
-    };
+    const unlockedNow = Boolean(level.unlock) && !hasUnlock(state, level.unlock);
+    if (unlockedNow) addUnlock(state, level.unlock);
+    const completionCopy = unlockedNow
+      ? `${level.unlockLabel} unlocked. ${level.unlockCopy}`
+      : `+${level.survivalXp} survival XP.`;
     state.history.push({ level: level.id, result: "victory", seed: state.seed, kills: state.kills });
-    state.lastEvent = `${level.title} held: +${level.survivalXp} survival XP. ${state.outcome.copy}`;
+    startNextDay(state, level, completionCopy);
   }
 
   function advanceTick(state) {
@@ -796,6 +813,7 @@
     }
     state.nightTick += 1;
     spawnWaves(state);
+    updateStickLaunchers(state);
     updateScout(state);
     if (state.phase !== "night") return state;
     [...state.enemies].forEach((enemy) => {
@@ -834,10 +852,6 @@
   function replay(seed, actionLog) {
     const state = createRun(seed);
     for (const action of actionLog) {
-      if (action.type === "nextLevel") {
-        dispatch(state, action, { record: false });
-        continue;
-      }
       dispatch(state, action, { record: false });
       if (action.type === "endDay") {
         let guard = 14000;
@@ -891,6 +905,7 @@
     createRng,
     nextSeed,
     levelFor,
+    mediumThreatBudget,
     terrainAt,
     inBounds,
     cellKey,
@@ -899,7 +914,7 @@
     isPassable,
     hasRubble,
     validFootprint,
-    blueprintPreview,
+    buildPreview,
     closestReachableBuilding,
     conditionFor,
     dispatch,

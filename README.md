@@ -1,6 +1,6 @@
 # Wild Hearth: Hearth Meadow
 
-A dependency-free, top-down homestead-defense MVP. Avery uses an untimed day to clear a forest, gather wood/stone, repair or build; at night Scout runs from his watch post to defend the closest reachable buildings from seeded invasions.
+A dependency-free, top-down homestead-defense MVP. Avery uses an untimed day to clear forest and build a homestead; at night a Stick Launcher fires outward while Scout serves as the mobile final line near the teepee.
 
 ## Setup
 
@@ -18,16 +18,15 @@ Open [http://localhost:4173](http://localhost:4173). You can also open `index.ht
 
 ## How to play
 
-1. Every **untimed day** starts with two Avery actions. Select a tool, then click the hidden-square meadow to clear a tree/boulder, repair, finish a blueprint, or place Scout.
-2. Clearing a tree grants wood; clearing a boulder grants stone. Wood repairs/builds, while stone reinforces the teepee after it is unlocked.
-3. Select **End day** when the plan is ready. Avery goes inside; at night Scout runs and bites automatically inside the medium watch radius centered on his placed post.
-4. Forest is dense and walkable but slower than cleared ground. Enemies can enter from any usable map edge and attack the closest reachable finished building. A barricade between the forest and teepee is the boar's direct counter.
-5. Health bars are optional: enable **Show health bars** below the board to see every building, Scout, and enemy’s current health. After the last enemy falls, Scout returns to his post before a dawn continuation appears—there is no immediate result popup.
-6. Level 1 unlocks the barricade, Level 2 unlocks stonework, and Level 3 unlocks recorded replay verification. The map is fixed; the visible seed varies enemy composition, entry edges, and arrival timing.
+1. Every **untimed day** starts with two Avery actions. On Level 1, clear one tree: it spends both actions and grants the first 1 wood.
+2. End the day. Scout can handle the first raccoon, then returns to his post. The next day starts automatically—there is no Continue button or result popup.
+3. Level 1 unlocks the **Stick Launcher**. On Level 2, build it for 1 wood and one action; it is immediately complete and fires at the nearest enemy within 4.5 cells.
+4. Forest is dense and walkable but slower than cleared ground. Enemies can enter from any usable map edge and attack the closest reachable finished building. Scout catches leaks near the teepee.
+5. Medium uses a seeded **Threat Budget** that grows 25% per level, rounded up. Health bars are optional: enable **Show health bars** below the board to see every building, Scout, and enemy’s current health.
 
 ## Configuration
 
-There are no environment variables. Content tuning, fixed-map terrain, combat contracts, and levels live in `engine.js`. `game.js` is the browser renderer and input layer.
+There are no environment variables. Content tuning, Medium Threat allocation, fixed-map terrain, combat contracts, and levels live in `engine.js`. `game.js` is the browser renderer and input layer.
 
 ## Key commands
 

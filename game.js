@@ -2,7 +2,7 @@ const Engine = window.WildHearthEngine;
 
 if (!Engine) throw new Error("Wild Hearth engine did not load.");
 
-const SAVE_KEY = "wild-hearth-save-v1";
+const SAVE_KEY = "wild-hearth-save-v3";
 const SETTINGS_KEY = "wild-hearth-settings-v1";
 const elements = {
   board: document.querySelector("#game-board"),
@@ -26,17 +26,14 @@ const elements = {
   actionHint: document.querySelector("#action-hint"),
   actionBadge: document.querySelector("#action-badge"),
   toolGrid: document.querySelector("#tool-grid"),
-  barricadeTool: document.querySelector("#barricade-tool"),
+  stickLauncherTool: document.querySelector("#stick-launcher-tool"),
   repairButton: document.querySelector("#repair-button"),
-  stoneworkButton: document.querySelector("#stonework-button"),
   endDayButton: document.querySelector("#end-day-button"),
   overlayButton: document.querySelector("#overlay-button"),
   previewCopy: document.querySelector("#preview-copy"),
   pauseButton: document.querySelector("#pause-button"),
   speedButtons: [...document.querySelectorAll("[data-speed]")],
   healthBarsToggle: document.querySelector("#health-bars-toggle"),
-  dawnNote: document.querySelector("#dawn-note"),
-  continueButton: document.querySelector("#continue-button"),
   eventLog: document.querySelector("#event-log"),
 };
 
@@ -83,21 +80,19 @@ function addHealthBar(node, entity, tone) {
 
 function currentLevel() { return Engine.levelFor(state); }
 function selectedBuilding() { return selected.kind === "building" ? state.buildings.find((building) => building.id === selected.id && !building.destroyed) : null; }
-function selectedBlueprint() { return selected.kind === "blueprint" ? state.blueprints.find((blueprint) => blueprint.id === selected.id) : null; }
 function sameCell(left, right) { return left && right && left.x === right.x && left.y === right.y; }
 function cellId(x, y) { return `${x},${y}`; }
 
 function toolCellValid(x, y) {
   if (activeTool === "clear") return ["tree", "boulder"].includes(Engine.terrainAt(state, x, y)) || Engine.hasRubble(state, x, y);
   if (activeTool === "scout") return Engine.isPassable(state, x, y);
-  if (activeTool === "barricade") return Engine.blueprintPreview(state, "barricade", x, y).valid;
-  if (activeTool === "finish") return Boolean(state.blueprints.find((blueprint) => blueprint.x === x && blueprint.y === y));
+  if (activeTool === "stickLauncher") return Engine.buildPreview(state, "stickLauncher", x, y).valid;
   return true;
 }
 
 function currentPreview() {
-  if (activeTool !== "barricade" || !hoverCell || state.phase !== "day") return null;
-  return Engine.blueprintPreview(state, "barricade", hoverCell.x, hoverCell.y);
+  if (activeTool !== "stickLauncher" || !hoverCell || state.phase !== "day") return null;
+  return Engine.buildPreview(state, "stickLauncher", hoverCell.x, hoverCell.y);
 }
 
 function setEvent(message) {
@@ -114,8 +109,8 @@ function dispatch(action) {
 }
 
 function describeCell(x, y) {
-  const building = Engine.buildingAt(state, x, y, true);
-  if (building) return building.id.startsWith("p-") ? `Unfinished ${Engine.BUILDINGS[building.type].label}` : Engine.BUILDINGS[building.type].label;
+  const building = Engine.buildingAt(state, x, y);
+  if (building) return Engine.BUILDINGS[building.type].label;
   if (Engine.hasRubble(state, x, y)) return "Rubble";
   const terrain = Engine.terrainAt(state, x, y);
   return terrain === "tree" ? "Tree" : terrain === "boulder" ? "Boulder" : "Open meadow";
@@ -125,7 +120,7 @@ function renderGrid() {
   const preview = currentPreview();
   const previewPath = planning && preview ? new Set(preview.path.map((cell) => cellId(cell.x, cell.y))) : new Set();
   const previewSignature = preview ? `${preview.valid}|${preview.affordable}|${preview.targetId}|${preview.path.map((cell) => cellId(cell.x, cell.y)).join("/")}` : "";
-  const signature = [state.topologyVersion, state.phase, activeTool, hoverCell ? cellId(hoverCell.x, hoverCell.y) : "", planning, previewSignature, state.blueprints.map((item) => item.id).join(","), state.rubble.map((item) => cellId(item.x, item.y)).join(",")].join("|");
+  const signature = [state.topologyVersion, state.phase, activeTool, hoverCell ? cellId(hoverCell.x, hoverCell.y) : "", planning, previewSignature, state.rubble.map((item) => cellId(item.x, item.y)).join(",")].join("|");
   if (signature === gridSignature) return;
   gridSignature = signature;
   const fragment = document.createDocumentFragment();
@@ -176,6 +171,7 @@ function renderEntities() {
   state.buildings.filter((building) => !building.destroyed).forEach((building) => {
     const recipe = Engine.BUILDINGS[building.type];
     const node = createNode("div", `entity building ${building.type} ${Engine.conditionFor(building)}`);
+    if (building.firingTicks > 0) node.classList.add("is-firing");
     if (building.type === "teepee" && state.upgrades.includes("stonework")) node.classList.add("has-stonework");
     place(node, building.x, building.y);
     addHealthBar(node, building, "building-health");
@@ -183,15 +179,9 @@ function renderEntities() {
     fragment.append(node);
   });
 
-  state.blueprints.forEach((blueprint) => {
-    const node = createNode("div", "entity blueprint");
-    place(node, blueprint.x, blueprint.y);
-    fragment.append(node);
-  });
-
   const teepee = state.buildings.find((building) => building.type === "teepee" && !building.destroyed);
   if (teepee) {
-    const human = createNode("div", `entity human${!["day", "dawn"].includes(state.phase) ? " sleeping" : ""}`);
+    const human = createNode("div", `entity human${state.phase !== "day" ? " sleeping" : ""}`);
     place(human, teepee.x - 0.5, teepee.y + 0.55);
     addLabel(human, "Avery");
     fragment.append(human);
@@ -214,30 +204,20 @@ function renderEntities() {
 
 function renderSelection() {
   const building = selectedBuilding();
-  const blueprint = selectedBlueprint();
   if (building) {
     const recipe = Engine.BUILDINGS[building.type];
     const condition = Engine.conditionFor(building).replace("-", " ");
     elements.selectedTitle.textContent = recipe.label;
     elements.selectedCopy.textContent = `${recipe.role} · ${building.health}/${building.maxHealth} health · ${condition}. Repair costs ${recipe.repairCost.wood || 0} wood and one Avery action.`;
     elements.selectionMeter.style.width = `${(building.health / building.maxHealth) * 100}%`;
-    elements.selectionFootnote.textContent = recipe.tags.includes("boar-counter") ? "A boar follows the closest reachable building. Put this between the forest and the teepee." : "The teepee is the heart of the clearing.";
-    return;
-  }
-  if (blueprint) {
-    const recipe = Engine.BUILDINGS[blueprint.type];
-    elements.selectedTitle.textContent = `${recipe.label} blueprint`;
-    elements.selectedCopy.textContent = `Materials are committed. Avery must spend one daylight action to finish it before it can block or attract enemies.`;
-    elements.selectionMeter.style.width = "35%";
-    elements.selectionFootnote.textContent = "Unfinished blueprints are not walls and cannot be refunded.";
+    elements.selectionFootnote.textContent = recipe.tags.includes("first-line") ? "It fires from the outer clearing. Scout is the last line near the teepee." : "The teepee is the heart of the clearing.";
     return;
   }
   const toolCopy = {
     inspect: ["Meadow", "Inspect an open cell, tree, boulder, or structure to understand the board."],
-    clear: ["Clear terrain", "Spend one Avery action to remove a tree for wood, a boulder for stone, or rubble with no material."],
+    clear: ["Clear terrain", "Clearing one tree spends both Avery actions and gains 1 wood. Boulders and rubble use one action."],
     scout: ["Place Scout", "Spend one Avery action to set Scout’s night watch radius on an open cell."],
-    barricade: ["Wooden barricade", "Spend 2 wood to reserve a blueprint. Finish it with a daylight action before night."],
-    finish: ["Finish blueprint", "Click an unfinished blueprint. Avery spends one action to turn it into a real building."],
+    stickLauncher: ["Stick launcher", "Spend 1 wood and one Avery action to build a simple outward defense."],
   };
   elements.selectedTitle.textContent = toolCopy[activeTool][0];
   elements.selectedCopy.textContent = toolCopy[activeTool][1];
@@ -249,8 +229,8 @@ function renderPreview() {
   const preview = currentPreview();
   if (!preview) {
     elements.previewCopy.textContent = planning
-      ? "Overlay active: Scout’s medium watch radius is visible. Select Barricade and hover an open cell to see a predicted route."
-      : "Select Barricade and hover an open cell to preview its cost, Scout coverage, and its likely target effect.";
+      ? "Overlay active: Scout’s medium watch radius is visible. Select Stick Launcher and hover an open cell to see its likely target effect."
+      : "Select Stick Launcher and hover an open cell to preview its cost, Scout coverage, and likely target effect.";
     return;
   }
   if (!preview.valid) {
@@ -258,29 +238,26 @@ function renderPreview() {
     return;
   }
   if (!preview.affordable) {
-    elements.previewCopy.textContent = "That cell is open, but you need 2 wood before you can reserve the barricade blueprint.";
+    elements.previewCopy.textContent = "That cell is open, but you need 1 wood before Avery can build the Stick Launcher.";
     return;
   }
   const coverage = preview.coverage ? "Scout covers it." : "Scout does not cover it yet.";
-  const target = preview.targetId === "preview" ? "The first arrival would choose this barricade first." : `${preview.targetLabel} remains the closer target.`;
-  elements.previewCopy.textContent = `Valid blueprint: 2 wood. ${coverage} ${target}`;
+  const target = preview.targetId === "preview" ? "The first arrival would choose this launcher first." : `${preview.targetLabel} remains the closer target.`;
+  elements.previewCopy.textContent = `Build now: 1 wood + 1 action. ${coverage} ${target}`;
 }
 
 function renderControls() {
   const level = currentLevel();
   const day = state.phase === "day";
   const night = state.phase === "night";
-  const dawn = state.phase === "dawn";
-  const lost = state.phase === "lost";
   const building = selectedBuilding();
-  elements.barricadeTool.disabled = !state.unlocks.includes("barricade") || !day;
+  elements.stickLauncherTool.disabled = !state.unlocks.includes("stickLauncher") || !day;
   elements.toolGrid.querySelectorAll("[data-tool]").forEach((button) => {
     const tool = button.dataset.tool;
     button.classList.toggle("is-active", tool === activeTool);
-    if (tool !== "barricade") button.disabled = !day;
+    if (tool !== "stickLauncher") button.disabled = !day;
   });
   elements.repairButton.disabled = !day || !building || building.health >= building.maxHealth || state.resources.wood < 1 || state.actionPoints <= 0;
-  elements.stoneworkButton.disabled = !day || !state.unlocks.includes("stonework") || state.upgrades.includes("stonework") || state.resources.stone < 1 || state.actionPoints <= 0;
   elements.endDayButton.disabled = !day;
   setButtonContent(elements.endDayButton, day ? "End day" : "Night in progress", day ? "Begin night watch →" : "Scout is on watch");
   elements.overlayButton.textContent = planning ? "Hide planning overlay" : "Show planning overlay";
@@ -293,47 +270,31 @@ function renderControls() {
   elements.healthBarsToggle.checked = showHealthBars;
   elements.actionBadge.textContent = day ? `${state.actionPoints} action${state.actionPoints === 1 ? "" : "s"}` : "Avery is inside";
   elements.actionHint.textContent = day
-    ? "Choose a tool, then choose a cell. Blueprints reserve materials; finishing one uses an action."
-    : "No night commands. Scout attacks automatically inside his placed range.";
+    ? "One tree uses the whole day. Buildings cost their materials and one action—there is no Finish step."
+    : "No night commands. Launchers fire outward; Scout is the final line near the teepee.";
   elements.levelLabel.textContent = `Level ${String(level.number).padStart(2, "0")} · ${level.title}`;
   elements.levelTitle.textContent = day ? "A hearth in a living forest." : `${level.title} is underway.`;
   elements.levelCopy.textContent = day
-    ? "The day has no timer. Avery has two actions, then you decide when the night begins."
+    ? level.number === 1
+      ? "Clear one tree to bank the wood for tomorrow. Scout can handle this first raccoon alone."
+      : `Medium threat ${level.threatBudget}. Every night grows by 25%, rounded up; place defenses before Scout is overwhelmed.`
     : night
-      ? `Difficulty budget: ${state.encounter?.difficulty || level.difficulty}. Enemies can arrive from any forest edge and slow down in dense trees.`
-      : dawn
-        ? "Morning returns after Scout has made it safely back to his post. Review the meadow, then continue when ready."
+      ? `Medium threat ${state.encounter?.threatBudget || level.threatBudget}. Enemies can arrive from any forest edge and slow down in dense trees.`
+      : state.phase === "aftermath"
+        ? "Scout is returning to his post. The next day begins automatically once he is home."
         : "The homestead needs a new plan before another night.";
-  const canAdvance = dawn && state.levelIndex < Engine.LEVELS.length - 1;
-  elements.continueButton.classList.toggle("hidden", !(dawn || lost));
-  elements.continueButton.disabled = !(dawn || lost);
-  setButtonContent(
-    elements.continueButton,
-    lost ? "Reset this run" : canAdvance ? "Continue to next level" : "Try a new seed",
-    lost ? "Plan again" : canAdvance ? "Daylight returns →" : "New meadow →",
-  );
-  if (dawn) {
-    elements.dawnNote.textContent = state.outcome?.copy || "The meadow held through the night.";
-  } else if (state.phase === "aftermath") {
-    elements.dawnNote.textContent = "Scout is returning to his post. The meadow stays visible while the night settles.";
-  } else if (lost) {
-    elements.dawnNote.textContent = state.outcome?.copy || "The teepee fell.";
-  } else {
-    elements.dawnNote.textContent = "";
-  }
 }
 
 function renderHeader() {
   const day = state.phase === "day";
   const night = state.phase === "night";
   const aftermath = state.phase === "aftermath";
-  const dawn = state.phase === "dawn";
   elements.seed.textContent = state.seed;
   elements.phaseChip.classList.toggle("is-night", night || aftermath);
-  elements.phaseChip.classList.toggle("is-result", !day && !night);
+  elements.phaseChip.classList.toggle("is-result", !day && !night && !aftermath);
   elements.board.classList.toggle("night-scene", night || aftermath);
-  elements.board.classList.toggle("dawn-scene", dawn);
-  elements.phaseLabel.textContent = day ? "Day planning" : night ? state.paused ? "Night paused" : "Night watch" : aftermath ? "Night settling" : state.phase === "lost" ? "Homestead lost" : "Dawn held";
+  elements.board.classList.remove("dawn-scene");
+  elements.phaseLabel.textContent = day ? "Day planning" : night ? state.paused ? "Night paused" : "Night watch" : aftermath ? "Night settling" : "Homestead lost";
   elements.phaseDetail.textContent = day ? "Untimed" : night ? `${state.speed}× fixed tick` : aftermath ? "Scout returning" : "Seed recorded";
   elements.actionPoints.textContent = state.actionPoints;
   elements.wood.textContent = state.resources.wood;
@@ -353,23 +314,16 @@ function render() {
 
 function clickCell(x, y) {
   if (state.phase !== "day") return;
-  const occupied = Engine.buildingAt(state, x, y, true);
+  const occupied = Engine.buildingAt(state, x, y);
   if (activeTool === "inspect") {
-    if (occupied) selected = { kind: occupied.id.startsWith("p-") ? "blueprint" : "building", id: occupied.id };
+    if (occupied) selected = { kind: "building", id: occupied.id };
     else selected = { kind: "none", id: null };
     render();
     return;
   }
   if (activeTool === "clear") dispatch({ type: "clear", x, y });
   if (activeTool === "scout") dispatch({ type: "scout", x, y });
-  if (activeTool === "barricade") dispatch({ type: "blueprint", buildingType: "barricade", x, y });
-  if (activeTool === "finish") {
-    const blueprint = state.blueprints.find((item) => item.x === x && item.y === y);
-    if (blueprint) {
-      selected = { kind: "building", id: `b-${state.nextEntityId}` };
-      dispatch({ type: "finish", id: blueprint.id });
-    } else setEvent("Choose an unfinished blueprint to finish.");
-  }
+  if (activeTool === "stickLauncher") dispatch({ type: "build", buildingType: "stickLauncher", x, y });
 }
 
 function resetRun(seed) {
@@ -439,7 +393,6 @@ elements.repairButton.addEventListener("click", () => {
   const building = selectedBuilding();
   if (building) dispatch({ type: "repair", id: building.id });
 });
-elements.stoneworkButton.addEventListener("click", () => dispatch({ type: "stonework" }));
 elements.endDayButton.addEventListener("click", () => dispatch({ type: "endDay" }));
 elements.overlayButton.addEventListener("click", () => { planning = !planning; gridSignature = ""; render(); });
 elements.pauseButton.addEventListener("click", () => dispatch({ type: "pause" }));
@@ -448,10 +401,6 @@ elements.healthBarsToggle.addEventListener("change", () => {
   showHealthBars = elements.healthBarsToggle.checked;
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ showHealthBars })); } catch (error) { /* The setting still works for this session. */ }
   render();
-});
-elements.continueButton.addEventListener("click", () => {
-  if (state.phase === "dawn" && state.levelIndex < Engine.LEVELS.length - 1) dispatch({ type: "nextLevel" });
-  else resetRun(Engine.nextSeed(state.seed));
 });
 document.querySelector("#save-button").addEventListener("click", saveGame);
 document.querySelector("#load-button").addEventListener("click", loadGame);

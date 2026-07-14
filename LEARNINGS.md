@@ -2,7 +2,7 @@
 
 ## MVP scope
 
-- The no-timer day still needs a fixed action budget: two Avery actions keep clearing, repairs, Scout placement, and finished construction meaningful.
+- The no-timer day still needs a fixed action budget: two Avery actions make one tree clear a deliberate whole-day commitment, while builds, repairs, and Scout placement remain one-action choices.
 - Scout is fully automatic at night; player attention stays on daytime position, terrain, and building decisions rather than combat controls.
 
 ## Top-down expansion
@@ -14,5 +14,6 @@
 ## Simulation
 
 - Keep `engine.js` DOM-free and advance combat in fixed ticks. The browser renderer, replay function, save/load, and Node simulator then exercise the same rules.
-- Unfinished blueprints reserve materials but are non-blocking and non-targetable. There is intentionally no cancel or refund flow yet.
-- Keep a unit’s guard post separate from its current position. Scout’s watch radius stays centered on the day-placed post while his night state moves through idle, chase, attack, return, and a visible aftermath before dawn.
+- The opening works best with direct construction: a Stick Launcher spends its wood and one action, then exists immediately. Blueprint and Finish states add unnecessary clicks before there are complex structures.
+- Keep a unit’s guard post separate from its current position. Scout’s watch radius stays centered on the day-placed post while his night state moves through idle, chase, attack, return, then automatically starts the next day.
+- Use a seeded Threat Budget rather than hard-coded enemy counts. Medium grows the previous budget by 25% rounded up, while each enemy’s Threat value makes later enemy pools compatible with the same allocator.

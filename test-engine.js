@@ -6,131 +6,95 @@ function action(state, payload) {
   assert.equal(result.ok, true, result.message);
 }
 
-function settleNight(state) {
+function settleToNextDay(state) {
+  const initialLevel = state.levelIndex;
   let guard = 14000;
-  while (["night", "aftermath"].includes(state.phase) && guard > 0) {
+  while (!(state.phase === "day" && state.levelIndex === initialLevel + 1) && guard > 0) {
     Engine.advanceTick(state);
     guard -= 1;
   }
-  assert.notEqual(guard, 0, "night simulation should settle");
+  assert.notEqual(guard, 0, "night should settle, Scout should return, and the next day should begin automatically");
 }
 
-// Day remains untimed until the player explicitly ends it.
-const idleRun = Engine.createRun("TEST-IDLE");
-Engine.advanceTicks(idleRun, 800);
-assert.equal(idleRun.phase, "day");
-assert.equal(idleRun.actionPoints, 2);
+// The opening is intentional: no starting wood, one whole-day tree clear, then Scout holds the first night.
+const run = Engine.createRun("HEARTH-1042");
+assert.equal(run.resources.wood, 0);
+assert.equal(run.actionPoints, 2);
+assert.equal(run.buildings[0].health, run.buildings[0].maxHealth);
+action(run, { type: "clear", x: 1, y: 3 });
+assert.equal(Engine.terrainAt(run, 1, 3), "open");
+assert.equal(run.resources.wood, 1);
+assert.equal(run.actionPoints, 0, "clearing a tree consumes both daylight actions");
+assert.equal(Engine.dispatch(run, { type: "scout", x: 4, y: 6 }).ok, false, "no action remains after clearing a tree");
 
-// Tree and boulder terrain use the same action contract but grant distinct resources.
-action(idleRun, { type: "clear", x: 1, y: 3 });
-assert.equal(Engine.terrainAt(idleRun, 1, 3), "open");
-assert.equal(idleRun.resources.wood, 5);
-assert.equal(idleRun.actionPoints, 1);
-
-// Dense trees remain visible but are walkable at a higher travel cost, so every edge can be a legal entry.
+// Forest remains dense and all usable edge cells stay valid encounter entries.
 assert.equal(Engine.isPassable(Engine.createRun("FOREST-PATH"), 0, 0), true);
 assert.ok(Engine.SPAWN_CELLS.length >= 44, "all usable perimeter cells are eligible spawns");
 
-const terrainRun = Engine.createRun("TEST-TERRAIN");
-action(terrainRun, { type: "clear", x: 3, y: 5 });
-assert.equal(Engine.terrainAt(terrainRun, 3, 5), "open");
-assert.equal(terrainRun.resources.stone, 1);
+// Medium Threat is a deterministic 25% rounded-up recurrence: 1, 2, 3, 4, 5, 7 …
+assert.deepEqual([1, 2, 3, 4, 5, 6, 7].map(Engine.mediumThreatBudget), [1, 2, 3, 4, 5, 7, 9]);
 
-const scoutRun = Engine.createRun("TEST-SCOUT");
-action(scoutRun, { type: "scout", x: 4, y: 6 });
-assert.deepEqual({ x: scoutRun.scout.x, y: scoutRun.scout.y }, { x: 4, y: 6 });
-assert.equal(scoutRun.actionPoints, 1);
+action(run, { type: "endDay" });
+assert.equal(run.encounter.threatBudget, 1);
+assert.deepEqual(run.encounter.units, ["raccoon"]);
+settleToNextDay(run);
+assert.equal(run.levelIndex, 1);
+assert.equal(run.phase, "day");
+assert.equal(run.actionPoints, 2);
+assert.equal(run.resources.wood, 1, "the cleared wood carries into Level 2");
+assert.ok(run.unlocks.includes("stickLauncher"));
+assert.equal(run.scout.mode, "idle", "Scout has returned to the post before the next day starts");
 
-// Scout leaves the post to bite inside the guard radius, then the aftermath brings him home before dawn.
+// Building is direct: no blueprint or Finish step, and the first launcher costs the first saved wood.
+action(run, { type: "build", buildingType: "stickLauncher", x: 1, y: 3 });
+const launcher = run.buildings.find((building) => building.type === "stickLauncher");
+assert.ok(launcher);
+assert.equal(run.resources.wood, 0);
+assert.equal(run.actionPoints, 1);
+assert.equal(Engine.isPassable(run, 1, 3), false, "a completed launcher immediately blocks its build cell");
+assert.equal(Engine.dispatch(run, { type: "finish", id: "not-a-step" }).ok, false, "Finish is not part of the MVP loop");
+
+// The launcher is a real first-line tower: it damages the nearest enemy before Scout needs to bite.
+const towerRun = Engine.createRun("TEST-LAUNCHER");
+towerRun.unlocks.push("stickLauncher");
+towerRun.resources.wood = 1;
+action(towerRun, { type: "build", buildingType: "stickLauncher", x: 4, y: 5 });
+towerRun.phase = "night";
+towerRun.encounter = { waves: [{ spawned: true }], spawned: 1 };
+towerRun.enemies = [{ id: "e-launcher", type: "raccoon", x: 4, y: 1, health: 4, maxHealth: 4, cooldown: 4 }];
+Engine.advanceTick(towerRun);
+assert.equal(towerRun.enemies[0].health, 3, "launcher should hit a raccoon in its 4.5-cell range");
+
+// Scout remains mobile final-line defense, not the whole plan.
 const guardianRun = Engine.createRun("TEST-GUARDIAN");
 guardianRun.phase = "night";
 guardianRun.encounter = { waves: [{ spawned: true }], spawned: 1 };
 guardianRun.enemies = [{ id: "e-guardian", type: "raccoon", x: 7.3, y: 7, health: 4, maxHealth: 4, cooldown: 4 }];
 Engine.advanceTick(guardianRun);
 assert.equal(guardianRun.scout.mode, "chasing");
-assert.ok(guardianRun.scout.x > guardianRun.scout.postX, "Scout should run from the post toward an intruder");
+assert.ok(guardianRun.scout.x > guardianRun.scout.postX, "Scout should leave the post only to intercept a leak");
 
-// The authored map never changes by seed, while legal encounter waves do.
+// Same seed produces the same medium-Threat allocation, spawn edges, and wave timing.
 const encounterOne = Engine.createRun("SAME-SEED");
 const encounterTwo = Engine.createRun("SAME-SEED");
 action(encounterOne, { type: "endDay" });
 action(encounterTwo, { type: "endDay" });
 assert.deepEqual(encounterOne.encounter, encounterTwo.encounter);
-assert.ok(encounterOne.encounter.waves.every((wave, index, waves) => wave.units.length <= 2 && (index === 0 || wave.spawnTick > waves[index - 1].spawnTick)));
+assert.equal(encounterOne.encounter.threatBudget, 1);
 
-// The first night awards an unlock and uses the same fixed simulation as the browser.
-const run = Engine.createRun("HEARTH-1042");
-action(run, { type: "endDay" });
-assert.equal(Engine.dispatch(run, { type: "clear", x: 1, y: 3 }).ok, false, "day actions must lock at night");
-settleNight(run);
-assert.equal(run.phase, "dawn");
-assert.ok(run.unlocks.includes("barricade"));
-assert.equal(run.kills, 1);
-
-// A blueprint has sunk materials but is non-blocking/non-targetable until Avery finishes it.
-action(run, { type: "nextLevel" });
-action(run, { type: "blueprint", buildingType: "barricade", x: 5, y: 4 });
-assert.equal(run.resources.wood, 2);
-assert.equal(run.actionPoints, 2);
-assert.equal(Engine.isPassable(run, 5, 4), true);
-const blueprint = run.blueprints[0];
-action(run, { type: "finish", id: blueprint.id });
-assert.equal(run.actionPoints, 1);
-assert.equal(Engine.isPassable(run, 5, 4), false);
-const barricade = run.buildings.find((building) => building.type === "barricade");
-
-// The boar picks the nearer reachable barricade by deterministic BFS distance.
-action(run, { type: "endDay" });
-let boarTarget;
-for (let index = 0; index < 140; index += 1) {
-  Engine.advanceTick(run);
-  const boar = run.enemies.find((enemy) => enemy.type === "boar");
-  if (boar) { boarTarget = boar.targetId; break; }
-}
-assert.equal(boarTarget, barricade.id);
-settleNight(run);
-assert.ok(run.unlocks.includes("stonework"));
-
-// Destruction leaves impassable rubble until Avery clears it on a later day.
-const rubbleRun = Engine.createRun("HEARTH-1042");
-action(rubbleRun, { type: "endDay" });
-settleNight(rubbleRun);
-action(rubbleRun, { type: "nextLevel" });
-action(rubbleRun, { type: "blueprint", buildingType: "barricade", x: 5, y: 4 });
-action(rubbleRun, { type: "finish", id: rubbleRun.blueprints[0].id });
-const sacrificialBarricade = rubbleRun.buildings.find((building) => building.type === "barricade");
-rubbleRun.scout.x = 0;
-rubbleRun.scout.y = 0;
-action(rubbleRun, { type: "endDay" });
-let rubbleGuard = 1000;
-while (!sacrificialBarricade.destroyed && rubbleGuard > 0) { Engine.advanceTick(rubbleRun); rubbleGuard -= 1; }
-assert.notEqual(rubbleGuard, 0, "the boar should be able to destroy its closest barricade");
-assert.equal(Engine.hasRubble(rubbleRun, 5, 4), true);
-assert.equal(Engine.isPassable(rubbleRun, 5, 4), false);
-
-// Level 3 turns one nearby boulder into a usable stone reinforcement in the same two-action day.
-action(run, { type: "nextLevel" });
-action(run, { type: "clear", x: 3, y: 5 });
-assert.equal(run.resources.stone, 1);
-action(run, { type: "stonework" });
-assert.ok(run.upgrades.includes("stonework"));
-action(run, { type: "endDay" });
-settleNight(run);
-assert.equal(run.phase, "dawn");
-assert.ok(run.unlocks.includes("replay"));
-
-// Versioned saves preserve the full current run state, including the fixed authored map.
-const restored = Engine.hydrate(Engine.serialize(run));
-assert.equal(Engine.checksum(restored), Engine.checksum(run));
-const anotherSeed = Engine.createRun("ANOTHER-SEED");
-assert.deepEqual(anotherSeed.terrain, Engine.createRun("HEARTH-1042").terrain, "the meadow stays authored; only encounters vary by seed");
-assert.equal(Engine.checksum(Engine.replay(run.seed, run.actionLog)), Engine.checksum(run), "a complete multi-level action log should replay exactly");
-
-// Same seed + same day actions reproduces the same finished state.
+// A replay includes automatic between-level continuation; no manual Continue action is recorded.
 const replaySource = Engine.createRun("REPLAY-SEED");
+action(replaySource, { type: "clear", x: 1, y: 3 });
 action(replaySource, { type: "endDay" });
-settleNight(replaySource);
-const replayed = Engine.replay("REPLAY-SEED", replaySource.actionLog);
-assert.equal(Engine.checksum(replayed), Engine.checksum(replaySource));
+settleToNextDay(replaySource);
+action(replaySource, { type: "build", buildingType: "stickLauncher", x: 1, y: 3 });
+action(replaySource, { type: "endDay" });
+settleToNextDay(replaySource);
+assert.equal(replaySource.levelIndex, 2);
+assert.equal(Engine.checksum(Engine.replay(replaySource.seed, replaySource.actionLog)), Engine.checksum(replaySource));
+
+// Versioned saves preserve the current automatic-progression state.
+const restored = Engine.hydrate(Engine.serialize(replaySource));
+assert.equal(Engine.checksum(restored), Engine.checksum(replaySource));
 
 console.log("Wild Hearth engine checks passed.");
