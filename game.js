@@ -30,6 +30,9 @@ const elements = {
   actionHint: document.querySelector("#action-hint"),
   actionBadge: document.querySelector("#action-badge"),
   toolGrid: document.querySelector("#tool-grid"),
+  toolbarSmaller: document.querySelector("#toolbar-smaller"),
+  toolbarLarger: document.querySelector("#toolbar-larger"),
+  toolbarSizeLabel: document.querySelector("#toolbar-size-label"),
   actionRow: document.querySelector("#action-row"),
   shelterButton: document.querySelector("#shelter-button"),
   repairButton: document.querySelector("#repair-button"),
@@ -52,6 +55,7 @@ const elements = {
   speedButtons: [...document.querySelectorAll("[data-speed]")],
   speedControls: document.querySelector("#speed-controls"),
   healthBarsToggle: document.querySelector("#health-bars-toggle"),
+  healthBarsSetting: document.querySelector(".setting-toggle"),
   eventLogWrap: document.querySelector("#event-log-wrap"),
   eventLog: document.querySelector("#event-log"),
 };
@@ -71,20 +75,41 @@ let techSignature = "";
 let pointerActivation = null;
 let preferredSpeed = 1;
 let lastFocusedElement = null;
+const TOOLBAR_SIZES = ["compact", "standard", "large"];
+let toolbarSize = "compact";
 
 try {
   const settings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
   showHealthBars = Boolean(settings.showHealthBars);
   preferredSpeed = [1, 2].includes(settings.preferredSpeed) ? settings.preferredSpeed : 1;
+  toolbarSize = TOOLBAR_SIZES.includes(settings.toolbarSize) ? settings.toolbarSize : "compact";
 } catch (error) {
   showHealthBars = false;
   preferredSpeed = 1;
+  toolbarSize = "compact";
 }
 
 function saveSettings() {
   try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ showHealthBars, preferredSpeed }));
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ showHealthBars, preferredSpeed, toolbarSize }));
   } catch (error) { /* Settings still apply for this browser session. */ }
+}
+
+function syncToolbarSizeControls() {
+  const index = TOOLBAR_SIZES.indexOf(toolbarSize);
+  document.documentElement.dataset.toolbarSize = toolbarSize;
+  elements.toolbarSizeLabel.textContent = toolbarSize;
+  elements.toolbarSmaller.disabled = index === 0;
+  elements.toolbarLarger.disabled = index === TOOLBAR_SIZES.length - 1;
+}
+
+function changeToolbarSize(offset) {
+  const current = TOOLBAR_SIZES.indexOf(toolbarSize);
+  const next = Math.max(0, Math.min(TOOLBAR_SIZES.length - 1, current + offset));
+  if (next === current) return;
+  toolbarSize = TOOLBAR_SIZES[next];
+  syncToolbarSizeControls();
+  saveSettings();
 }
 
 function createNode(tag, className, text) {
@@ -552,12 +577,13 @@ function renderControls() {
   const opening = needsShelter();
   const hasInspector = opening || selected.kind !== "none" || activeTool !== "none";
   const hasPlanningTarget = Boolean(selectedScout() || towerRecipe(building?.type));
+  const showPlanningCard = night || state.phase === "aftermath" || (day && hasPlanningTarget);
   elements.controlPanel.classList.toggle("is-day", day);
   elements.controlPanel.classList.toggle("is-night", night);
   elements.controlPanel.classList.toggle("is-aftermath", state.phase === "aftermath");
   elements.selectedCard.hidden = !hasInspector || (!day && !opening);
   elements.actionCard.hidden = !day;
-  elements.planningCard.hidden = opening;
+  elements.planningCard.hidden = opening || !showPlanningCard;
   elements.shelterButton.hidden = !opening;
   elements.shelterButton.disabled = !day || !opening;
   elements.toolGrid.querySelectorAll("[data-tool]").forEach((button) => {
@@ -584,7 +610,8 @@ function renderControls() {
     button.disabled = opening;
     button.classList.toggle("is-active", Number(button.dataset.speed) === preferredSpeed);
   });
-  elements.speedControls.hidden = opening || state.phase === "aftermath";
+  elements.speedControls.hidden = !night;
+  elements.healthBarsSetting.hidden = !night;
   elements.healthBarsToggle.checked = showHealthBars;
   elements.actionBadge.textContent = day ? `${state.actionPoints} action${state.actionPoints === 1 ? "" : "s"}` : "Scout on watch";
   elements.actionHint.textContent = day
@@ -593,6 +620,7 @@ function renderControls() {
       : "Choose an action, then select the meadow."
     : "Scout is defending the hearth.";
   elements.utilityLabel.textContent = night ? "Night watch" : state.phase === "aftermath" ? "Dawn" : "Tools";
+  syncToolbarSizeControls();
   elements.levelLabel.textContent = `Level ${String(level.number).padStart(2, "0")} · ${level.title}`;
   elements.levelCopy.textContent = day
     ? opening
@@ -759,6 +787,8 @@ elements.toolGrid.addEventListener("click", (event) => {
   gridSignature = "";
   render();
 });
+elements.toolbarSmaller.addEventListener("click", () => changeToolbarSize(-1));
+elements.toolbarLarger.addEventListener("click", () => changeToolbarSize(1));
 elements.shelterButton.addEventListener("click", () => {
   const outcome = dispatch({ type: "constructShelter" });
   if (outcome.ok) {

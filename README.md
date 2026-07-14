@@ -27,7 +27,7 @@ Open [http://localhost:4173](http://localhost:4173). You can also open `index.ht
 7. **Hearthkeeping I** appears on Level 4 for 5 XP. At the next dawn, every surviving targetable building recovers 1 health, up to its maximum. It never rebuilds a destroyed structure.
 8. The first Boar is guaranteed on Level 5. New enemy families arrive no more than once every three levels, and their dedicated counter is available at least two levels earlier. The fixed 15×15 meadow has a small centered clearing and dense, walkable forest to its perimeter. Placement previews show whether a site is valid, affordable, and how costly the nearby enemy route is.
 9. Medium uses a seeded **Threat Budget** that grows 25% per level, rounded up. Health bars are optional; the compact Night Record retains spawned enemies, defense damage, and homestead damage for each watch. Playback speed is a saved 1×/2× preference that may be changed any time after shelter construction and only changes simulation pacing at night.
-10. The interface keeps one objective prompt at the top. Select a tree, defender, or building when you want its details; the night view shows only its watch controls. Technology opens as a full-screen overlay.
+10. The interface keeps one objective prompt at the top. The Field Kit is a compact bottom toolbar for day actions; its saved − / + control selects Compact, Standard, or Large sizing. Select a tree, defender, or building when you want its details; the night view shows only its watch controls. Technology opens as a full-screen overlay.
 
 ## Configuration
 
