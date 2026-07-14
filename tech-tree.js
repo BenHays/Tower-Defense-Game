@@ -13,6 +13,7 @@
   const BRANCHES = {
     scout: { id: "scout", label: "Scout", order: 1 },
     launcher: { id: "launcher", label: "Launcher craft", order: 2 },
+    homestead: { id: "homestead", label: "Homestead", order: 3 },
   };
 
   const NODES = {
@@ -31,6 +32,21 @@
       copy: "Train Scout to strike harder on every night watch.",
       completeCopy: "Scout damage rises from 1 to 2.",
     },
+    trailSense: {
+      id: "trailSense",
+      label: "Trail Sense",
+      branch: "scout",
+      tier: 2,
+      costXp: 4,
+      requiredLevel: 3,
+      requiresNodes: ["scoutTraining1"],
+      requiresUnlocks: [],
+      effects: [
+        { kind: "stat", target: "unit", id: "scout", stat: "attackRange", operation: "add", value: 0.5 },
+      ],
+      copy: "Teach Scout to read movement through the trees and watch a little farther.",
+      completeCopy: "Scout watch radius increases by 0.5 cells.",
+    },
     arrowcraft: {
       id: "arrowcraft",
       label: "Arrowcraft",
@@ -45,6 +61,60 @@
       ],
       copy: "Learn to turn a built Stick Launcher into an Arrow Shooter.",
       completeCopy: "Stick Launchers can become Arrow Shooters.",
+    },
+    quickcord: {
+      id: "quickcord",
+      label: "Quickcord",
+      branch: "launcher",
+      tier: 2,
+      costXp: 5,
+      requiredLevel: 4,
+      requiresNodes: ["arrowcraft"],
+      requiresUnlocks: [],
+      effects: [
+        { kind: "unlockBuildingRefit", building: "arrowShooter", refit: "quickcord" },
+      ],
+      copy: "Learn a taut bowcord refit for one selected Arrow Shooter.",
+      completeCopy: "Arrow Shooters can receive the Quickcord attack-speed refit.",
+    },
+    potatoPacking: {
+      id: "potatoPacking",
+      label: "Potato Packing",
+      branch: "launcher",
+      tier: 2,
+      costXp: 5,
+      requiredLevel: 4,
+      requiresNodes: [],
+      requiresUnlocks: ["potatoGun"],
+      effects: [
+        {
+          kind: "onHitStatus",
+          sourceTarget: "building",
+          sourceId: "potatoGun",
+          status: "movementSlow",
+          statusSource: "potatoPacking",
+          durationTicks: 24,
+          movementMultiplier: 0.55,
+          stackRule: "strongestOnly",
+        },
+      ],
+      copy: "Pack Potato Gun shots for a brief, heavy movement slow that never stacks.",
+      completeCopy: "Potato hits apply a 45% movement slow for 1.2 seconds.",
+    },
+    hearthkeeping1: {
+      id: "hearthkeeping1",
+      label: "Hearthkeeping I",
+      branch: "homestead",
+      tier: 1,
+      costXp: 5,
+      requiredLevel: 4,
+      requiresNodes: [],
+      requiresUnlocks: [],
+      effects: [
+        { kind: "dawnRepair", target: "building", scope: "targetable", amount: 1 },
+      ],
+      copy: "Organize the morning repair pass around the homestead.",
+      completeCopy: "Each dawn restores 1 HP to every standing targetable structure.",
     },
   };
 
@@ -116,9 +186,31 @@
     return value;
   }
 
+  function effectsMatching(state, predicate) { return effectsFor(state).filter(predicate); }
+  function effectValue(state, predicate, field = "value") {
+    return effectsMatching(state, predicate).reduce((total, effect) => total + (Number(effect[field]) || 0), 0);
+  }
   function hasEffect(state, predicate) { return effectsFor(state).some(predicate); }
   function hasBuildingUpgrade(state, from, to) { return hasEffect(state, (effect) => effect.kind === "unlockBuildingUpgrade" && effect.from === from && effect.to === to); }
+  function hasBuildingRefit(state, building, refit) { return hasEffect(state, (effect) => effect.kind === "unlockBuildingRefit" && effect.building === building && effect.refit === refit); }
 
   validate();
-  return { BRANCHES, NODES, nodes, node, nodesForBranch, isResearched, availability, research, effectsFor, statValue, hasEffect, hasBuildingUpgrade, validate };
+  return {
+    BRANCHES,
+    NODES,
+    nodes,
+    node,
+    nodesForBranch,
+    isResearched,
+    availability,
+    research,
+    effectsFor,
+    effectsMatching,
+    effectValue,
+    statValue,
+    hasEffect,
+    hasBuildingUpgrade,
+    hasBuildingRefit,
+    validate,
+  };
 }));

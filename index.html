@@ -19,6 +19,7 @@
         </div>
         <div class="run-tools" aria-label="Game controls">
           <span class="seed-pill">Seed <code id="seed-value">HEARTH-1042</code></span>
+          <button class="tech-launcher" id="tech-button" type="button" aria-haspopup="dialog" aria-controls="tech-dialog" hidden><span aria-hidden="true">✦</span> Tech <strong id="tech-xp">0 XP</strong></button>
           <button class="quiet-button" id="new-seed-button" type="button">New seed</button>
           <button class="quiet-button" id="save-button" type="button">Save</button>
           <button class="quiet-button" id="load-button" type="button">Load</button>
@@ -74,17 +75,7 @@
           <p class="eyebrow">Planning</p>
           <button class="secondary-button wide" id="overlay-button" type="button">Show planning overlay <span>range + routes</span></button>
           <p class="preview-copy" id="preview-copy">Choose a tool, then select unoccupied grass.</p>
-          <section class="tech-card" id="tech-card" aria-label="Technology">
-            <p class="eyebrow">Technology</p>
-            <div class="tech-branches" id="tech-branches"></div>
-            <strong id="tech-title">Research</strong>
-            <p id="tech-copy">Clear levels and turn XP into lasting knowledge.</p>
-            <button class="secondary-button wide" id="research-button" type="button">Research <span>XP only · no action</span></button>
-          </section>
-          <details class="telemetry-card" id="telemetry-card">
-            <summary>Night record</summary>
-            <p id="telemetry-copy">The next night will record pressure, defense damage, and homestead damage.</p>
-          </details>
+          <p class="dawn-report" id="dawn-report" hidden></p>
           <div class="speed-controls" id="speed-controls" aria-label="Night speed">
             <button class="speed-button" id="pause-button" type="button">Pause</button>
             <button class="speed-button is-active" data-speed="1" type="button">1×</button>
@@ -96,6 +87,28 @@
 
       <section class="event-log" aria-label="Current status" aria-live="polite"><p id="event-log">Build a shelter before the first watch.</p></section>
     </main>
+
+    <div class="tech-dialog" id="tech-dialog" hidden>
+      <section class="tech-dialog-panel" role="dialog" aria-modal="true" aria-labelledby="tech-dialog-title" tabindex="-1">
+        <header class="tech-dialog-header">
+          <div>
+            <p class="eyebrow">Homestead knowledge</p>
+            <h2 id="tech-dialog-title">Technology</h2>
+            <p class="tech-dialog-subtitle" id="tech-dialog-subtitle">Spend earned XP during the day. Research does not use an action.</p>
+          </div>
+          <button class="quiet-button tech-close" id="tech-close-button" type="button">Close <span aria-hidden="true">×</span></button>
+        </header>
+        <div class="tech-dialog-body">
+          <div class="tech-branches" id="tech-branches" aria-label="Technology branches"></div>
+          <aside class="tech-detail" aria-live="polite">
+            <p class="eyebrow">Selected research</p>
+            <strong id="tech-title">Research</strong>
+            <p id="tech-copy">Clear levels and turn XP into lasting knowledge.</p>
+            <button class="primary-button wide" id="research-button" type="button">Research <span>XP only · no action</span></button>
+          </aside>
+        </div>
+      </section>
+    </div>
 
     <script src="tech-tree.js"></script>
     <script src="engine.js"></script>

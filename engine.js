@@ -11,7 +11,7 @@
   root.WildHearthEngine = engine;
 }(typeof globalThis !== "undefined" ? globalThis : this, function buildEngine(TechTree) {
   if (!TechTree) throw new Error("Wild Hearth tech tree did not load.");
-  const SAVE_VERSION = 7;
+  const SAVE_VERSION = 8;
   const TICK_RATE = 20;
   const BOARD = { id: "hearth-meadow", label: "Hearth Meadow", width: 13, height: 13 };
   const STARTING_ACTIONS = 2;
@@ -121,6 +121,16 @@
       targetRule: "nearest-enemy-in-range",
       repairAmount: 3,
       repairCost: { wood: 1 },
+      refits: {
+        quickcord: {
+          id: "quickcord",
+          label: "Quickcord",
+          cost: { wood: 2 },
+          actionCost: 1,
+          statModifiers: [{ stat: "attackSpeed", operation: "multiply", value: 1.25 }],
+          restoreHealth: true,
+        },
+      },
     },
     potatoGun: {
       id: "potatoGun",
@@ -177,6 +187,32 @@
       title: "Arrowcraft",
       enemyPool: ["raccoon"],
       survivalXp: 4,
+      unlock: null,
+    },
+    {
+      id: "hearthkeeping",
+      number: 4,
+      title: "Hearthkeeping",
+      enemyPool: ["raccoon"],
+      survivalXp: 5,
+      unlock: null,
+    },
+    {
+      id: "first-boar",
+      number: 5,
+      title: "First boar",
+      enemyPool: ["boar"],
+      minimumEnemies: { boar: 1 },
+      survivalXp: 7,
+      unlock: null,
+    },
+    {
+      id: "heavy-footing",
+      number: 6,
+      title: "Heavy footing",
+      enemyPool: ["raccoon", "boar"],
+      minimumEnemies: { boar: 1 },
+      survivalXp: 8,
       unlock: null,
     },
   ];
@@ -271,12 +307,13 @@
   function levelFor(state) {
     const number = state.levelIndex + 1;
     const authored = LEVELS[state.levelIndex];
-    if (authored) return { ...authored, threatBudget: mediumThreatBudget(number) };
+    if (authored) return { ...authored, minimumEnemies: { ...(authored.minimumEnemies || {}) }, threatBudget: mediumThreatBudget(number) };
     return {
       id: `night-${number}`,
       number,
       title: "Growing pressure",
-      enemyPool: ["raccoon"],
+      enemyPool: number >= 7 ? ["raccoon", "boar"] : ["raccoon"],
+      minimumEnemies: {},
       survivalXp: Math.max(3, Math.ceil(number * 1.25)),
       unlock: null,
       threatBudget: mediumThreatBudget(number),
@@ -296,12 +333,31 @@
     });
     return stats;
   }
-  function buildingCombatStats(state, type) {
+  function refitDefinition(type, refitId) {
+    const recipe = buildingRecipe(type);
+    return recipe?.refits?.[refitId] || null;
+  }
+  function buildingRefits(building) {
+    return Array.isArray(building?.refits) ? building.refits : [];
+  }
+  function applyStatModifiers(baseValue, modifiers) {
+    let value = baseValue;
+    modifiers.filter((modifier) => modifier.operation === "add").forEach((modifier) => { value += modifier.value; });
+    modifiers.filter((modifier) => modifier.operation === "multiply").forEach((modifier) => { value *= modifier.value; });
+    modifiers.filter((modifier) => modifier.operation === "set").forEach((modifier) => { value = modifier.value; });
+    return value;
+  }
+  function buildingCombatStats(state, type, building) {
     const base = buildingRecipe(type);
     if (!base) return null;
     const stats = { ...base };
     ["damage", "attackSpeed", "attackRange"].forEach((stat) => {
       if (typeof base[stat] === "number") stats[stat] = TechTree.statValue(state, "building", type, stat, base[stat]);
+    });
+    const refitModifiers = buildingRefits(building).flatMap((refitId) => refitDefinition(type, refitId)?.statModifiers || []);
+    ["damage", "attackSpeed", "attackRange"].forEach((stat) => {
+      const modifiers = refitModifiers.filter((modifier) => modifier.stat === stat);
+      if (modifiers.length) stats[stat] = applyStatModifiers(stats[stat], modifiers);
     });
     return stats;
   }
@@ -537,7 +593,7 @@
       kills: state.kills,
       xp: state.xp,
       wood: state.resources.wood,
-      buildings: activeBuildings(state).map((building) => ({ id: building.id, type: building.type, health: building.health, maxHealth: building.maxHealth })),
+      buildings: activeBuildings(state).map((building) => ({ id: building.id, type: building.type, health: building.health, maxHealth: building.maxHealth, refits: buildingRefits(building) })),
       telemetry: state.telemetry.nightReports[state.telemetry.nightReports.length - 1] || null,
       checksum: checksum(state),
     });
@@ -577,6 +633,7 @@
       targetId: null,
       firingTicks: 0,
       hitTicks: 0,
+      refits: [],
       destroyed: false,
     };
   }
@@ -649,6 +706,7 @@
       targetId: null,
       intent: "approaching",
       spawnEdge: spawn.edge,
+      statuses: {},
     };
   }
 
@@ -657,6 +715,18 @@
     const rng = createRng(`${state.seed}|${level.id}`);
     const units = [];
     let remaining = level.threatBudget;
+    const minimumEnemies = level.minimumEnemies || {};
+    Object.keys(minimumEnemies).sort().forEach((type) => {
+      const count = minimumEnemies[type];
+      const recipe = enemyRecipe(type);
+      if (!recipe) throw new Error(`Level ${level.id} requires an unknown enemy: ${type}.`);
+      if (!Number.isInteger(count) || count < 0) throw new Error(`Level ${level.id} has an invalid minimum for ${type}.`);
+      for (let index = 0; index < count; index += 1) {
+        if (recipe.threat > remaining) throw new Error(`Level ${level.id} cannot afford its required ${recipe.label}.`);
+        units.push(type);
+        remaining -= recipe.threat;
+      }
+    });
     let attempts = 24;
     while (remaining > 0 && attempts > 0) {
       attempts -= 1;
@@ -770,7 +840,7 @@
       return result(state, false, "Day actions are only available before nightfall.");
     }
 
-    if (!state.shelterBuilt && action.type !== "constructShelter") {
+    if (!state.shelterBuilt && !["constructShelter", "speed"].includes(action.type)) {
       return result(state, false, "Construct shelter before taking other actions.", action, shouldRecord);
     }
 
@@ -853,11 +923,30 @@
       const recipe = buildingRecipe("arrowShooter");
       building.type = "arrowShooter";
       building.maxHealth = recipe.maxHealth;
-      building.health = Math.min(building.health, recipe.maxHealth);
+      building.health = recipe.maxHealth;
       building.cooldown = 0;
       building.targetId = null;
       building.firingTicks = 0;
-      return result(state, true, "Arrow Shooter built from the launcher. One day action spent.", action, shouldRecord);
+      building.refits = [];
+      return result(state, true, "Arrow Shooter refit complete at full health. One day action spent.", action, shouldRecord);
+    }
+
+    if (action.type === "refitBuilding") {
+      const building = state.buildings.find((item) => item.id === action.id && !item.destroyed);
+      if (!building) return result(state, false, "Choose a standing building to refit.");
+      const refit = refitDefinition(building.type, action.refitId);
+      if (!refit) return result(state, false, "That refit does not fit the selected building.");
+      if (!TechTree.hasBuildingRefit(state, building.type, refit.id)) return result(state, false, `Research ${refit.label} before applying this refit.`);
+      if (buildingRefits(building).includes(refit.id)) return result(state, false, `${refit.label} is already fitted to this ${buildingRecipe(building.type).label}.`);
+      if (!hasResources(state, refit.cost || {})) return result(state, false, `${refit.label} needs ${refit.cost?.wood || 0} wood.`);
+      if (!consumeActions(state, refit.actionCost || 1)) return result(state, false, "Both day actions are spent.");
+      spendResources(state, refit.cost || {});
+      building.refits = buildingRefits(building).concat(refit.id);
+      if (refit.restoreHealth) building.health = building.maxHealth;
+      building.cooldown = 0;
+      building.targetId = null;
+      building.firingTicks = 0;
+      return result(state, true, `${refit.label} fitted. ${buildingRecipe(building.type).label} is restored to full health.`, action, shouldRecord);
     }
 
     if (action.type === "endDay") {
@@ -877,9 +966,9 @@
     }
 
     if (action.type === "speed") {
-      if (state.phase !== "night" || ![1, 2].includes(action.speed)) return result(state, false, "Night speed can only be set to 1× or 2×.");
+      if (!["day", "night", "aftermath"].includes(state.phase) || ![1, 2].includes(action.speed)) return result(state, false, "Simulation speed can only be set to 1× or 2× during an active run.");
       state.speed = action.speed;
-      return result(state, true, `Night speed set to ${action.speed}×.`, null, false);
+      return result(state, true, `Simulation speed set to ${action.speed}×.`, null, false);
     }
 
     return result(state, false, "That action is not available.");
@@ -950,7 +1039,10 @@
         target.health = Math.max(0, target.health - projectile.damage);
         target.hitTicks = 6;
         recordDamageDealt(state, projectile.sourceLabel, appliedDamage);
-        if (target.health > 0 && projectile.knockback) applyKnockback(state, target, projectile);
+        if (target.health > 0) {
+          (projectile.statuses || []).forEach((status) => applyStatus(target, status));
+          if (projectile.knockback) applyKnockback(state, target, projectile);
+        }
         state.impacts.push({ id: `impact-${state.nextEntityId++}`, x: target.x, y: target.y, ticks: 6, type: projectile.type });
         if (target.health === 0) defeatEnemy(state, target, projectile.sourceLabel);
         return;
@@ -978,9 +1070,63 @@
     enemy.knockbackTicks = 8;
   }
 
+  function hitStatusesFor(state, sourceTarget, sourceId) {
+    return TechTree.effectsMatching(state, (effect) => effect.kind === "onHitStatus" && effect.sourceTarget === sourceTarget && effect.sourceId === sourceId)
+      .map((effect) => ({
+        status: effect.status,
+        statusSource: effect.statusSource || effect.nodeId,
+        durationTicks: effect.durationTicks,
+        movementMultiplier: effect.movementMultiplier,
+        stackRule: effect.stackRule || "strongestOnly",
+      }));
+  }
+
+  function statusBuckets(enemy) {
+    if (!enemy.statuses || typeof enemy.statuses !== "object" || Array.isArray(enemy.statuses)) enemy.statuses = {};
+    return enemy.statuses;
+  }
+
+  function applyStatus(enemy, status) {
+    const durationTicks = Math.max(0, Math.floor(Number(status.durationTicks) || 0));
+    const movementMultiplier = Number(status.movementMultiplier);
+    if (!status.status || !status.statusSource || durationTicks <= 0 || !Number.isFinite(movementMultiplier)) return;
+    const statuses = statusBuckets(enemy);
+    const bucket = statuses[status.status] || { stackRule: status.stackRule || "strongestOnly", sources: {} };
+    const existing = bucket.sources[status.statusSource];
+    bucket.sources[status.statusSource] = {
+      source: status.statusSource,
+      remainingTicks: Math.max(existing?.remainingTicks || 0, durationTicks),
+      movementMultiplier: Math.min(existing?.movementMultiplier ?? 1, movementMultiplier),
+    };
+    statuses[status.status] = bucket;
+  }
+
+  function tickStatuses(enemy) {
+    const statuses = statusBuckets(enemy);
+    Object.keys(statuses).forEach((statusId) => {
+      const bucket = statuses[statusId];
+      if (!bucket?.sources || typeof bucket.sources !== "object") {
+        delete statuses[statusId];
+        return;
+      }
+      Object.keys(bucket.sources).forEach((sourceId) => {
+        const source = bucket.sources[sourceId];
+        source.remainingTicks = Math.max(0, (source.remainingTicks || 0) - 1);
+        if (source.remainingTicks === 0) delete bucket.sources[sourceId];
+      });
+      if (!Object.keys(bucket.sources).length) delete statuses[statusId];
+    });
+  }
+
+  function statusMovementMultiplier(enemy) {
+    const sources = enemy.statuses?.movementSlow?.sources;
+    if (!sources || typeof sources !== "object") return 1;
+    return Object.values(sources).reduce((slowest, source) => Math.min(slowest, Number(source.movementMultiplier) || 1), 1);
+  }
+
   function updateTowers(state) {
     state.buildings.filter((building) => !building.destroyed && TOWER_TYPES.includes(building.type)).forEach((tower) => {
-      const recipe = buildingCombatStats(state, tower.type);
+      const recipe = buildingCombatStats(state, tower.type, tower);
       tower.cooldown = Math.max(0, (tower.cooldown || 0) - 1);
       tower.firingTicks = Math.max(0, (tower.firingTicks || 0) - 1);
       tower.hitTicks = Math.max(0, (tower.hitTicks || 0) - 1);
@@ -1001,6 +1147,7 @@
         damage: recipe.damage,
         speed: recipe.projectile.speed,
         knockback: recipe.knockback || 0,
+        statuses: hitStatusesFor(state, "building", tower.type),
         originX: tower.x,
         originY: tower.y,
         angle: Math.atan2(target.y - tower.y, target.x - tower.x) * (180 / Math.PI),
@@ -1079,6 +1226,7 @@
     const recipe = enemyRecipe(enemy.type);
     enemy.knockbackTicks = Math.max(0, (enemy.knockbackTicks || 0) - 1);
     enemy.hitTicks = Math.max(0, (enemy.hitTicks || 0) - 1);
+    tickStatuses(enemy);
     if (enemy.approachDelay > 0) {
       enemy.approachDelay -= 1;
       enemy.intent = "sneaking";
@@ -1104,7 +1252,7 @@
     const nextStep = target.path.length > 1 ? target.path[1] : target.approach;
     const stepCost = travelCost(state, nextStep.x, nextStep.y, recipe);
     enemy.inWarmth = false;
-    moveTowards(enemy, nextStep, recipe.moveSpeed / TICK_RATE / stepCost);
+    moveTowards(enemy, nextStep, recipe.moveSpeed * statusMovementMultiplier(enemy) / TICK_RATE / stepCost);
   }
 
   function beginAftermath(state) {
@@ -1113,7 +1261,29 @@
     state.lastEvent = "The forest goes quiet. Scout makes his way back to the watch post.";
   }
 
+  function dawnRepairAmount(state, building) {
+    if (!isTargetableBuilding(building)) return 0;
+    return TechTree.effectValue(
+      state,
+      (effect) => effect.kind === "dawnRepair" && effect.target === "building" && (effect.scope !== "targetable" || isTargetableBuilding(building)),
+      "amount",
+    );
+  }
+
+  function restoreAtDawn(state) {
+    let restored = 0;
+    activeBuildings(state).forEach((building) => {
+      const amount = dawnRepairAmount(state, building);
+      if (amount <= 0 || building.health >= building.maxHealth) return;
+      const applied = Math.min(amount, building.maxHealth - building.health);
+      building.health += applied;
+      restored += applied;
+    });
+    return restored;
+  }
+
   function startNextDay(state, completedLevel, completionCopy) {
+    const dawnRestored = restoreAtDawn(state);
     state.levelIndex += 1;
     state.phase = "day";
     state.actionPoints = STARTING_ACTIONS;
@@ -1124,11 +1294,11 @@
     state.impacts = [];
     state.remains = [];
     state.paused = false;
-    state.speed = 1;
     state.outcome = null;
     state.aftermathTicks = 0;
     const nextLevel = levelFor(state);
-    state.lastEvent = `${completedLevel.title} held. ${completionCopy} Level ${nextLevel.number}: ${nextLevel.title}. Two day actions are ready.`;
+    const repairCopy = dawnRestored > 0 ? ` Hearthkeeping restores ${dawnRestored} structure HP.` : "";
+    state.lastEvent = `${completedLevel.title} held. ${completionCopy}${repairCopy} Level ${nextLevel.number}: ${nextLevel.title}. Two day actions are ready.`;
   }
 
   function settleAftermath(state) {
@@ -1193,7 +1363,9 @@
     const state = parsed.state;
     if (!Array.isArray(state.terrain) || state.terrain.length !== BOARD.width * BOARD.height) throw new Error("This save has an invalid meadow.");
     if (typeof state.shelterBuilt !== "boolean" || !Array.isArray(state.buildings)) throw new Error("This save has an invalid shelter state.");
+    if (![1, 2].includes(state.speed)) throw new Error("This save has an invalid speed setting.");
     if (!state.telemetry || !state.telemetry.total || !Array.isArray(state.telemetry.nightReports) || !Array.isArray(state.replaySnapshots) || !Array.isArray(state.remains)) throw new Error("This save has an invalid night record.");
+    if (!state.buildings.every((building) => Array.isArray(building.refits || []) && buildingRefits(building).every((refitId) => refitDefinition(building.type, refitId)))) throw new Error("This save has an invalid building refit.");
     const teepeeCount = state.buildings.filter((building) => building.type === "teepee" && !building.destroyed).length;
     if ((state.shelterBuilt && teepeeCount !== 1) || (!state.shelterBuilt && teepeeCount !== 0)) throw new Error("This save has an invalid shelter state.");
     pathCaches.delete(state);
@@ -1229,7 +1401,7 @@
       shelterBuilt: state.shelterBuilt,
       kills: state.kills,
       terrain: state.terrain,
-      buildings: state.buildings.map((building) => ({ id: building.id, type: building.type, x: building.x, y: building.y, health: building.health, maxHealth: building.maxHealth, destroyed: building.destroyed })),
+      buildings: state.buildings.map((building) => ({ id: building.id, type: building.type, x: building.x, y: building.y, health: building.health, maxHealth: building.maxHealth, refits: buildingRefits(building), destroyed: building.destroyed })),
       rubble: state.rubble,
       outcome: state.outcome,
       telemetry: { total: state.telemetry?.total || {}, nightReports: state.telemetry?.nightReports || [] },
@@ -1290,11 +1462,14 @@
     conditionFor,
     unitStats,
     buildingCombatStats,
+    refitDefinition,
+    buildingRefits,
     techNodes: TechTree.nodes,
     techNodesForBranch: TechTree.nodesForBranch,
     techEffects: TechTree.effectsFor,
     hasTechEffect: TechTree.hasEffect,
     hasBuildingUpgrade: TechTree.hasBuildingUpgrade,
+    hasBuildingRefit: TechTree.hasBuildingRefit,
     telemetrySnapshot,
     dispatch,
     advanceTick,

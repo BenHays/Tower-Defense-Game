@@ -6,25 +6,26 @@
 | --- | --- | --- |
 | Branch teepee | Free, forced Level 1 full day | Targetable homestead; can be repaired. |
 | Stick Launcher | 2 wood, 1 action | 1 hit, slow tempo, short reach. |
-| Arrow Shooter | 4 wood, 1 action upgrade | 1.5× launcher damage, tempo, and reach after Arrowcraft. |
-| Potato Gun | 3 wood, 1 action | 3 hit, very slow medium reach, one-cell knockback. |
+| Arrow Shooter | 4 wood, 1 action upgrade | 1.5× launcher damage, tempo, and reach after Arrowcraft; a paid refit starts at full health. |
+| Potato Gun | 3 wood, 1 action | 3 hit, very slow medium reach, one-cell knockback; Potato Packing adds a short non-stacking slow. |
 
 All defenses must be built on unoccupied grass. Both original meadow grass and grass revealed by clearing a tree are valid; trees, water, rubble, and buildings are not.
 
-All live building recipes use one shared contract: footprint, health, repair, targetability, path blocking, and optional combat fields. This lets future support buildings opt out of enemy targeting without creating a second building system.
+All live building recipes use one shared contract: footprint, health, repair, targetability, path blocking, and optional combat fields. This lets future support buildings opt out of enemy targeting without creating a second building system. A targetable building can recover 1 HP at dawn once Hearthkeeping I is researched; recovery is capped at maximum health and never revives a destroyed building.
 
 ## Proposed next
 
-- **Fire Pit:** unlocked by future Hearthcraft research; costs 2 wood and one action. It is an earned, non-targetable support feature at the homestead, not a free starting map object. Its sole initial effect is a small enemy slow zone; it deals no damage.
-- Bee Hive after Hivecraft research.
+- **Fire Pit:** Hearthcraft is a Level 5, 8-XP research that requires Arrowcraft. The Fire Pit then costs 2 wood and one action. It is an earned, non-targetable support feature at the homestead, not a free starting map object. Its sole initial effect is a 1.5-cell Warmth zone that slows enemies by 25%; it deals no damage, healing, or path blocking.
+- **Bee Hive:** Hivecraft research becomes available on Level 6, before its dedicated Level 8 enemy. It shoots bees for light damage and applies the longer, lighter non-stacking Honeyed slow.
 - Mushroom Launcher after Fungal Craft research.
 
 ## Open questions
 
-- Potato Gun cost and timing need player testing across Medium seeds.
-- Hearthcraft XP cost and Fire Pit unlock level need a playtest target.
+- Potato Gun cost, slow duration, and timing need player testing across Medium seeds.
+- Bee Hive damage, Honeyed duration, and its Level 8 enemy pairing need a playtest target.
 
 ## Decisions made
 
 - No barricade in the current progression.
 - Construction completes immediately; there are no blueprints or Finish action.
+- An upgrade is a paid refit: the new building type receives its full maximum health rather than preserving its damaged health fraction.

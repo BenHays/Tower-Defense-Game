@@ -27,3 +27,7 @@
 - Never replace interactive grid cells during hover rendering. Keep the grid mounted and patch classes so one armed tool click followed by one map click is reliable.
 - Record a compact per-night telemetry report and replay checkpoint at settlement; use it to validate balance plans before changing pressure or stats.
 - Rotate deterministic wave edges before repeats and stagger units within a group. It produces all-angle pressure without sacrificing readability.
+- Treat a paid structure upgrade as a full refit: the new recipe starts at maximum health. That makes upgrade timing a visible recovery decision without adding a separate free repair action.
+- Keep overnight recovery as a declarative tech effect: Hearthkeeping I heals each surviving targetable building by one at dawn, with no resurrection path.
+- Introduce a new enemy family through a guaranteed showcase, then fold it into the seeded Threat Budget. Its counter should be buildable at least two levels in advance and new families should be spaced three levels apart.
+- Put repeatable enemy-control effects behind one non-stacking status contract. Potato slow is short and heavy; Honeyed and Warmth can later be longer/lighter variants without ambiguous stacking.

@@ -2,7 +2,7 @@ const Engine = window.WildHearthEngine;
 
 if (!Engine) throw new Error("Wild Hearth engine did not load.");
 
-const SAVE_KEY = "wild-hearth-save-v7";
+const SAVE_KEY = "wild-hearth-save-v8";
 const SETTINGS_KEY = "wild-hearth-settings-v1";
 const elements = {
   board: document.querySelector("#game-board"),
@@ -32,13 +32,16 @@ const elements = {
   endDayButton: document.querySelector("#end-day-button"),
   overlayButton: document.querySelector("#overlay-button"),
   previewCopy: document.querySelector("#preview-copy"),
+  techButton: document.querySelector("#tech-button"),
+  techXp: document.querySelector("#tech-xp"),
+  techDialog: document.querySelector("#tech-dialog"),
+  techCloseButton: document.querySelector("#tech-close-button"),
+  techDialogSubtitle: document.querySelector("#tech-dialog-subtitle"),
   techTitle: document.querySelector("#tech-title"),
   techCopy: document.querySelector("#tech-copy"),
-  techCard: document.querySelector("#tech-card"),
   techBranches: document.querySelector("#tech-branches"),
   researchButton: document.querySelector("#research-button"),
-  telemetryCard: document.querySelector("#telemetry-card"),
-  telemetryCopy: document.querySelector("#telemetry-copy"),
+  dawnReport: document.querySelector("#dawn-report"),
   pauseButton: document.querySelector("#pause-button"),
   speedButtons: [...document.querySelectorAll("[data-speed]")],
   speedControls: document.querySelector("#speed-controls"),
@@ -59,11 +62,22 @@ let activeTechId = null;
 const gridCells = new Map();
 let techSignature = "";
 let pointerActivation = null;
+let preferredSpeed = 1;
+let lastFocusedElement = null;
 
 try {
-  showHealthBars = Boolean(JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}").showHealthBars);
+  const settings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
+  showHealthBars = Boolean(settings.showHealthBars);
+  preferredSpeed = [1, 2].includes(settings.preferredSpeed) ? settings.preferredSpeed : 1;
 } catch (error) {
   showHealthBars = false;
+  preferredSpeed = 1;
+}
+
+function saveSettings() {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ showHealthBars, preferredSpeed }));
+  } catch (error) { /* Settings still apply for this browser session. */ }
 }
 
 function createNode(tag, className, text) {
@@ -94,6 +108,11 @@ function addHealthBar(node, entity, tone) {
 function currentLevel() { return Engine.levelFor(state); }
 function selectedBuilding() { return selected.kind === "building" ? state.buildings.find((building) => building.id === selected.id && !building.destroyed) : null; }
 function selectedScout() { return selected.kind === "scout" ? state.scout : null; }
+function availableRefit(building) {
+  if (!building) return null;
+  const refits = Object.values(Engine.BUILDINGS[building.type]?.refits || {});
+  return refits.find((refit) => Engine.hasBuildingRefit(state, building.type, refit.id) && !Engine.buildingRefits(building).includes(refit.id)) || null;
+}
 function selectedCell() { return selected.kind === "cell" ? selected : null; }
 function sameCell(left, right) { return left && right && left.x === right.x && left.y === right.y; }
 function cellId(x, y) { return `${x},${y}`; }
@@ -121,6 +140,38 @@ function dispatch(action) {
   gridSignature = "";
   render();
   return outcome;
+}
+
+function openTechnology() {
+  if (needsShelter()) return;
+  lastFocusedElement = document.activeElement;
+  elements.techDialog.hidden = false;
+  document.body.classList.add("tech-dialog-open");
+  renderTechnology();
+  requestAnimationFrame(() => elements.techCloseButton.focus());
+}
+
+function closeTechnology(options = {}) {
+  if (elements.techDialog.hidden) return;
+  elements.techDialog.hidden = true;
+  document.body.classList.remove("tech-dialog-open");
+  if (options.restoreFocus !== false && lastFocusedElement instanceof HTMLElement) lastFocusedElement.focus();
+  lastFocusedElement = null;
+}
+
+function setPreferredSpeed(speed) {
+  if (![1, 2].includes(speed) || needsShelter()) return;
+  preferredSpeed = speed;
+  saveSettings();
+  dispatch({ type: "speed", speed });
+}
+
+function beginNight() {
+  const outcome = dispatch({ type: "endDay" });
+  if (outcome.ok && state.phase === "night") {
+    state.speed = preferredSpeed;
+    render();
+  }
 }
 
 function describeCell(x, y) {
@@ -250,6 +301,8 @@ function renderEntities() {
     if (building.hitTicks > 0) node.classList.add("is-hit");
     place(node, building.x, building.y);
     addHealthBar(node, building, "building-health");
+    const condition = Engine.conditionFor(building);
+    if (condition !== "intact") node.append(createNode("span", `condition-tag ${condition}`, condition.replace("-", " ")));
     addLabel(node, recipe.label);
     fragment.append(node);
   });
@@ -266,6 +319,7 @@ function renderEntities() {
     if (enemy.inWarmth) node.classList.add("is-warmed");
     if (enemy.knockbackTicks > 0) node.classList.add("is-knocked");
     if (enemy.hitTicks > 0) node.classList.add("is-hit");
+    if (enemy.statuses?.movementSlow?.sources && Object.keys(enemy.statuses.movementSlow.sources).length) node.classList.add("is-slowed");
     addHealthBar(node, enemy, "enemy-health");
     place(node, enemy.x, enemy.y);
     fragment.append(node);
@@ -326,7 +380,7 @@ function renderSelection() {
   }
   const building = selectedBuilding();
   if (building) {
-    const recipe = Engine.buildingCombatStats(state, building.type);
+    const recipe = Engine.buildingCombatStats(state, building.type, building);
     const condition = Engine.conditionFor(building).replace("-", " ");
     elements.selectedTitle.textContent = recipe.label;
     elements.selectionMeterWrap.hidden = false;
@@ -336,8 +390,16 @@ function renderSelection() {
         ? Engine.hasResearch(state, "arrowcraft")
           ? "Arrowcraft is ready: upgrade this launcher for 4 wood and 1 action."
           : "Arrowcraft can turn this into a stronger Arrow Shooter."
+        : building.type === "arrowShooter"
+          ? availableRefit(building)
+            ? "Quickcord is ready: refit this Arrow Shooter for 2 wood and 1 action."
+            : Engine.buildingRefits(building).includes("quickcord")
+              ? "Quickcord is fitted: this Arrow Shooter fires faster."
+              : "Quickcord can make this Arrow Shooter fire faster."
         : building.type === "potatoGun"
-          ? "Heavy shots push surviving enemies back."
+          ? Engine.hasResearch(state, "potatoPacking")
+            ? "Potato Packing is active: heavy shots briefly slow surviving enemies."
+            : "Heavy shots push surviving enemies back. Potato Packing can add a brief slow."
           : "Stronger, faster, and farther than a Stick Launcher.";
     } else {
       elements.selectedCopy.textContent = `Home · ${condition} · repair costs ${recipe.repairCost.wood || 0} wood and one day action.`;
@@ -397,14 +459,26 @@ function renderPreview() {
 }
 
 function renderTechnology() {
-  if (needsShelter()) {
-    elements.techCard.hidden = true;
+  const ready = !needsShelter();
+  elements.techButton.hidden = !ready;
+  elements.techXp.textContent = `${state.xp} XP`;
+  elements.techButton.setAttribute("aria-label", `Technology, ${state.xp} XP`);
+  if (!ready) {
+    closeTechnology({ restoreFocus: false });
     return;
   }
   const level = currentLevel().number;
-  const visibleNodes = Engine.techNodes().filter((node) => node.requiredLevel <= level || Engine.hasResearch(state, node.id));
-  elements.techCard.hidden = !visibleNodes.length;
-  if (!visibleNodes.length) return;
+  const visibleNodes = Engine.techNodes().filter((node) => Engine.hasResearch(state, node.id)
+    || (node.requiredLevel <= level && (node.requiresNodes || []).every((requiredId) => Engine.hasResearch(state, requiredId))));
+  if (!visibleNodes.length) {
+    elements.techBranches.replaceChildren(createNode("p", "tech-empty", "The first research reveals after you survive Level 1."));
+    elements.techTitle.textContent = "Research unlocks soon";
+    elements.techCopy.textContent = "Clear the first watch to earn XP and reveal your first choice.";
+    setButtonContent(elements.researchButton, "Research unavailable", "next level");
+    elements.researchButton.disabled = true;
+    elements.techDialogSubtitle.textContent = "Spend earned XP during the day. Research does not use an action.";
+    return;
+  }
   const available = visibleNodes.find((node) => Engine.techAvailability(state, node.id).available);
   if (!visibleNodes.some((node) => node.id === activeTechId)) activeTechId = available?.id || visibleNodes[0].id;
   const signature = [state.phase, level, state.xp, state.unlocks.join(","), state.research.join(","), activeTechId].join("|");
@@ -419,8 +493,10 @@ function renderTechnology() {
   });
   const fragment = document.createDocumentFragment();
   [...branches.entries()].forEach(([branchId, nodes]) => {
-    const branch = createNode("div", "tech-branch");
-    branch.append(createNode("span", "tech-branch-label", Engine.TECH_BRANCHES[branchId].label));
+    const branch = createNode("section", "tech-branch");
+    branch.setAttribute("aria-label", `${Engine.TECH_BRANCHES[branchId].label} branch`);
+    branch.append(createNode("h3", "tech-branch-label", Engine.TECH_BRANCHES[branchId].label));
+    const lane = createNode("div", "tech-node-lane");
     nodes.forEach((node) => {
       const check = Engine.techAvailability(state, node.id);
       const button = createNode("button", `tech-node${node.id === activeTechId ? " is-selected" : ""}${Engine.hasResearch(state, node.id) ? " is-researched" : ""}`);
@@ -428,12 +504,16 @@ function renderTechnology() {
       button.dataset.tech = node.id;
       button.append(document.createTextNode(node.label), createNode("span", "", Engine.hasResearch(state, node.id) ? "researched" : `${node.costXp} XP`));
       button.title = check.reason;
-      branch.append(button);
+      lane.append(button);
     });
+    branch.append(lane);
     fragment.append(branch);
   });
   elements.techBranches.replaceChildren(fragment);
   elements.techTitle.textContent = selectedNode.label;
+  elements.techDialogSubtitle.textContent = state.phase === "day"
+    ? `Level ${level} · ${state.xp} XP available · research uses no action.`
+    : `Level ${level} · ${state.xp} XP available · planning is read-only during the night.`;
   if (Engine.hasResearch(state, selectedNode.id)) {
     elements.techCopy.textContent = `${selectedNode.completeCopy} Research uses XP only; no day action is spent.`;
     setButtonContent(elements.researchButton, `${selectedNode.label} researched`, "ready");
@@ -448,10 +528,10 @@ function renderTechnology() {
 function renderTelemetry() {
   const telemetry = Engine.telemetrySnapshot(state);
   const report = telemetry.currentNight || telemetry.nightReports[telemetry.nightReports.length - 1];
-  elements.telemetryCard.hidden = needsShelter() || !report;
+  elements.dawnReport.hidden = needsShelter() || !report || state.phase === "night";
   if (!report) return;
-  const result = report.result ? ` · ${report.result}` : "";
-  elements.telemetryCopy.textContent = `Level ${report.number}: ${report.spawned} spawned, ${report.peakEnemies} at once, ${report.buildingDamage.toFixed(1)} structure damage${result}.`;
+  const damage = report.buildingDamage > 0 ? `${report.buildingDamage.toFixed(1)} structure damage` : "no structure damage";
+  elements.dawnReport.textContent = `Dawn report · Level ${report.number}: ${report.spawned} stopped · ${damage}.`;
 }
 
 function renderControls() {
@@ -459,6 +539,8 @@ function renderControls() {
   const day = state.phase === "day";
   const night = state.phase === "night";
   const building = selectedBuilding();
+  const refit = availableRefit(building);
+  const arrowUpgradeReady = building && building.type === "stickLauncher" && Engine.hasBuildingUpgrade(state, "stickLauncher", "arrowShooter");
   const opening = needsShelter();
   elements.shelterButton.hidden = !opening;
   elements.shelterButton.disabled = !day || !opening;
@@ -468,7 +550,11 @@ function renderControls() {
     button.disabled = opening || !day || state.actionPoints <= 0 || (isBuildTool(tool) && !state.unlocks.includes(tool));
   });
   elements.repairButton.disabled = opening || !day || !building || building.health >= building.maxHealth || state.resources.wood < 1 || state.actionPoints <= 0;
-  elements.upgradeButton.disabled = opening || !day || !building || building.type !== "stickLauncher" || !Engine.hasBuildingUpgrade(state, "stickLauncher", "arrowShooter") || state.resources.wood < 4 || state.actionPoints <= 0;
+  const upgradeCost = arrowUpgradeReady ? 4 : refit?.cost?.wood || 0;
+  elements.upgradeButton.disabled = opening || !day || (!arrowUpgradeReady && !refit) || state.resources.wood < upgradeCost || state.actionPoints <= 0;
+  if (arrowUpgradeReady) setButtonContent(elements.upgradeButton, "Upgrade selected", "Arrowcraft · 4 wood · 1 action");
+  else if (refit) setButtonContent(elements.upgradeButton, `Refit ${refit.label}`, `${upgradeCost} wood · 1 action · full HP`);
+  else setButtonContent(elements.upgradeButton, "Upgrade selected", "Arrowcraft · 4 wood · 1 action");
   elements.endDayButton.disabled = opening || !day;
   setButtonContent(elements.endDayButton, day ? "End day" : "Night in progress", day ? "Begin night watch →" : "Scout is on watch");
   elements.overlayButton.disabled = opening || !day;
@@ -476,10 +562,10 @@ function renderControls() {
   elements.pauseButton.disabled = !night;
   elements.pauseButton.textContent = state.paused ? "Resume" : "Pause";
   elements.speedButtons.forEach((button) => {
-    button.disabled = !night;
-    button.classList.toggle("is-active", Number(button.dataset.speed) === state.speed);
+    button.disabled = opening;
+    button.classList.toggle("is-active", Number(button.dataset.speed) === preferredSpeed);
   });
-  elements.speedControls.hidden = !night;
+  elements.speedControls.hidden = opening;
   elements.healthBarsToggle.checked = showHealthBars;
   elements.actionBadge.textContent = day ? `${state.actionPoints} action${state.actionPoints === 1 ? "" : "s"}` : "Scout on watch";
   elements.actionHint.textContent = day
@@ -586,6 +672,7 @@ function clickCell(x, y) {
 
 function resetRun(seed) {
   state = Engine.createRun(seed || state.seed);
+  state.speed = preferredSpeed;
   activeTool = "none";
   hoverCell = null;
   selected = { kind: "none", id: null };
@@ -611,6 +698,8 @@ function loadGame() {
     const saved = localStorage.getItem(SAVE_KEY);
     if (!saved) { setEvent("No saved meadow is available in this browser."); return; }
     state = Engine.hydrate(saved);
+    preferredSpeed = state.speed;
+    saveSettings();
     activeTool = "none";
     const teepee = state.buildings.find((building) => building.type === "teepee" && !building.destroyed);
     selected = teepee ? { kind: "building", id: teepee.id } : { kind: "none", id: null };
@@ -660,9 +749,18 @@ elements.repairButton.addEventListener("click", () => {
 });
 elements.upgradeButton.addEventListener("click", () => {
   const building = selectedBuilding();
-  if (building) dispatch({ type: "upgradeLauncher", id: building.id });
+  if (!building) return;
+  if (building.type === "stickLauncher") dispatch({ type: "upgradeLauncher", id: building.id });
+  else {
+    const refit = availableRefit(building);
+    if (refit) dispatch({ type: "refitBuilding", id: building.id, refitId: refit.id });
+  }
 });
-elements.techCard.addEventListener("click", (event) => {
+elements.techDialog.addEventListener("click", (event) => {
+  if (event.target === elements.techDialog) {
+    closeTechnology();
+    return;
+  }
   const node = event.target.closest("[data-tech]");
   if (!node) return;
   activeTechId = node.dataset.tech;
@@ -672,14 +770,37 @@ elements.techCard.addEventListener("click", (event) => {
 elements.researchButton.addEventListener("click", () => {
   if (activeTechId) dispatch({ type: "research", nodeId: activeTechId });
 });
-elements.endDayButton.addEventListener("click", () => dispatch({ type: "endDay" }));
+elements.techButton.addEventListener("click", openTechnology);
+elements.techCloseButton.addEventListener("click", () => closeTechnology());
+elements.endDayButton.addEventListener("click", beginNight);
 elements.overlayButton.addEventListener("click", () => { planning = !planning; gridSignature = ""; render(); });
 elements.pauseButton.addEventListener("click", () => dispatch({ type: "pause" }));
-elements.speedButtons.forEach((button) => button.addEventListener("click", () => dispatch({ type: "speed", speed: Number(button.dataset.speed) })));
+elements.speedButtons.forEach((button) => button.addEventListener("click", () => setPreferredSpeed(Number(button.dataset.speed))));
 elements.healthBarsToggle.addEventListener("change", () => {
   showHealthBars = elements.healthBarsToggle.checked;
-  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ showHealthBars })); } catch (error) { /* The setting still works for this session. */ }
+  saveSettings();
   render();
+});
+document.addEventListener("keydown", (event) => {
+  if (elements.techDialog.hidden) return;
+  if (event.key === "Escape") {
+    event.preventDefault();
+    closeTechnology();
+    return;
+  }
+  if (event.key === "Tab") {
+    const focusable = [...elements.techDialog.querySelectorAll("button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])")];
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (!first || !last) return;
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
 });
 document.querySelector("#save-button").addEventListener("click", saveGame);
 document.querySelector("#load-button").addEventListener("click", loadGame);

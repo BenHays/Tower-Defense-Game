@@ -54,6 +54,10 @@ assert.equal(run.telemetry.nightReports[0].spawned, 1);
 assert.equal(run.telemetry.nightReports[0].killsBySource.Scout, 1);
 assert.equal(run.telemetry.total.nights, 1);
 
+// Playback speed is a run preference: it can be chosen in daylight and persists into the next watch and dawn.
+action(run, { type: "speed", speed: 2 });
+assert.equal(run.speed, 2);
+
 // Level 2 permits a clear and a launcher in the same day: each uses one action.
 const unaffordableLauncher = Engine.toolPreview(run, "stickLauncher", 4, 5);
 assert.equal(unaffordableLauncher.siteValid, true);
@@ -75,6 +79,8 @@ assert.equal(Engine.BUILDINGS.stickLauncher.attackRange, 2.25);
 assert.equal(Engine.dispatch(run, { type: "finish", id: "not-a-step" }).ok, false, "Finish is not part of the MVP loop");
 action(run, { type: "endDay" });
 settleToNextDay(run);
+assert.equal(run.speed, 2, "chosen 2× speed survives the completed turn");
+assert.equal(Engine.hydrate(Engine.serialize(run)).speed, 2, "chosen 2× speed survives save/load");
 assert.ok(run.unlocks.includes("potatoGun"), "holding Level 2 unlocks the Potato Gun");
 assert.equal(Engine.BUILDINGS.potatoGun.damage, 3);
 assert.equal(Engine.BUILDINGS.potatoGun.knockback, 1);
@@ -134,6 +140,23 @@ Engine.advanceTicks(potatoRun, 16);
 assert.equal(potatoRun.enemies[0].health, 2, "the Potato Gun deals its heavy hit on impact");
 assert.ok(potatoRun.enemies[0].knockbackTicks > 0, "a surviving target is visibly knocked back");
 
+// Potato Packing adds one short, strongest-only slow status without changing the basic Potato Gun contract.
+const slowRun = Engine.createRun("TEST-POTATO-SLOW");
+constructShelter(slowRun);
+slowRun.levelIndex = 3;
+slowRun.unlocks.push("potatoGun");
+slowRun.xp = 5;
+action(slowRun, { type: "research", nodeId: "potatoPacking" });
+slowRun.resources.wood = 3;
+slowRun.actionPoints = 2;
+action(slowRun, { type: "build", buildingType: "potatoGun", x: 4, y: 5 });
+slowRun.phase = "night";
+slowRun.encounter = { waves: [{ spawned: true }], spawned: 1 };
+slowRun.enemies = [{ id: "e-slow", type: "raccoon", x: 4, y: 3.9, health: 5, maxHealth: 5, cooldown: 4, approachDelay: 0 }];
+Engine.advanceTick(slowRun);
+Engine.advanceTicks(slowRun, 16);
+assert.equal(slowRun.enemies[0].statuses.movementSlow.sources.potatoPacking.movementMultiplier, 0.55, "Potato Packing applies its brief movement slow");
+
 // Arrowcraft costs XP only; launcher upgrades use one day action.
 const upgradeRun = Engine.createRun("TEST-ARROWCRAFT");
 constructShelter(upgradeRun);
@@ -151,14 +174,54 @@ upgradeRun.actionPoints = 2;
 action(upgradeRun, { type: "build", buildingType: "stickLauncher", x: 4, y: 5 });
 upgradeRun.resources.wood = 4;
 const upgradeTarget = upgradeRun.buildings.find((building) => building.type === "stickLauncher");
+upgradeTarget.health = 2;
 action(upgradeRun, { type: "upgradeLauncher", id: upgradeTarget.id });
 assert.equal(upgradeTarget.type, "arrowShooter");
+assert.equal(upgradeTarget.health, upgradeTarget.maxHealth, "a paid Arrow Shooter refit restores the structure to full health");
 assert.equal(upgradeRun.resources.wood, 0);
 assert.equal(upgradeRun.actionPoints, 0);
 assert.deepEqual(
   [Engine.BUILDINGS.arrowShooter.damage, Engine.BUILDINGS.arrowShooter.attackSpeed, Engine.BUILDINGS.arrowShooter.attackRange],
   [1.5, 0.75, 3.375],
 );
+
+// Later research remains declarative: Scout can watch farther, Arrow Shooters can receive a faster refit, and buildings recover at dawn.
+const progressionRun = Engine.createRun("TEST-PROGRESSION");
+constructShelter(progressionRun);
+progressionRun.levelIndex = 3;
+progressionRun.xp = 14;
+action(progressionRun, { type: "research", nodeId: "scoutTraining1" });
+action(progressionRun, { type: "research", nodeId: "trailSense" });
+action(progressionRun, { type: "research", nodeId: "hearthkeeping1" });
+assert.equal(Engine.unitStats(progressionRun, "scout").attackRange, Engine.UNITS.scout.attackRange + 0.5, "Trail Sense raises only Scout watch range");
+progressionRun.buildings[0].health = 6;
+progressionRun.phase = "aftermath";
+progressionRun.aftermathTicks = 39;
+progressionRun.scout.x = progressionRun.scout.postX;
+progressionRun.scout.y = progressionRun.scout.postY;
+Engine.advanceTick(progressionRun);
+assert.equal(progressionRun.buildings[0].health, 7, "Hearthkeeping restores one standing structure HP at dawn");
+
+const quickcordRun = Engine.createRun("TEST-QUICKCORD");
+constructShelter(quickcordRun);
+quickcordRun.levelIndex = 3;
+quickcordRun.unlocks.push("stickLauncher");
+quickcordRun.xp = 11;
+action(quickcordRun, { type: "research", nodeId: "arrowcraft" });
+action(quickcordRun, { type: "research", nodeId: "quickcord" });
+quickcordRun.resources.wood = 6;
+quickcordRun.actionPoints = 2;
+action(quickcordRun, { type: "build", buildingType: "stickLauncher", x: 4, y: 5 });
+const quickcordTarget = quickcordRun.buildings.find((building) => building.type === "stickLauncher");
+action(quickcordRun, { type: "upgradeLauncher", id: quickcordTarget.id });
+quickcordRun.resources.wood = 2;
+quickcordRun.actionPoints = 1;
+quickcordTarget.health = 1;
+action(quickcordRun, { type: "refitBuilding", id: quickcordTarget.id, refitId: "quickcord" });
+assert.equal(quickcordTarget.health, quickcordTarget.maxHealth, "Quickcord is also a full-health refit");
+assert.equal(Engine.buildingCombatStats(quickcordRun, "arrowShooter", quickcordTarget).attackSpeed, 0.9375, "Quickcord improves only the fitted Arrow Shooter's tempo");
+const quickcordRestored = Engine.hydrate(Engine.serialize(quickcordRun));
+assert.equal(Engine.checksum(quickcordRestored), Engine.checksum(quickcordRun), "refits survive save/load and remain part of the deterministic state");
 
 // Scout is still the mobile final line and no Scout health economy is required.
 const guardianRun = Engine.createRun("TEST-GUARDIAN");
@@ -202,6 +265,18 @@ const earlyEdges = multiWaveRun.encounter.waves.slice(0, 4).map((wave) => wave.e
 assert.equal(new Set(earlyEdges).size, earlyEdges.length, "early waves rotate through different forest edges");
 assert.ok(multiWaveRun.encounter.waves.every((wave) => wave.entries.length === wave.units.length && wave.staggerTicks.length === wave.units.length));
 
+// New enemy families get an authored showcase before seeded mixes use them.
+const boarIntroRun = Engine.createRun("FIRST-BOAR");
+constructShelter(boarIntroRun);
+boarIntroRun.levelIndex = 4;
+action(boarIntroRun, { type: "endDay" });
+assert.deepEqual(boarIntroRun.encounter.units, ["boar"], "Level 5 guarantees a single Boar introduction");
+const boarMixRun = Engine.createRun("BOAR-MIX");
+constructShelter(boarMixRun);
+boarMixRun.levelIndex = 5;
+action(boarMixRun, { type: "endDay" });
+assert.ok(boarMixRun.encounter.units.includes("boar"), "Level 6 retains a minimum Boar before mixed allocations");
+
 // Replay includes research and automatic between-level continuation, with no manual Continue action.
 const replaySource = Engine.createRun("REPLAY-SEED");
 constructShelter(replaySource);
@@ -220,5 +295,6 @@ const restored = Engine.hydrate(Engine.serialize(replaySource));
 assert.equal(Engine.checksum(restored), Engine.checksum(replaySource));
 assert.throws(() => Engine.hydrate({ version: 3, state: {} }), /different version/);
 assert.throws(() => Engine.hydrate({ version: 6, state: {} }), /different version/);
+assert.throws(() => Engine.hydrate({ version: 7, state: {} }), /different version/);
 
 console.log("Wild Hearth engine checks passed.");

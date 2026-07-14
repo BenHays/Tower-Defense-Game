@@ -26,8 +26,10 @@ This roadmap protects the core loop: use the day to shape a small homestead, the
 - **All-angle invasion:** enemies can spawn from any usable perimeter cell.
 - **Scout:** a mobile melee final line. His watch radius stays centered on the daytime post; he chases, bites, and returns automatically.
 - **Stick Launcher:** the first fixed tower. It costs 2 wood and one action, has 6 health, short 2.25-cell reach, 1 damage, and fires once every 2 seconds at the nearest enemy in range.
-- **XP branches:** enemies and cleared nights award XP. Research spends XP but no day action. Scout Training I (4 XP) and Arrowcraft (6 XP) are competing early choices; there are no meat, pelt, food, or Scout-health maintenance systems.
-- **No barricade yet:** boars and their dedicated counter remain deferred until the first tower loop is proven.
+- **XP branches:** enemies and cleared nights award XP. Research spends XP but no day action. Scout Training I (4 XP), Arrowcraft (6 XP), Hearthkeeping I (Level 4, 5 XP), and Potato Packing are distinct early choices; there are no meat, pelt, food, or Scout-health maintenance systems.
+- **Dawn recovery:** Hearthkeeping I restores 1 HP at dawn to each surviving targetable building, capped at its maximum. It does not revive destroyed buildings.
+- **Refit rule:** upgrading a Stick Launcher into an Arrow Shooter costs 4 wood and one action, then restores the new Arrow Shooter to full health.
+- **Enemy schedule:** the first Boar is guaranteed on Level 5. New families appear no more than once every three levels; their counter must be researchable/buildable at least two levels before its guaranteed debut.
 - **No blueprint state:** selecting Build creates a finished structure immediately when the site, materials, and action are valid.
 
 ## Medium Threat Budget
@@ -42,8 +44,8 @@ Medium increases the previous level’s budget by **25%, rounded up**:
 | 2 | 2 | 2 raccoons |
 | 3 | 3 | 3 raccoons |
 | 4 | 4 | 4 raccoons |
-| 5 | 5 | 5 raccoons |
-| 6 | 7 | 7 raccoons |
+| 5 | 5 | Guaranteed 1 Boar showcase |
+| 6 | 7 | Seeded Boar + raccoon mix |
 
 Later difficulty modes will multiply this budget: Easy 0.8×, Medium 1.0×, Hard 1.25×, Very Hard 1.6×. They are intentionally not in the MVP UI yet.
 
@@ -51,11 +53,11 @@ Later difficulty modes will multiply this budget: Easy 0.8×, Medium 1.0×, Hard
 
 - Dependency-free, fixed-tick browser simulation with deterministic seeds, save/load, replay checkpoints, night telemetry, and a headless test runner.
 - Hidden square board, weighted forest movement, route-cost placement preview, shortest reachable-building targeting, building destruction, and rubble.
-- Day-only actions, automatic Scout combat, pause/1×/2× playback, optional building/enemy health bars, and no end-of-night popup.
+- Day-only actions, automatic Scout combat, a persistent 1×/2× playback preference, optional building/enemy health bars, and no end-of-night popup.
 - Stable one-click map input, outline-only placement feedback, selected unit/building combat stats, and no Scout health UI.
 - Visible projectiles, recoil, hit flashes, brief defeat remains, and deterministic raccoon pacing: staggered groups rotate across seeded forest edges.
 - A DOM-free, data-driven `tech-tree.js` module. **Scout Training I** costs 4 XP on Level 2 (+1 Scout damage); **Arrowcraft** costs 6 XP on Level 3 and unlocks an individual tower upgrade.
-- **Arrow Shooter:** spend 4 wood and one action to convert one Stick Launcher. It has 1.5× damage, attack speed, and range; it does not gain extra health.
+- **Arrow Shooter:** spend 4 wood and one action to convert one Stick Launcher. It has 1.5× damage, attack speed, and range; this paid refit restores it to full health.
 - Shared building recipes specify health, repair, targetability, path blocking, and optional combat. `balance-sim.js` compares named plans and verifies their replay checkpoints before a Threat Budget or tower stat is changed.
 
 ## Current challenge arc
@@ -67,8 +69,10 @@ Level 1 is intentionally safe. From Level 2 forward, the player is under real pr
 | 1 | Construct the shelter; watch Scout defeat one raccoon | Tutorial / easy |
 | 2 | Clear a tree and build the first Stick Launcher; Scout Training appears | 2 raccoons |
 | 3 | Choose Scout Training or Arrowcraft without spending an action; clear for wood | 3 raccoons |
-| 4 | Save for an Arrow Shooter or add a second launcher | 4 raccoons |
-| 5+ | Build placement and upgrade timing determine survival | Growing seeded Threat Budget |
+| 4 | Choose Hearthkeeping I or Potato Packing; save for an Arrow Shooter or add a second launcher | 4 raccoons |
+| 5 | Meet the guaranteed Boar; use the Potato Gun as its dedicated answer | 1 Boar showcase |
+| 6–7 | Mix launchers, upgrades, and emerging support tech | Seeded Boar + raccoon mix |
+| 8 | Meet the next family after Hivecraft/Bee Hive has been available two levels | New family showcase |
 
 ## Proposed next defense path
 
@@ -84,18 +88,18 @@ The **Potato Gun** should be the next distinct building after the Stick Launcher
 | Damage | 3 |
 | Tempo | Very slow — one shot every 3 seconds |
 | Range | 3 cells |
-| Extra | Knocks the target back one cell on hit |
+| Extra | Knocks the target back one cell on hit; Potato Packing adds a short non-stacking slow |
 
 Its job is not crowd control or a universal replacement for launchers. It gives the player a deliberate answer to a tough approach, while the Stick Launcher remains cheap steady pressure.
 
 ### Future research branches
 
-- **Hivecraft:** a future XP research node that unlocks a Bee Hive. Bees deal small chip damage and apply **Honeyed**, a golden visible slow on the enemy. Honey is a status effect, not a new stored resource. Start with one non-stacking slow so the effect stays readable.
+- **Hivecraft:** appears on Level 6 and unlocks a Bee Hive before the Level 8 enemy family. Bees deal small chip damage and apply **Honeyed**, a longer, lighter visible slow on the enemy. Honey is a status effect, not a new stored resource. It does not stack with itself or another slow.
 - **Fungal Craft:** a future XP research node that unlocks a Mushroom Launcher. Its shot creates a visible cloud which damages enemies over time in a small area. Start with no stacking clouds; this is the future grouped-enemy counter.
 
 ### Environment purpose
 
-- **Hearthcraft / Fire Pit (roadmap, not live contract):** research should unlock an earned Fire Pit, rather than placing a free campfire. Proposed purpose: a non-targetable, non-damaging one-cell warmth zone that slows enemies by a small amount. It is a narrow late safety net that buys Scout or a nearby tower one more attack, not a replacement for a defense. Proposed build contract: research with XP, then spend **2 wood and one action** to construct it at the homestead. Its research cost and unlock level remain open for playtesting.
+- **Hearthcraft / Fire Pit (roadmap, not live contract):** Hearthcraft appears on Level 5, costs 8 XP, and requires Arrowcraft. It unlocks an earned Fire Pit, rather than placing a free campfire. Then spend **2 wood and one action** to construct it in the central clearing. Its sole purpose is a non-targetable, non-damaging, non-healing, non-blocking **1.5-cell Warmth zone** that slows enemies **25%**. It is a narrow safety net that buys Scout or a nearby tower one more attack, not a replacement for a defense.
 - **Water:** do not add a water inventory. Later, water should be an environmental moisture source that enables fungal/garden structures near it; its first real purpose is to create location-specific choices for the Mushroom branch rather than another generic currency.
 
 ### Tree and placement UX corrections (delivered)
@@ -130,6 +134,8 @@ Keep the engine values precise, but make the player-facing contract legible. Sho
 - Save/load/reset, speed, and health-bar toggles are compact secondary controls. The primary play surface focuses on the map, resources, selected object, and **End day**.
 - Generic Field Notes are replaced by a small current-status line.
 - Selection uses a tight outline matched to the selected object or terrain cell instead of a large circular terrain highlight.
+- A compact Technology icon opens a full-screen, read-only-at-night tree overlay. It shows current and directly reachable nodes only; research remains XP-only and day-only.
+- Building art communicates intact, worn, damaged, and critical condition; the overnight report calls out structure damage and dawn recovery.
 
 ## Recommended collaboration documents
 
@@ -148,15 +154,15 @@ Every module should use the same four headings: **Live now**, **Proposed next**,
 ## Future content guardrails
 
 - No Stake Snare is planned.
-- Do not introduce the Boar or another enemy until Arrowcraft and multiple-launcher play are balanced across several seeds.
-- Once new enemies begin, add no more than one family every three levels, and make its counter buildable before its first appearance.
+- Introduce the Boar as the guaranteed Level 5 test of the Potato Gun counter after deterministic seed checks.
+- Once new enemies begin, add no more than one family every three levels, make its counter researchable/buildable at least two levels before its first appearance, and guarantee the first showcase before it enters random allocation.
 - Future tech branches may improve Scout, homestead durability, or counters, but each must create a new decision rather than an upkeep obligation.
 
 ## Next implementation order
 
-1. Validate Scout Training versus Arrowcraft versus extra-launcher choices across deterministic Medium seeds and player testing.
-2. Validate the Potato Gun's cost, unlock timing, and counter role across deterministic Medium seeds and player testing.
-3. Tune the early wave director so grouped multi-angle pressure is challenging but legible.
-4. Add the next tech branch only after the Scout and Launcher branches create a reliable but challenging progression.
-5. Add the next enemy only with its own readable building counter.
+1. Validate Scout Training, Arrowcraft, Hearthkeeping I, Potato Packing, and extra-launcher choices across deterministic Medium seeds and player testing.
+2. Validate the guaranteed Level 5 Boar, Potato Gun slow, and Arrow Shooter refit rule across deterministic Medium seeds.
+3. Tune grouped multi-angle pressure so the first Boar is readable but forces a dedicated counter.
+4. Implement the Level 6 Hivecraft / Level 8 enemy pairing only after the Boar counter loop is stable.
+5. Implement the Level 11 Mushroom Launcher pairing only after Honeyed and Warmth are readable in telemetry and art.
 6. Add Easy, Hard, and Very Hard as Threat Budget multipliers after Medium is balanced.
