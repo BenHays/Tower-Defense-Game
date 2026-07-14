@@ -7,13 +7,13 @@ This roadmap protects the core loop: use the day to shape a small homestead, the
 ### Level 1 — Shelter and first watch
 
 1. Start with Scout, a **shelter site**, **0 wood**, and two daylight actions. There is no teepee or fire yet.
-2. The only active control is **Construct shelter**. It costs no wood, consumes the full first day, and places the branch teepee. Every other action, research, and build control—including **End day**—is disabled until this is complete.
-3. The new teepee is therefore the one free thing the player *earns* through the tutorial, not a free starting building.
+2. The first active control is **Craft hatchet**. It costs no wood and consumes one action; it unlocks **Harvest Tree**. Then **Construct shelter** costs no wood and consumes the second action. Every other action, research, and build control—including **End day**—is disabled until this is complete.
+3. The new teepee is therefore the one free thing the player *earns* through the two-step tutorial, not a free starting building. The hatchet is a starter tool, not a tracked resource.
 4. End the day. Scout defeats one raccoon without help, returns to his watch post, and the **Stick Launcher** recipe unlocks.
 
 ### Level 2 — First line
 
-1. Clear a tree for **2 wood and one action**.
+1. **Harvest Tree** for **2 wood and one action**.
 2. Build a Stick Launcher for **2 wood and one action**. It completes immediately; there are no blueprints or Finish step.
 3. The launcher fires outward while Scout catches leaks near the teepee.
 4. Each completed night automatically becomes the next untimed day after Scout returns home.
@@ -21,8 +21,8 @@ This roadmap protects the core loop: use the day to shape a small homestead, the
 ## Core decisions — agreed
 
 - **Untimed day:** daylight ends only when the player chooses **End day**.
-- **Two actions:** normal days have two actions. Clearing a tree, constructing or upgrading a tower, repairing, moving Scout, and clearing rubble each take one. The forced Level 1 shelter alone takes the full opening day.
-- **Grass placement:** any unoccupied `open` or `cleared` grass cell can hold a defense. Trees, water, rubble, and buildings block placement by default. Clearing a tree earns wood and opens its grass cell; it is not a prerequisite for every defense.
+- **Two actions:** normal days have two actions. Harvesting a tree, constructing or upgrading a tower, repairing, moving Scout, and clearing rubble each take one. Level 1 spends those two actions on Craft Hatchet then Construct Shelter.
+- **Grass placement:** any unoccupied `open` or `cleared` grass cell can hold a defense. Trees, water, rubble, and buildings block placement by default. Harvesting a tree earns wood and opens its grass cell; it is not a prerequisite for every defense.
 - **Map scale:** the single authored map is a 15×15 meadow with a small centered clearing and a dense outer forest. Enemies can spawn from any usable perimeter cell.
 - **Scout:** a mobile melee final line. His watch radius stays centered on the daytime post; he chases, bites, and returns automatically.
 - **Stick Launcher:** the first fixed tower. It costs 2 wood and one action, has 8 health, short 2.25-cell reach, 1 damage, and fires once every 2 seconds at the nearest enemy in range.
@@ -67,26 +67,27 @@ Level 1 is intentionally safe. From Level 2 forward, the player is under real pr
 | Level | Player decision | Pressure |
 | --- | --- | --- |
 | 1 | Construct the shelter; watch Scout defeat one raccoon | Tutorial / easy |
-| 2 | Clear a tree and build the first Stick Launcher; Scout Training appears | 2 raccoons |
-| 3 | Choose Scout Training or Arrowcraft without spending an action; clear for wood | 3 raccoons |
-| 4 | Choose Hearthkeeping I or Potato Packing; save for an Arrow Shooter or add a second launcher | 4 raccoons |
-| 5 | Meet the guaranteed Boar; use the Potato Gun as its dedicated answer | 1 Boar showcase |
+| 2 | Harvest a tree and build the first Stick Launcher; Scout Training appears | 2 raccoons |
+| 3 | Plant a Potato Patch, or choose Scout Training / Arrowcraft and harvest for wood | 3 raccoons |
+| 4 | Let the patch grow through its second held night; choose Hearthkeeping I or Potato Packing | 4 raccoons |
+| 5 | Upgrade the mature patch into a Potato Gun before the guaranteed Boar | 1 Boar showcase |
 | 6–7 | Mix launchers, upgrades, and emerging support tech | Seeded Boar + raccoon mix |
 | 8 | Meet the next family after Hivecraft/Bee Hive has been available two levels | New family showcase |
 
-## Proposed next defense path
+## Delivered potato defense path
 
-Potato Gun, the simplified early stats, grass placement, shelter opening, and compact UI are live. Hivecraft, Fungal Craft, water, and the earned hearth are planning decisions.
+The guided hatchet/shelter opening, Potato Patch, Potato Gun conversion, simplified early stats, grass placement, and compact UI are live. Hivecraft, Fungal Craft, water, and the earned hearth are planning decisions.
 
-### Potato Gun — next new building
+### Potato Patch → Potato Gun
 
-The **Potato Gun** should be the next distinct building after the Stick Launcher. Arrow Shooter remains the Stick Launcher upgrade; Potato Gun fills the separate slow, heavy-hit role that later high-health enemies need.
+The **Potato Patch** is the deliberate setup for the next distinct defense after the Stick Launcher. It costs 1 wood and one action on Level 3, occupies its grass cell but cannot be targeted or block routes, and matures after two held nights. Holding Level 4 unlocks the 3-wood, one-action conversion into the **Potato Gun** on Level 5. Arrow Shooter remains the Stick Launcher upgrade; Potato Gun fills the separate slow, heavy-hit role that later high-health enemies need.
 
 | Property | Live starting value |
 | --- | --- |
-| Cost | 3 wood and 1 action |
+| Setup | 1-wood Potato Patch, two held nights, then 3 wood and 1 action |
+| Health | 8 |
 | Damage | 3 |
-| Tempo | Very slow — one shot every 3 seconds |
+| Tempo | Slow — one shot about every 2.2 seconds |
 | Range | 3 cells |
 | Extra | Knocks the target back one cell on hit; Potato Packing adds a short non-stacking slow |
 

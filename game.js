@@ -2,7 +2,8 @@ const Engine = window.WildHearthEngine;
 
 if (!Engine) throw new Error("Wild Hearth engine did not load.");
 
-const SAVE_KEY = "wild-hearth-save-v10";
+const SAVE_KEY = "wild-hearth-save-v11";
+const LEGACY_SAVE_KEY = "wild-hearth-save-v10";
 const SETTINGS_KEY = "wild-hearth-settings-v1";
 const elements = {
   board: document.querySelector("#game-board"),
@@ -31,6 +32,7 @@ const elements = {
   toolbarLarger: document.querySelector("#toolbar-larger"),
   toolbarSizeLabel: document.querySelector("#toolbar-size-label"),
   actionRow: document.querySelector("#action-row"),
+  hatchetButton: document.querySelector("#hatchet-button"),
   shelterButton: document.querySelector("#shelter-button"),
   repairButton: document.querySelector("#repair-button"),
   upgradeButton: document.querySelector("#upgrade-button"),
@@ -72,15 +74,17 @@ let showHealthBars = true;
 let activeTechId = null;
 const gridCells = new Map();
 let techSignature = "";
-let pointerActivation = null;
 let preferredSpeed = 1;
 let lastFocusedElement = null;
 let lastSkillPointFocusedElement = null;
 const TOOLBAR_SIZES = ["compact", "standard", "large"];
 let toolbarSize = "compact";
 let buildListSignature = "";
+let harvestEffect = null;
+let harvestTimer = null;
 const BUILD_CARD_ICONS = {
   stickLauncher: "stick-launcher-icon",
+  potatoPatch: "potato-patch-icon",
   potatoGun: "potato-gun-icon",
 };
 
@@ -163,7 +167,7 @@ function availableRefit(building) {
 function selectedCell() { return selected.kind === "cell" ? selected : null; }
 function sameCell(left, right) { return left && right && left.x === right.x && left.y === right.y; }
 function cellId(x, y) { return `${x},${y}`; }
-function isBuildTool(tool) { return Boolean(Engine.BUILDINGS[tool]) && !["teepee", "arrowShooter"].includes(tool); }
+function isBuildTool(tool) { return Boolean(Engine.BUILDINGS[tool]) && !["teepee", "arrowShooter"].includes(tool) && !Engine.BUILDINGS[tool].conversionOnly; }
 function towerRecipe(type) { return Engine.TOWER_TYPES.includes(type) ? Engine.BUILDINGS[type] : null; }
 function needsShelter() { return !Engine.hasShelter(state); }
 
@@ -211,12 +215,28 @@ function setEvent(message) {
   elements.eventLog.textContent = message;
 }
 
-function dispatch(action) {
+function dispatch(action, options = {}) {
   const outcome = Engine.dispatch(state, action);
   if (outcome.message) setEvent(outcome.message);
   gridSignature = "";
-  render();
+  if (options.render !== false) render();
   return outcome;
+}
+
+function clearHarvestEffect() {
+  if (harvestTimer) window.clearTimeout(harvestTimer);
+  harvestTimer = null;
+  harvestEffect = null;
+}
+
+function startHarvestEffect(x, y) {
+  clearHarvestEffect();
+  harvestEffect = { x, y, tone: (x * 7 + y * 3) % 3 };
+  harvestTimer = window.setTimeout(() => {
+    harvestEffect = null;
+    harvestTimer = null;
+    render();
+  }, 650);
 }
 
 function openTechnology() {
@@ -292,19 +312,7 @@ function ensureGrid() {
       cell.type = "button";
       cell.dataset.x = String(x);
       cell.dataset.y = String(y);
-      cell.addEventListener("pointerdown", (event) => {
-        if (event.button === 2 || cell.disabled) return;
-        pointerActivation = { x: String(x), y: String(y), until: Date.now() + 500 };
-        clickCell(x, y);
-      });
-      cell.addEventListener("click", () => {
-        const isPointerFollowup = pointerActivation
-          && pointerActivation.x === String(x)
-          && pointerActivation.y === String(y)
-          && Date.now() <= pointerActivation.until;
-        pointerActivation = null;
-        if (!isPointerFollowup) clickCell(x, y);
-      });
+      cell.addEventListener("click", () => clickCell(x, y));
       gridCells.set(cellId(x, y), cell);
       fragment.append(cell);
     }
@@ -387,6 +395,17 @@ function renderEntities() {
     fragment.append(node);
   });
 
+  if (harvestEffect) {
+    const effect = createNode("div", `entity harvest-effect tone-${harvestEffect.tone}`);
+    effect.append(
+      createNode("span", "harvest-canopy"),
+      createNode("span", "harvest-hatchet"),
+      createNode("span", "harvest-chips"),
+    );
+    place(effect, harvestEffect.x, harvestEffect.y);
+    fragment.append(effect);
+  }
+
   if (needsShelter()) {
     const shelterSite = createNode("div", "entity shelter-site");
     place(shelterSite, Engine.SHELTER_SITE.x, Engine.SHELTER_SITE.y);
@@ -400,8 +419,9 @@ function renderEntities() {
     if (selected.kind === "building" && selected.id === building.id) node.classList.add("is-selected");
     if (building.firingTicks > 0) node.classList.add("is-firing");
     if (building.hitTicks > 0) node.classList.add("is-hit");
+    if (building.type === "potatoPatch" && Engine.isPotatoPatchMature(building)) node.classList.add("is-mature");
     place(node, building.x, building.y);
-    addHealthBar(node, building, "building-health", true);
+    if (recipe.targetable) addHealthBar(node, building, "building-health", true);
     fragment.append(node);
   });
 
@@ -649,6 +669,8 @@ function renderControls() {
   const building = selectedBuilding();
   const refit = availableRefit(building);
   const arrowUpgradeReady = building && building.type === "stickLauncher" && Engine.hasBuildingUpgrade(state, "stickLauncher", "arrowShooter");
+  const potatoPatchUpgradeReady = building && Engine.canUpgradePotatoPatch(state, building);
+  const patchProgress = building?.type === "potatoPatch" ? Engine.potatoPatchProgress(building) : null;
   const opening = needsShelter();
   const hasPlanningTarget = Boolean(selectedScout() || towerRecipe(building?.type));
   const showPlanningCard = night || state.phase === "aftermath" || (day && hasPlanningTarget);
@@ -659,8 +681,10 @@ function renderControls() {
   elements.planningCard.hidden = opening || !showPlanningCard;
   const unlockedBuildTools = renderBuildList();
   elements.buildCard.hidden = opening || !unlockedBuildTools.length;
+  elements.hatchetButton.hidden = !opening || state.hatchetCrafted;
+  elements.hatchetButton.disabled = !day || !opening || state.hatchetCrafted || state.actionPoints <= 0;
   elements.shelterButton.hidden = !opening;
-  elements.shelterButton.disabled = !day || !opening;
+  elements.shelterButton.disabled = !day || !opening || !state.hatchetCrafted || state.actionPoints <= 0;
   elements.dayActionList.querySelectorAll("[data-tool]").forEach((button) => {
     const tool = button.dataset.tool;
     button.classList.toggle("is-active", tool === activeTool);
@@ -675,10 +699,15 @@ function renderControls() {
     button.disabled = opening || !day || state.actionPoints <= 0;
   });
   elements.repairButton.disabled = opening || !day || !building || building.health >= building.maxHealth || state.resources.wood < 1 || state.actionPoints <= 0;
-  const upgradeCost = arrowUpgradeReady ? 4 : refit?.cost?.wood || 0;
-  elements.upgradeButton.disabled = opening || !day || (!arrowUpgradeReady && !refit) || state.resources.wood < upgradeCost || state.actionPoints <= 0;
+  const upgradeCost = arrowUpgradeReady ? 4 : potatoPatchUpgradeReady ? Engine.BUILDINGS.potatoGun.cost.wood : refit?.cost?.wood || 0;
+  elements.upgradeButton.disabled = opening || !day || (!arrowUpgradeReady && !potatoPatchUpgradeReady && !refit) || state.resources.wood < upgradeCost || state.actionPoints <= 0;
   elements.actionRow.hidden = !building || !day;
   if (arrowUpgradeReady) setButtonContent(elements.upgradeButton, "Upgrade selected", "Arrowcraft · 4 wood · 1 action");
+  else if (potatoPatchUpgradeReady) setButtonContent(elements.upgradeButton, "Upgrade Potato Patch", "3 wood · 1 action · full HP");
+  else if (patchProgress) {
+    const growCopy = patchProgress.mature ? "Hold Level 4" : `${patchProgress.grownNights}/${patchProgress.requiredNights} held nights`;
+    setButtonContent(elements.upgradeButton, patchProgress.mature ? "Potato Gun locked" : "Potato Patch growing", growCopy);
+  }
   else if (refit) setButtonContent(elements.upgradeButton, `Refit ${refit.label}`, `${upgradeCost} wood · 1 action · full HP`);
   else setButtonContent(elements.upgradeButton, "Upgrade selected", "Arrowcraft · 4 wood · 1 action");
   elements.endDayButton.disabled = opening || !day;
@@ -698,7 +727,9 @@ function renderControls() {
   elements.actionBadge.textContent = day ? `${state.actionPoints} action${state.actionPoints === 1 ? "" : "s"}` : night ? "Scout on watch" : "Dawn";
   elements.actionHint.textContent = day
     ? opening
-      ? "Required to begin the first watch."
+      ? state.hatchetCrafted
+        ? "Construct the shelter to start the first watch."
+        : "Craft a hatchet to unlock tree harvesting."
       : "Choose an action, then select the meadow."
     : "Scout is defending the hearth.";
   elements.utilityLabel.textContent = night ? "Night watch" : state.phase === "aftermath" ? "Dawn" : "Tools";
@@ -706,14 +737,20 @@ function renderControls() {
   elements.levelLabel.textContent = `Level ${String(level.number).padStart(2, "0")} · ${level.title}`;
   elements.levelCopy.textContent = day
     ? opening
-      ? "Construct the shelter before the first watch."
+      ? state.hatchetCrafted
+        ? "Construct the shelter before the first watch."
+        : "Craft a hatchet, then construct the shelter."
       : level.number === 1
-        ? "Scout can hold the first raccoon. Clear a tree for wood when ready."
-      : level.number === 3 && !Engine.hasResearch(state, "arrowcraft")
-        ? "Spend earned Skill Points on a Scout, launcher, forager, or defense path."
-        : state.unlocks.includes("potatoGun") && state.resources.wood < 3
-          ? "Save wood for a Potato Gun, or build another first line."
-          : "Place defenses on open grass; clear trees for wood and faster routes."
+        ? "Scout can hold the first raccoon. Harvest a tree for wood when ready."
+        : level.number === 3 && state.unlocks.includes("potatoPatch") && !state.buildings.some((item) => item.type === "potatoPatch" && !item.destroyed)
+          ? "Plant a Potato Patch now; it needs two held nights before the Boar arrives."
+          : level.number === 4 && state.buildings.some((item) => item.type === "potatoPatch" && !Engine.isPotatoPatchMature(item))
+            ? "Your Potato Patch needs one more held night before it can become a heavy launcher."
+            : level.number === 5 && state.buildings.some((item) => Engine.canUpgradePotatoPatch(state, item))
+              ? "Upgrade a mature Potato Patch into a Potato Gun before tonight’s Boar."
+        : level.number === 3 && !Engine.hasResearch(state, "arrowcraft")
+          ? "Spend earned Skill Points on a Scout, launcher, forager, or defense path."
+        : "Place defenses on open grass; harvest trees for wood and faster routes."
     : night
       ? "Defend the hearth."
       : state.phase === "aftermath"
@@ -763,7 +800,7 @@ function render() {
 }
 
 function clickCell(x, y) {
-  if (state.phase !== "day" || needsShelter()) return;
+  if (state.phase !== "day" || needsShelter() || harvestEffect) return;
   const occupied = Engine.buildingAt(state, x, y);
   if (occupied) {
     selected = { kind: "building", id: occupied.id };
@@ -778,8 +815,11 @@ function clickCell(x, y) {
   }
   if (activeTool === "clear") {
     selected = { kind: "cell", x, y };
-    const outcome = dispatch({ type: "clear", x, y });
-    if (outcome.ok) activeTool = "none";
+    const outcome = dispatch({ type: "clear", x, y }, { render: false });
+    if (outcome.ok) {
+      activeTool = "none";
+      startHarvestEffect(x, y);
+    }
     render();
     return;
   }
@@ -805,6 +845,7 @@ function clickCell(x, y) {
 }
 
 function resetRun(seed) {
+  clearHarvestEffect();
   state = Engine.createRun(seed || state.seed);
   state.speed = preferredSpeed;
   activeTool = "none";
@@ -829,9 +870,10 @@ function saveGame() {
 
 function loadGame() {
   try {
-    const saved = localStorage.getItem(SAVE_KEY);
+    const saved = localStorage.getItem(SAVE_KEY) || localStorage.getItem(LEGACY_SAVE_KEY);
     if (!saved) { setEvent("No saved meadow is available in this browser."); return; }
     state = Engine.hydrate(saved);
+    localStorage.setItem(SAVE_KEY, Engine.serialize(state));
     preferredSpeed = state.speed;
     saveSettings();
     activeTool = "none";
@@ -839,6 +881,7 @@ function loadGame() {
     selected = teepee ? { kind: "building", id: teepee.id } : { kind: "none", id: null };
     hoverCell = null;
     accumulator = 0;
+    clearHarvestEffect();
     gridSignature = "";
     techSignature = "";
     activeTechId = null;
@@ -875,6 +918,7 @@ elements.dayActionList.addEventListener("click", selectTool);
 elements.buildList.addEventListener("click", selectTool);
 elements.toolbarSmaller.addEventListener("click", () => changeToolbarSize(-1));
 elements.toolbarLarger.addEventListener("click", () => changeToolbarSize(1));
+elements.hatchetButton.addEventListener("click", () => dispatch({ type: "craftHatchet" }));
 elements.shelterButton.addEventListener("click", () => {
   const outcome = dispatch({ type: "constructShelter" });
   if (outcome.ok) {
@@ -890,6 +934,7 @@ elements.upgradeButton.addEventListener("click", () => {
   const building = selectedBuilding();
   if (!building) return;
   if (building.type === "stickLauncher") dispatch({ type: "upgradeLauncher", id: building.id });
+  else if (building.type === "potatoPatch") dispatch({ type: "upgradePotatoPatch", id: building.id });
   else {
     const refit = availableRefit(building);
     if (refit) dispatch({ type: "refitBuilding", id: building.id, refitId: refit.id });

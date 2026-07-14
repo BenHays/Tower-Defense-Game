@@ -4,12 +4,13 @@
 
 | Building | Cost | Role |
 | --- | --- | --- |
-| Branch teepee | Free, forced Level 1 full day | Targetable homestead; can be repaired. |
+| Branch teepee | Free, two guided Level 1 actions | Targetable homestead; can be repaired. |
 | Stick Launcher | 2 wood, 1 action | 8 health; 1 hit, slow tempo, short reach. |
 | Arrow Shooter | 4 wood, 1 action upgrade | 1.5× launcher damage, tempo, and reach after Arrowcraft; a paid refit starts at full health. |
-| Potato Gun | 3 wood, 1 action | 3 hit, very slow medium reach, one-cell knockback; Potato Packing adds a short non-stacking slow. |
+| Potato Patch | 1 wood, 1 action | Non-targetable, non-blocking setup that matures after two held nights. |
+| Potato Gun | 3 wood, 1 action conversion | Converts a mature Potato Patch after Level 4; 8 health, 3 hit, slow medium reach, one-cell knockback; Potato Packing adds a short non-stacking slow. |
 
-All defenses must be built on unoccupied grass. Both original meadow grass and grass revealed by clearing a tree are valid; trees, water, rubble, and buildings are not.
+All defenses must be built on unoccupied grass. Both original meadow grass and grass revealed by harvesting a tree are valid; trees, water, rubble, and buildings are not.
 
 All live building recipes use one shared contract: footprint, health, repair, targetability, path blocking, and optional combat fields. This lets future support buildings opt out of enemy targeting without creating a second building system. A targetable building can recover 1 HP at dawn once Hearthkeeping I is researched; recovery is capped at maximum health and never revives a destroyed building.
 

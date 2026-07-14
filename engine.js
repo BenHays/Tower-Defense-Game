@@ -11,7 +11,7 @@
   root.WildHearthEngine = engine;
 }(typeof globalThis !== "undefined" ? globalThis : this, function buildEngine(TechTree) {
   if (!TechTree) throw new Error("Wild Hearth tech tree did not load.");
-  const SAVE_VERSION = 10;
+  const SAVE_VERSION = 11;
   const TICK_RATE = 20;
   const SKILL_POINT_XP = 8;
   const BOARD = { id: "hearth-meadow", label: "Hearth Meadow", width: 15, height: 15 };
@@ -137,19 +137,33 @@
         },
       },
     },
+    potatoPatch: {
+      id: "potatoPatch",
+      label: "Potato patch",
+      footprint: { width: 1, height: 1 },
+      maxHealth: 1,
+      cost: { wood: 1 },
+      actionCost: 1,
+      role: "growing counter",
+      targetable: false,
+      blocksPath: false,
+      tags: ["garden", "growing"],
+      maturityNights: 2,
+    },
     potatoGun: {
       id: "potatoGun",
       label: "Potato gun",
       footprint: { width: 1, height: 1 },
-      maxHealth: 6,
+      maxHealth: 8,
       cost: { wood: 3 },
       actionCost: 1,
       role: "heavy tower",
+      conversionOnly: true,
       targetable: true,
       blocksPath: true,
       tags: ["defense", "heavy"],
       damage: 3,
-      attackSpeed: 1 / 3,
+      attackSpeed: 0.45,
       attackRange: 3,
       projectile: { type: "potato", speed: 3.5 },
       knockback: 1,
@@ -182,9 +196,9 @@
       title: "First line",
       enemyPool: ["raccoon"],
       survivalXp: 3,
-      unlock: "potatoGun",
-      unlockLabel: "Potato Gun",
-      unlockCopy: "Save 3 wood to build a slow, heavy tower with knockback.",
+      unlock: "potatoPatch",
+      unlockLabel: "Potato patch",
+      unlockCopy: "Plant a 1-wood Potato Patch on Level 3 so it can mature before the Boar arrives.",
     },
     {
       id: "arrowcraft",
@@ -200,7 +214,9 @@
       title: "Hearthkeeping",
       enemyPool: ["raccoon"],
       survivalXp: 5,
-      unlock: null,
+      unlock: "potatoGun",
+      unlockLabel: "Potato Gun",
+      unlockCopy: "A mature Potato Patch can become a 3-wood heavy launcher before the first Boar.",
     },
     {
       id: "first-boar",
@@ -635,7 +651,7 @@
       skillPoints: state.skillPoints,
       wood: state.resources.wood,
       hides: state.resources.hides,
-      buildings: activeBuildings(state).map((building) => ({ id: building.id, type: building.type, health: building.health, maxHealth: building.maxHealth, refits: buildingRefits(building) })),
+      buildings: activeBuildings(state).map((building) => ({ id: building.id, type: building.type, health: building.health, maxHealth: building.maxHealth, refits: buildingRefits(building), growthNights: building.growthNights })),
       telemetry: state.telemetry.nightReports[state.telemetry.nightReports.length - 1] || null,
       checksum: checksum(state),
     });
@@ -683,6 +699,21 @@
     return Boolean(state.shelterBuilt) && state.buildings.some((building) => building.type === "teepee" && !building.destroyed);
   }
 
+  function potatoPatchProgress(building) {
+    const recipe = building?.type === "potatoPatch" ? buildingRecipe("potatoPatch") : null;
+    const requiredNights = recipe?.maturityNights || 0;
+    const grownNights = Math.max(0, Math.min(requiredNights, Number(building?.growthNights) || 0));
+    return { grownNights, requiredNights, mature: Boolean(recipe) && grownNights >= requiredNights };
+  }
+
+  function isPotatoPatchMature(building) {
+    return potatoPatchProgress(building).mature;
+  }
+
+  function canUpgradePotatoPatch(state, building) {
+    return Boolean(building && !building.destroyed && building.type === "potatoPatch" && isPotatoPatchMature(building) && hasUnlock(state, "potatoGun"));
+  }
+
   function makeTeepee(state) {
     return makeBuilding(state, "b-teepee", "teepee", SHELTER_SITE.x, SHELTER_SITE.y);
   }
@@ -703,6 +734,7 @@
       firingTicks: 0,
       hitTicks: 0,
       refits: [],
+      growthNights: type === "potatoPatch" ? 0 : null,
       destroyed: false,
     };
   }
@@ -726,6 +758,7 @@
       unlocks: [],
       research: [],
       terrain: FIXED_TERRAIN.slice(),
+      hatchetCrafted: false,
       shelterBuilt: false,
       buildings: [],
       rubble: [],
@@ -748,7 +781,7 @@
       nextEntityId: 1,
       kills: 0,
       actionLog: [],
-      lastEvent: "Build a shelter before the first watch.",
+      lastEvent: "Craft a hatchet, then build a shelter before the first watch.",
       outcome: null,
       aftermathTicks: 0,
       paused: false,
@@ -886,7 +919,7 @@
   function toolPreview(state, type, x, y) {
     if (type === "clear") {
       const valid = terrainAt(state, x, y) === "tree" || hasRubble(state, x, y);
-      return { type, valid, affordable: true, reason: valid ? "Clear for 2 wood and one action." : "Choose a tree or rubble." };
+      return { type, valid, affordable: true, reason: valid ? "Harvest for 2 wood and one action." : "Choose a tree or rubble." };
     }
     if (type === "scout") {
       const valid = validScoutPost(state, x, y);
@@ -913,18 +946,27 @@
       return result(state, false, "Day actions are only available before nightfall.");
     }
 
-    if (!state.shelterBuilt && !["constructShelter", "speed"].includes(action.type)) {
-      return result(state, false, "Construct shelter before taking other actions.", action, shouldRecord);
+    if (!state.shelterBuilt && !["craftHatchet", "constructShelter", "speed"].includes(action.type)) {
+      return result(state, false, "Craft a hatchet, then construct shelter before taking other actions.", action, shouldRecord);
+    }
+
+    if (action.type === "craftHatchet") {
+      if (state.hatchetCrafted) return result(state, false, "The hatchet is already ready.");
+      if (state.levelIndex !== 0) return result(state, false, "The starter hatchet can only be crafted at the start of Level 1.");
+      if (!consumeAction(state)) return result(state, false, "Both day actions are spent.");
+      state.hatchetCrafted = true;
+      return result(state, true, "Hatchet crafted. Construct the shelter to begin the first watch.", action, shouldRecord);
     }
 
     if (action.type === "constructShelter") {
       if (state.shelterBuilt || hasShelter(state)) return result(state, false, "The shelter is already built.");
       if (state.levelIndex !== 0) return result(state, false, "The shelter can only be built at the start of Level 1.");
-      if (!consumeActions(state, STARTING_ACTIONS)) return result(state, false, "Constructing the shelter takes the full first day.");
+      if (!state.hatchetCrafted) return result(state, false, "Craft the hatchet before constructing the shelter.");
+      if (!consumeAction(state)) return result(state, false, "Both day actions are spent.");
       state.buildings.push(makeTeepee(state));
       state.shelterBuilt = true;
       invalidatePaths(state);
-      return result(state, true, "Shelter complete. End the day when Scout is ready for the first watch.", action, shouldRecord);
+      return result(state, true, "Shelter complete. Both opening actions are spent; start the first watch.", action, shouldRecord);
     }
 
     if (action.type === "research") {
@@ -935,14 +977,14 @@
 
     if (action.type === "clear") {
       const terrain = terrainAt(state, action.x, action.y);
-      if (terrain !== "tree" && !hasRubble(state, action.x, action.y)) return result(state, false, "Only a tree or rubble can be cleared there.");
+      if (terrain !== "tree" && !hasRubble(state, action.x, action.y)) return result(state, false, "Only a tree or rubble can be harvested there.");
       if (terrain === "tree") {
         if (!consumeAction(state)) return result(state, false, "Both day actions are spent.");
         setTerrain(state, action.x, action.y, "cleared");
         const harvestedWood = 2 + TechTree.effectValue(state, (effect) => effect.kind === "harvestWood", "amount");
         state.resources.wood += harvestedWood;
         invalidatePaths(state);
-        return result(state, true, `Tree cleared: +${harvestedWood} wood. One day action spent; the grass is now open.`, action, shouldRecord);
+        return result(state, true, `Tree harvested: +${harvestedWood} wood. One day action spent; the grass is now open.`, action, shouldRecord);
       }
       if (!consumeAction(state)) return result(state, false, "Both day actions are spent.");
       state.rubble = state.rubble.filter((rubble) => !(rubble.x === action.x && rubble.y === action.y));
@@ -977,7 +1019,7 @@
 
     if (action.type === "build") {
       const recipe = buildingRecipe(action.buildingType);
-      if (!recipe || ["teepee", "arrowShooter"].includes(action.buildingType)) return result(state, false, "That building cannot be placed here.");
+      if (!recipe || ["teepee", "arrowShooter"].includes(action.buildingType) || recipe.conversionOnly) return result(state, false, "That building cannot be placed here.");
       if (!hasUnlock(state, action.buildingType)) return result(state, false, `${recipe.label} has not been unlocked yet.`);
       if (!validFootprint(state, action.buildingType, action.x, action.y)) return result(state, false, "That grass is blocked or occupied.");
       if (!hasResources(state, recipe.cost)) return result(state, false, `Need ${recipe.cost.wood || 0} wood to build this.`);
@@ -1004,6 +1046,28 @@
       building.firingTicks = 0;
       building.refits = [];
       return result(state, true, "Arrow Shooter refit complete at full health. One day action spent.", action, shouldRecord);
+    }
+
+    if (action.type === "upgradePotatoPatch") {
+      const building = state.buildings.find((item) => item.id === action.id && !item.destroyed);
+      if (!building || building.type !== "potatoPatch") return result(state, false, "Choose a growing Potato Patch to upgrade.");
+      if (!isPotatoPatchMature(building)) return result(state, false, `The Potato Patch needs ${Math.max(0, BUILDINGS.potatoPatch.maturityNights - (building.growthNights || 0))} more held night${Math.max(0, BUILDINGS.potatoPatch.maturityNights - (building.growthNights || 0)) === 1 ? "" : "s"}.`);
+      if (!hasUnlock(state, "potatoGun")) return result(state, false, "Hold Level 4 to unlock the Potato Gun conversion.");
+      const cost = BUILDINGS.potatoGun.cost;
+      if (!hasResources(state, cost)) return result(state, false, "A Potato Gun upgrade needs 3 wood.");
+      if (!consumeAction(state)) return result(state, false, "Both day actions are spent.");
+      spendResources(state, cost);
+      building.type = "potatoGun";
+      building.maxHealth = maxHealthFor(state, "potatoGun", building);
+      building.health = building.maxHealth;
+      building.cooldown = 0;
+      building.targetId = null;
+      building.firingTicks = 0;
+      building.hitTicks = 0;
+      building.refits = [];
+      building.growthNights = null;
+      invalidatePaths(state);
+      return result(state, true, "Potato Patch upgraded into a Potato Gun at full health. One day action spent.", action, shouldRecord);
     }
 
     if (action.type === "refitBuilding") {
@@ -1364,8 +1428,24 @@
     return restored;
   }
 
+  function growPotatoPatchesAtDawn(state) {
+    let sprouted = 0;
+    let matured = 0;
+    activeBuildings(state).forEach((building) => {
+      if (building.type !== "potatoPatch") return;
+      const before = potatoPatchProgress(building);
+      if (before.mature) return;
+      building.growthNights = Math.min(before.requiredNights, before.grownNights + 1);
+      const after = potatoPatchProgress(building);
+      if (after.mature) matured += 1;
+      else sprouted += 1;
+    });
+    return { sprouted, matured };
+  }
+
   function startNextDay(state, completedLevel, completionCopy) {
     const dawnRestored = restoreAtDawn(state);
+    const gardenProgress = growPotatoPatchesAtDawn(state);
     state.levelIndex += 1;
     state.phase = "day";
     state.actionPoints = STARTING_ACTIONS;
@@ -1380,7 +1460,12 @@
     state.aftermathTicks = 0;
     const nextLevel = levelFor(state);
     const repairCopy = dawnRestored > 0 ? ` Hearthkeeping restores ${dawnRestored} structure HP.` : "";
-    state.lastEvent = `${completedLevel.title} held. ${completionCopy}${repairCopy} Level ${nextLevel.number}: ${nextLevel.title}. Two day actions are ready.`;
+    const gardenCopy = gardenProgress.matured > 0
+      ? ` Potato Patch mature: it can become a Potato Gun when that conversion is unlocked.`
+      : gardenProgress.sprouted > 0
+        ? " Potato Patch grows through the night."
+        : "";
+    state.lastEvent = `${completedLevel.title} held. ${completionCopy}${gardenCopy}${repairCopy} Level ${nextLevel.number}: ${nextLevel.title}. Two day actions are ready.`;
   }
 
   function settleAftermath(state) {
@@ -1440,16 +1525,33 @@
     return JSON.stringify({ version: SAVE_VERSION, state });
   }
 
+  function migrateV10State(legacyState) {
+    const state = clone(legacyState);
+    state.version = SAVE_VERSION;
+    state.hatchetCrafted = Boolean(state.shelterBuilt);
+    if (Array.isArray(state.actionLog) && !state.actionLog.some((action) => action.type === "craftHatchet")) {
+      const shelterIndex = state.actionLog.findIndex((action) => action.type === "constructShelter");
+      if (shelterIndex >= 0) state.actionLog.splice(shelterIndex, 0, { type: "craftHatchet" });
+    }
+    state.buildings = Array.isArray(state.buildings) ? state.buildings.map((building) => ({
+      ...building,
+      growthNights: building.type === "potatoPatch" ? Math.max(0, Number(building.growthNights) || 0) : building.growthNights ?? null,
+    })) : state.buildings;
+    return state;
+  }
+
   function hydrate(serialized) {
     const parsed = typeof serialized === "string" ? JSON.parse(serialized) : serialized;
-    if (!parsed || parsed.version !== SAVE_VERSION || !parsed.state || parsed.state.version !== SAVE_VERSION) throw new Error("This save belongs to a different version of Wild Hearth.");
-    const state = parsed.state;
+    if (!parsed || !parsed.state || ![10, SAVE_VERSION].includes(parsed.version)) throw new Error("This save belongs to a different version of Wild Hearth.");
+    const state = parsed.version === 10 ? migrateV10State(parsed.state) : parsed.state;
+    if (state.version !== SAVE_VERSION) throw new Error("This save belongs to a different version of Wild Hearth.");
     if (!Array.isArray(state.terrain) || state.terrain.length !== BOARD.width * BOARD.height) throw new Error("This save has an invalid meadow.");
-    if (typeof state.shelterBuilt !== "boolean" || !Array.isArray(state.buildings)) throw new Error("This save has an invalid shelter state.");
+    if (typeof state.hatchetCrafted !== "boolean" || typeof state.shelterBuilt !== "boolean" || !Array.isArray(state.buildings)) throw new Error("This save has an invalid shelter state.");
     if (![1, 2].includes(state.speed)) throw new Error("This save has an invalid speed setting.");
     if (!state.resources || !Number.isFinite(state.resources.wood) || !Number.isFinite(state.resources.hides) || !Number.isFinite(state.xp) || !Number.isInteger(state.skillPoints) || !Number.isInteger(state.skillPointsEarned)) throw new Error("This save has an invalid progression state.");
     if (!state.telemetry || !state.telemetry.total || !Array.isArray(state.telemetry.nightReports) || !Array.isArray(state.replaySnapshots) || !Array.isArray(state.remains)) throw new Error("This save has an invalid night record.");
-    if (!state.buildings.every((building) => Array.isArray(building.refits || []) && buildingRefits(building).every((refitId) => refitDefinition(building.type, refitId)))) throw new Error("This save has an invalid building refit.");
+    if (!state.buildings.every((building) => buildingRecipe(building.type) && Array.isArray(building.refits || []) && buildingRefits(building).every((refitId) => refitDefinition(building.type, refitId)))) throw new Error("This save has an invalid building refit.");
+    if (!state.buildings.every((building) => building.type !== "potatoPatch" || (Number.isInteger(building.growthNights) && building.growthNights >= 0 && building.growthNights <= BUILDINGS.potatoPatch.maturityNights))) throw new Error("This save has an invalid Potato Patch.");
     syncBuildingMaxHealth(state, false);
     const teepeeCount = state.buildings.filter((building) => building.type === "teepee" && !building.destroyed).length;
     if ((state.shelterBuilt && teepeeCount !== 1) || (!state.shelterBuilt && teepeeCount !== 0)) throw new Error("This save has an invalid shelter state.");
@@ -1485,10 +1587,11 @@
       skillPointsEarned: state.skillPointsEarned,
       unlocks: state.unlocks,
       research: state.research,
+      hatchetCrafted: state.hatchetCrafted,
       shelterBuilt: state.shelterBuilt,
       kills: state.kills,
       terrain: state.terrain,
-      buildings: state.buildings.map((building) => ({ id: building.id, type: building.type, x: building.x, y: building.y, health: building.health, maxHealth: building.maxHealth, refits: buildingRefits(building), destroyed: building.destroyed })),
+      buildings: state.buildings.map((building) => ({ id: building.id, type: building.type, x: building.x, y: building.y, health: building.health, maxHealth: building.maxHealth, refits: buildingRefits(building), growthNights: building.growthNights, destroyed: building.destroyed })),
       rubble: state.rubble,
       outcome: state.outcome,
       telemetry: { total: state.telemetry?.total || {}, nightReports: state.telemetry?.nightReports || [] },
@@ -1544,6 +1647,9 @@
     isBuildableGrass,
     validScoutPost,
     hasShelter,
+    potatoPatchProgress,
+    isPotatoPatchMature,
+    canUpgradePotatoPatch,
     hasRubble,
     validFootprint,
     buildPreview,

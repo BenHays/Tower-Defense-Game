@@ -53,3 +53,7 @@
 - Keep the technology catalog declarative by branch: Huntcraft, Forager, Fortification, and Scout use Skill Point costs, node dependencies, and typed effects so combat and daytime actions stay generic.
 - Render that declarative tech data as one horizontally scrollable dependency canvas. A card must state its own short effect, while the detail pane carries the longer explanation.
 - Roll hide drops from a seed, level id, and enemy id rather than runtime randomness. Saves and replay checksums can then reproduce rewards exactly.
+- A free starter tool can teach a verb without becoming a new resource: Craft Hatchet spends the first opening action, then unlocks Harvest Tree and the normal wood loop.
+- Use a non-targetable, non-blocking Potato Patch to reserve a future tower site. Dawn-counted growth keeps the conversion timing deterministic for saves, replays, and the Level 5 Boar counter.
+- Render the hatchet swing as a short UI-only overlay after the deterministic harvest resolves; the feedback stays satisfying without becoming simulation state.
+- Use one click listener per grid cell. Combining pointer-down and click activation can spend two day actions for one physical land click after the renderer updates.

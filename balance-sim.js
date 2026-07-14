@@ -18,12 +18,17 @@ function settleNight(state) {
 }
 
 function firstTowerSite(state, type) {
+  let best = null;
   for (let y = 0; y < Engine.BOARD.height; y += 1) {
     for (let x = 0; x < Engine.BOARD.width; x += 1) {
-      if (Engine.validFootprint(state, type, x, y)) return { x, y };
+      if (!Engine.validFootprint(state, type, x, y)) continue;
+      const distanceToHearth = Math.hypot(x - Engine.SHELTER_SITE.x, y - Engine.SHELTER_SITE.y);
+      if (!best || distanceToHearth < best.distanceToHearth || (distanceToHearth === best.distanceToHearth && (y < best.y || (y === best.y && x < best.x)))) {
+        best = { x, y, distanceToHearth };
+      }
     }
   }
-  return null;
+  return best && { x: best.x, y: best.y };
 }
 
 function firstTreeSite(state) {
@@ -38,7 +43,10 @@ function firstTreeSite(state) {
 function runPlan(label, chooseDayAction) {
   const state = Engine.createRun(seed);
   while (state.phase === "day" && state.levelIndex + 1 <= maxLevel) {
-    if (!Engine.hasShelter(state)) Engine.dispatch(state, { type: "constructShelter" });
+    if (!Engine.hasShelter(state)) {
+      if (!state.hatchetCrafted) Engine.dispatch(state, { type: "craftHatchet" });
+      Engine.dispatch(state, { type: "constructShelter" });
+    }
     else chooseDayAction(state);
     if (state.phase === "day") Engine.dispatch(state, { type: "endDay" });
     settleNight(state);
@@ -56,6 +64,7 @@ function runPlan(label, chooseDayAction) {
     towers: state.buildings.filter((building) => Engine.TOWER_TYPES.includes(building.type)).map((building) => building.type),
     checkpoints: replay.checkpoints.length,
     lastNight: latest ? `${latest.number}:${latest.result} · ${latest.telemetry?.buildingDamage?.toFixed(1) || "0.0"} structure dmg` : "none",
+    lastShots: latest ? Object.entries(latest.telemetry?.shotsBySource || {}).map(([source, shots]) => `${source} ${shots}`).join(", ") || "none" : "none",
   };
 }
 
@@ -85,11 +94,28 @@ const arrowRush = runPlan("Arrowcraft rush", (state) => {
 });
 
 const potatoRush = runPlan("potato rush", (state) => {
-  const potatoSite = firstTowerSite(state, "potatoGun");
-  if (state.unlocks.includes("potatoGun") && state.resources.wood >= 3 && potatoSite) {
-    Engine.dispatch(state, { type: "build", buildingType: "potatoGun", ...potatoSite });
-  } else if (firstTreeSite(state)) {
+  const patch = state.buildings.find((building) => building.type === "potatoPatch" && !building.destroyed);
+  if (!patch && state.levelIndex === 1 && state.unlocks.includes("stickLauncher")) {
+    if (state.resources.wood < 2 && firstTreeSite(state)) Engine.dispatch(state, { type: "clear", ...firstTreeSite(state) });
+    const launcherSite = firstTowerSite(state, "stickLauncher");
+    if (state.resources.wood >= 2 && launcherSite && state.actionPoints > 0) Engine.dispatch(state, { type: "build", buildingType: "stickLauncher", ...launcherSite });
+    return;
+  }
+  if (patch && Engine.canUpgradePotatoPatch(state, patch) && state.resources.wood >= 3) {
+    Engine.dispatch(state, { type: "upgradePotatoPatch", id: patch.id });
+    return;
+  }
+  if (!patch && state.unlocks.includes("potatoPatch")) {
+    if (state.resources.wood < 1 && firstTreeSite(state)) Engine.dispatch(state, { type: "clear", ...firstTreeSite(state) });
+    const patchSite = firstTowerSite(state, "potatoPatch");
+    if (state.resources.wood >= 1 && patchSite && state.actionPoints > 0) Engine.dispatch(state, { type: "build", buildingType: "potatoPatch", ...patchSite });
+  }
+  while (state.actionPoints > 0 && state.resources.wood < 3 && firstTreeSite(state)) {
     Engine.dispatch(state, { type: "clear", ...firstTreeSite(state) });
+  }
+  const maturePatch = state.buildings.find((building) => building.type === "potatoPatch" && !building.destroyed);
+  if (maturePatch && Engine.canUpgradePotatoPatch(state, maturePatch) && state.resources.wood >= 3 && state.actionPoints > 0) {
+    Engine.dispatch(state, { type: "upgradePotatoPatch", id: maturePatch.id });
   }
 });
 
