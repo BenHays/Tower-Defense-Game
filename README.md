@@ -51,6 +51,8 @@ node scripts/render-title-sketch.js
 
 The game can be published as a Codex Site for browser-based playtesting. The hosted build has no environment variables or server-side game state; each tester's save remains in their own browser.
 
+For a Cloudflare Workers static deployment, use `npm run build` as the build command and `npx wrangler deploy` as the deploy command. `wrangler.jsonc` deliberately publishes only `dist/`, never the repository root or `node_modules/`.
+
 ## Key commands
 
 ```sh
