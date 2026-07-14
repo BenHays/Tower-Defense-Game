@@ -2,7 +2,7 @@
 
 ## MVP scope
 
-- The no-timer day still needs a fixed action budget: normal days have two actions, and clearing, building, repairing, upgrading, and Scout placement each use one. XP is lifetime progress; the first Skill Point arrives at 10 XP and each later total-XP threshold doubles, while research spends points without an action.
+- The no-timer day still needs a fixed action budget: normal days have two actions, and clearing, building, repairing, upgrading, and Scout placement each use one. XP is lifetime progress; the first Skill Point arrives at 10 XP and each later total-XP threshold doubles, while Talent learning spends points without an action.
 - Scout is fully automatic at night; player attention stays on daytime position, terrain, and building decisions rather than combat controls.
 
 ## Hosting
@@ -28,7 +28,7 @@
 - Keep the early Stick Launcher sturdy at 8 HP while its Arrow Shooter refit remains at 6 HP; Arrowcraft trades durability for damage, tempo, and reach instead of being a pure upgrade.
 - Model cleared forest as its own terrain value rather than generic open ground. It preserves the harvested-tree visual and faster movement while both terrain values remain valid grass for building placement.
 - A survival aid cannot be free by default: introduce the teepee through a forced zero-cost, full-day Level 1 shelter action, and defer fire until it is an XP-researched, wood-built safety net with one clear purpose.
-- Keep `tech-tree.js` declarative and apply typed effects against immutable unit/building recipes at combat time; this keeps stacked upgrades, saves, and replay deterministic.
+- Keep `talent-tree.js` declarative and apply typed effects against immutable unit/building recipes at combat time; this keeps stacked upgrades, saves, and replay deterministic. Use the separate `talent-icons.js` registry for normalized SVG art and stable icon ids.
 - Never replace interactive grid cells during hover rendering. Keep the grid mounted and patch classes so one armed tool click followed by one map click is reliable.
 - Record a compact per-night telemetry report and replay checkpoint at settlement; use it to validate balance plans before changing pressure or stats.
 - Rotate deterministic wave edges before repeats and stagger units within a group. It produces all-angle pressure without sacrificing readability.
@@ -50,11 +50,12 @@
 ## Progression and occupancy
 
 - Scout reserves only the day-placed watch post: construction and Scout placement reject overlaps, while enemies still target only real targetable buildings and Scout retains no health economy.
-- Keep the technology catalog declarative by branch: Huntcraft, Forager, Fortification, and Scout use node dependencies, icons, and typed effects so combat and daytime actions stay generic; calculate 1, 2, 4, 8 Skill Point costs from each branch's purchase count.
+- Keep the Talent Tree catalog declarative by branch: Hunting, Farming, Building, Nurturing, and Scouting use node dependencies, shared icon ids, and typed effects so combat and daytime actions stay generic; calculate 1, 2, 4, 8 Skill Point costs from each branch's purchase count.
 - Render that declarative tech data as one horizontally scrollable dependency canvas. Nodes should spend their space on an icon and small cost badge, while the detail pane carries the longer explanation.
 - Roll hide drops from a seed, level id, and enemy id rather than runtime randomness. Saves and replay checksums can then reproduce rewards exactly.
 - A free starter tool can teach a verb without becoming a new resource: clicking a map stick and rock unlocks Craft Axe for the first opening action, then unlocks Harvest Tree and the normal wood loop.
 - Use a non-targetable, non-blocking Potato Patch to reserve a future tower site. Dawn-counted growth keeps the conversion timing deterministic for saves, replays, and the Level 5 Boar counter.
 - Render the hatchet swing as a short UI-only overlay after the deterministic harvest resolves; the feedback stays satisfying without becoming simulation state.
 - Use one click listener per grid cell. Combining pointer-down and click activation can spend two day actions for one physical land click after the renderer updates.
+- A two-step map placement action must make its armed state visually dominant. The shelter still needs a map-site click by design, so its selected button changes to “Choose shelter site” and must not be overridden by an idle opening-button style.
 - Keep harvest feedback renderer-only: a 1.2-second, three-pose axe rotation (raised → downward strike → raised) can play above the already-resolved terrain without changing saves, replays, or action cost. Reduced-motion mode still needs a visible static impact tableau; never hide all confirmation feedback.

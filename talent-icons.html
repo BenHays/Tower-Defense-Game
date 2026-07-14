@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Wild Hearth — Talent Icon Gallery</title>
+    <style>
+      :root { color: #183b2f; background: #eaf1e5; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+      * { box-sizing: border-box; }
+      body { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 48px 0 72px; }
+      header { display: flex; align-items: end; justify-content: space-between; gap: 24px; padding-bottom: 24px; border-bottom: 1px solid #c8d9c2; }
+      h1 { margin: 0; font-size: clamp(2rem,5vw,3.3rem); letter-spacing: -.045em; }
+      p { max-width: 640px; color: #527064; line-height: 1.55; }
+      code { padding: .16em .36em; border-radius: 5px; color: #235640; background: #dcebd7; font-weight: 750; }
+      #gallery { display: grid; grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); gap: 16px; margin-top: 30px; }
+      .icon-card { display: grid; grid-template-columns: 72px 1fr; align-items: center; gap: 14px; min-height: 104px; padding: 16px; border: 1px solid #c8d9c2; border-radius: 18px; background: #fffef9; box-shadow: 0 7px 18px rgba(27,65,45,.08); }
+      .icon-art { display: grid; place-items: center; width: 72px; height: 72px; border: 2px solid #3f7857; border-radius: 20px; color: #2b664a; background: radial-gradient(circle at 32% 28%,#fffef8,#dcebd5); }
+      .icon-art svg { width: 54px; height: 54px; overflow: visible; transform: translateY(var(--icon-optical-y,0)); }
+      .icon-card strong { display: block; font-size: .92rem; }
+      .icon-card code { display: inline-block; margin-top: 5px; font-size: .7rem; overflow-wrap: anywhere; }
+      .count { flex: 0 0 auto; color: #527064; font-size: .76rem; font-weight: 800; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>Talent Icons</h1>
+        <p>Every Talent Tree icon lives in <code>talent-icons.js</code>. Use the displayed id in a talent node’s <code>icon</code> field.</p>
+      </div>
+      <span class="count" id="count"></span>
+    </header>
+    <main id="gallery" aria-label="Talent icon gallery"></main>
+    <script src="talent-icons.js?v=talent-workbench-1"></script>
+    <script>
+      const namespace = "http://www.w3.org/2000/svg";
+      const gallery = document.querySelector("#gallery");
+      const icons = window.WildHearthTalentIcons.list();
+      document.querySelector("#count").textContent = `${icons.length} shared icons`;
+      icons.forEach((icon) => {
+        const card = document.createElement("article");
+        card.className = "icon-card";
+        const art = document.createElement("div");
+        art.className = "icon-art";
+        const svg = document.createElementNS(namespace, "svg");
+        svg.setAttribute("viewBox", "0 0 48 48");
+        svg.setAttribute("fill", "none");
+        svg.setAttribute("stroke", "currentColor");
+        svg.setAttribute("stroke-width", "3.5");
+        svg.setAttribute("stroke-linecap", "round");
+        svg.setAttribute("stroke-linejoin", "round");
+        svg.style.setProperty("--icon-optical-y", `${icon.offsetY || 0}px`);
+        icon.parts.forEach((part) => {
+          const shape = document.createElementNS(namespace, part.tag);
+          Object.entries(part).forEach(([key, value]) => { if (key !== "tag") shape.setAttribute(key, value); });
+          svg.append(shape);
+        });
+        art.append(svg);
+        const copy = document.createElement("div");
+        const label = document.createElement("strong");
+        label.textContent = icon.label;
+        const id = document.createElement("code");
+        id.textContent = icon.id;
+        copy.append(label, id);
+        card.append(art, copy);
+        gallery.append(card);
+      });
+    </script>
+  </body>
+</html>

@@ -138,6 +138,9 @@ button[hidden], [hidden] { display: none !important; }
 .tech-dialog-panel { max-height: calc(100vh - 28px); }.tech-dialog .tech-branch { display: grid; grid-template-columns: 104px max-content; align-items: center; gap: 20px; min-height: 104px; padding: 9px 0; }.tech-dialog .tech-branch-label { display: grid; place-items: center; min-height: 56px; margin: 0; padding: 8px 9px; border: 1px solid color-mix(in srgb,var(--tech-color) 55%,white); border-radius: 13px; color: var(--tech-color); background: var(--tech-tint); box-shadow: inset 0 0 0 3px rgba(255,255,255,.5); font-size: .63rem; font-weight: 950; letter-spacing: .08em; line-height: 1.15; text-align: center; text-transform: uppercase; }.tech-dialog .tech-node .tech-node-icon { font-size: clamp(2.45rem,4vw,3.6rem); }
 @media(max-width:860px) { .tech-dialog .tech-branch { grid-template-columns: 92px max-content; gap: 14px; }.tech-dialog .tech-branch-label { font-size: .57rem; }.tech-dialog .tech-node .tech-node-icon { font-size: 2.5rem; } }
 
+/* Shared SVG talent art uses one 48 x 48 canvas, so every icon centers by geometry instead of font metrics. */
+.tech-branch[data-branch="hunting"] { --tech-color: #a96526; --tech-tint: #f6e7d0; }.tech-branch[data-branch="farming"] { --tech-color: #477a47; --tech-tint: #e2efdc; }.tech-branch[data-branch="building"] { --tech-color: #4c6f91; --tech-tint: #deebf4; }.tech-branch[data-branch="nurturing"] { --tech-color: #9a5f62; --tech-tint: #f6e1df; }.tech-branch[data-branch="scouting"] { --tech-color: #765276; --tech-tint: #f0e2f2; }.tech-connection.hunting { stroke: rgba(169,101,38,.66); }.tech-connection.farming { stroke: rgba(71,122,71,.66); }.tech-connection.building { stroke: rgba(76,111,145,.66); }.tech-connection.nurturing { stroke: rgba(154,95,98,.66); }.tech-connection.scouting { stroke: rgba(118,82,118,.66); }.tech-dialog .tech-node .tech-node-icon { display: grid; place-items: center; width: 68px; height: 68px; color: currentColor; font-size: initial; line-height: 0; text-shadow: none; }.tech-dialog .tech-node .tech-node-icon svg,.tech-detail-icon > svg { display: block; width: 100%; height: 100%; overflow: visible; transform: translateY(var(--icon-optical-y,0)); }.tech-detail-icon > svg { width: 54px; height: 54px; }
+
 /* Generated tower art uses the same silhouettes in the meadow and Build strip. */
 .building.stickLauncher,
 .building.potatoGun {
@@ -226,7 +229,8 @@ button[hidden], [hidden] { display: none !important; }
 
 /* The opening teaches two concrete actions without introducing a new resource. */
 .day-action-list .opening-action { grid-column: 1 / -1; }
-.opening-action:not(:disabled) { border-color: rgba(190, 137, 57, .55); background: linear-gradient(112deg, #fffdf8, #f8efd3); }
+.opening-action:not(:disabled):not(.is-active) { border-color: rgba(190, 137, 57, .55); background: linear-gradient(112deg, #fffdf8, #f8efd3); }
+.opening-action.is-active { border-color: #2f674c; color: #fffdf8; background: linear-gradient(135deg,#285f47,#4d8b59); box-shadow: inset 0 -3px rgba(0,0,0,.16),0 0 0 3px rgba(125,178,108,.27); }.opening-action.is-active .tool-icon { color: #24563e; background: #fffdf8; }.opening-action.is-active .tool-copy small { color: #e3f3d9; }
 
 /* A Potato Patch reserves a future tower cell while remaining harmless to enemies. */
 .building.potatoPatch { z-index: 4; width: 56px; height: 56px; overflow: visible; filter: drop-shadow(0 3px 2px rgba(31,56,38,.2)); }

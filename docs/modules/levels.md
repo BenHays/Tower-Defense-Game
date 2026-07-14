@@ -7,7 +7,7 @@
 - Holding Level 2 unlocks Potato Patch; it can be planted at Level 3.
 - Holding Level 4 unlocks the Potato Gun conversion, so a mature patch is ready for the Level 5 Boar.
 - Level 2 reveals the first 1-Skill-Point choices: Scout Training I and Woodland Yield.
-- Level 3 reveals Huntcraft range, Arrowcraft after its dependencies, Field Mending, Hearthkeeping I, and Trail Sense. Level 4 continues those lanes with Quickcord and Reinforced Frames.
+- Level 3 reveals Hunting range, Arrowcraft after its dependencies, Field Mending, Hearthkeeping I, and Trail Sense. Level 4 continues those lanes with Quickcord and Reinforced Frames.
 - Level 5 has a guaranteed Boar showcase. A Potato Patch planted at Level 3 matures across two held nights and can convert into the Potato Gun before its counter role is required.
 - Level 1 opens with a clickable stick and rock. **Craft axe** becomes available after both pickups, then **Place shelter** is armed and can be placed on any valid grass. Crafting and placement each consume one action. The first real harvest/build choice begins after that tutorial pair.
 

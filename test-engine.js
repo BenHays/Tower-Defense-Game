@@ -1,5 +1,9 @@
 const assert = require("node:assert/strict");
 const Engine = require("./engine.js");
+const TalentIcons = require("./talent-icons.js");
+
+assert.deepEqual(Object.keys(Engine.TECH_BRANCHES), ["hunting", "farming", "building", "nurturing", "scouting"], "the live Talent Tree uses the five player-facing branches");
+assert.ok(Engine.techNodes().every((node) => TalentIcons.icon(node.icon)), "every live talent resolves through the shared icon catalog");
 
 function action(state, payload) {
   const result = Engine.dispatch(state, payload);
@@ -150,6 +154,13 @@ v12Save.state.version = 12;
 const migratedV12 = Engine.hydrate(v12Save);
 assert.equal(migratedV12.openingPickups.find((pickup) => pickup.id === "starter-stick").collected, true, "v12 saves preserve a partially collected opening");
 assert.equal(migratedV12.openingPickups.find((pickup) => pickup.id === "starter-rock").collected, false, "v12 migration does not invent the missing starter material");
+const v13Save = JSON.parse(Engine.serialize(v12OpeningRun));
+v13Save.version = 13;
+v13Save.state.version = 13;
+v13Save.state.research = ["woodlandYield"];
+const migratedV13 = Engine.hydrate(v13Save);
+assert.equal(migratedV13.version, 14, "v13 saves migrate into the renamed Talent Tree version");
+assert.deepEqual(migratedV13.research, ["woodlandYield"], "a migrated v13 save keeps its learned talents");
 assert.equal(run.resources.wood, 0, "building still spends the whole first wood bundle");
 assert.equal(run.actionPoints, 0);
 assert.equal(Engine.BUILDINGS.stickLauncher.attackRange, 2.25);
@@ -175,7 +186,7 @@ assert.equal(Engine.grantExperience(milestoneRun, 80).skillPoints, 4, "one large
 assert.equal(milestoneRun.skillPoints, 4);
 assert.equal(Engine.nextSkillPointThreshold(milestoneRun), 160);
 
-// Tech is data-driven: Skill Point Scout Training permanently modifies the calculated Scout stats.
+// Talents are data-driven: Skill Point Scout Training permanently modifies the calculated Scout stats.
 const scoutTechRun = Engine.createRun("TEST-SCOUT-TECH");
 constructShelter(scoutTechRun);
 scoutTechRun.levelIndex = 1;
@@ -190,7 +201,7 @@ assert.equal(scoutTechRun.skillPoints, 0);
 assert.equal(scoutTechRun.actionPoints, scoutResearchActions, "research never consumes a day action");
 assert.equal(Engine.unitStats(scoutTechRun, "scout").damage, 2, "Scout Training adds damage without mutating the base recipe");
 assert.equal(Engine.UNITS.scout.damage, 1);
-assert.equal(Engine.dispatch(scoutTechRun, { type: "research", nodeId: "scoutTraining1" }).ok, false, "a technology cannot be bought twice");
+assert.equal(Engine.dispatch(scoutTechRun, { type: "research", nodeId: "scoutTraining1" }).ok, false, "a talent cannot be bought twice");
 
 const branchCostRun = Engine.createRun("TEST-BRANCH-COSTS");
 constructShelter(branchCostRun);
@@ -199,15 +210,15 @@ branchCostRun.unlocks.push("stickLauncher", "potatoGun");
 branchCostRun.xp = 640;
 branchCostRun.skillPoints = 7;
 branchCostRun.skillPointsEarned = 7;
-assert.equal(Engine.techAvailability(branchCostRun, "hardwoodThrows").costSkillPoints, 1, "the first Huntcraft purchase costs 1 Skill Point");
+assert.equal(Engine.techAvailability(branchCostRun, "hardwoodThrows").costSkillPoints, 1, "the first Hunting purchase costs 1 Skill Point");
 assert.equal(Engine.techAvailability(branchCostRun, "scoutTraining1").costSkillPoints, 1, "a different branch still starts at 1 Skill Point");
 action(branchCostRun, { type: "research", nodeId: "hardwoodThrows" });
-assert.equal(Engine.techAvailability(branchCostRun, "launcherRange").costSkillPoints, 2, "the second Huntcraft purchase costs 2 Skill Points");
+assert.equal(Engine.techAvailability(branchCostRun, "launcherRange").costSkillPoints, 2, "the second Hunting purchase costs 2 Skill Points");
 assert.equal(Engine.techAvailability(branchCostRun, "potatoPacking").costSkillPoints, 2, "side nodes share their branch's escalating cost");
 action(branchCostRun, { type: "research", nodeId: "potatoPacking" });
-assert.equal(Engine.techAvailability(branchCostRun, "launcherRange").costSkillPoints, 4, "the third Huntcraft purchase costs 4 Skill Points");
+assert.equal(Engine.techAvailability(branchCostRun, "launcherRange").costSkillPoints, 4, "the third Hunting purchase costs 4 Skill Points");
 action(branchCostRun, { type: "research", nodeId: "launcherRange" });
-assert.equal(Engine.techAvailability(branchCostRun, "arrowcraft").costSkillPoints, 8, "the fourth Huntcraft purchase costs 8 Skill Points");
+assert.equal(Engine.techAvailability(branchCostRun, "arrowcraft").costSkillPoints, 8, "the fourth Hunting purchase costs 8 Skill Points");
 
 // Scout's day post reserves one grass cell, while structures reserve their own cells.
 const occupancyRun = Engine.createRun("TEST-SCOUT-OCCUPANCY");
@@ -223,7 +234,7 @@ const newPost = { x: Engine.SHELTER_SITE.x - 2, y: Engine.SHELTER_SITE.y - 1 };
 action(occupancyRun, { type: "scout", ...newPost });
 assert.equal(Engine.validFootprint(occupancyRun, "stickLauncher", oldPost.x, oldPost.y), true, "moving Scout frees the old watch post for construction");
 
-// Forager and Fortification branches use typed effects rather than special-case action rules.
+// Farming, Building, and Nurturing talents use typed effects rather than special-case action rules.
 const foragerRun = Engine.createRun("TEST-FORAGER");
 constructShelter(foragerRun);
 foragerRun.levelIndex = 1;
@@ -235,18 +246,18 @@ foragerRun.actionPoints = 1;
 action(foragerRun, { type: "clear", x: 1, y: 3 });
 assert.equal(foragerRun.resources.wood, 3, "Woodland Yield raises a tree harvest by one wood");
 
-const fortificationRun = Engine.createRun("TEST-FORTIFICATION");
-constructShelter(fortificationRun);
-fortificationRun.levelIndex = 4;
-fortificationRun.xp = 640;
-fortificationRun.skillPoints = 7;
-fortificationRun.skillPointsEarned = 7;
-action(fortificationRun, { type: "research", nodeId: "hearthkeeping1" });
-action(fortificationRun, { type: "research", nodeId: "reinforcedFrames" });
-assert.equal(fortificationRun.buildings[0].maxHealth, 14, "Reinforced Frames adds maximum health to standing targetable structures");
-assert.equal(fortificationRun.buildings[0].health, 14, "new frame protection is granted immediately instead of creating a damaged upgrade");
-action(fortificationRun, { type: "research", nodeId: "barkArmor" });
-assert.equal(fortificationRun.skillPoints, 0, "three Fortification purchases consume 1 + 2 + 4 Skill Points");
+const buildingRun = Engine.createRun("TEST-BUILDING");
+constructShelter(buildingRun);
+buildingRun.levelIndex = 4;
+buildingRun.xp = 80;
+buildingRun.skillPoints = 4;
+buildingRun.skillPointsEarned = 4;
+action(buildingRun, { type: "research", nodeId: "hearthkeeping1" });
+action(buildingRun, { type: "research", nodeId: "reinforcedFrames" });
+assert.equal(buildingRun.buildings[0].maxHealth, 14, "Reinforced Frames adds maximum health to standing targetable structures");
+assert.equal(buildingRun.buildings[0].health, 14, "new frame protection is granted immediately instead of creating a damaged upgrade");
+action(buildingRun, { type: "research", nodeId: "barkArmor" });
+assert.equal(buildingRun.skillPoints, 0, "one Nurturing and two Building purchases consume 1 + 1 + 2 Skill Points");
 
 // Forest remains dense, but every edge is a legal seeded spawn entry.
 assert.equal(Engine.isPassable(Engine.createRun("FOREST-PATH"), 0, 0), true);
@@ -344,7 +355,7 @@ upgradeRun.skillPoints = 7;
 upgradeRun.skillPointsEarned = 7;
 action(upgradeRun, { type: "research", nodeId: "hardwoodThrows" });
 action(upgradeRun, { type: "research", nodeId: "launcherRange" });
-assert.equal(Engine.techAvailability(upgradeRun, "arrowcraft").available, true, "Arrowcraft appears after its Huntcraft dependencies");
+assert.equal(Engine.techAvailability(upgradeRun, "arrowcraft").available, true, "Arrowcraft appears after its Hunting dependencies");
 const researchActions = upgradeRun.actionPoints;
 action(upgradeRun, { type: "research", nodeId: "arrowcraft" });
 assert.equal(upgradeRun.xp, 640);

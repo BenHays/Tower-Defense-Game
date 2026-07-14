@@ -7,7 +7,7 @@ This roadmap protects the core loop: use the day to shape a small homestead, the
 ### Level 1 — Shelter and first watch
 
 1. Start with Scout, a visible **stick** and **rock** in the clearing, **0 wood**, and two daylight actions. There is no teepee or fire yet.
-2. Click both materials (free). **Craft axe** becomes available and consumes one action; it unlocks **Harvest Tree**. **Place shelter** then consumes the second action and lets the player choose any unoccupied grass cell. Every other action, research, and build control—including **End day**—is disabled until this is complete.
+2. Click both materials (free). **Craft axe** becomes available and consumes one action; it unlocks **Harvest Tree**. **Place shelter** then consumes the second action and lets the player choose any unoccupied grass cell. Every other action, Talent Tree, and build control—including **End day**—is disabled until this is complete.
 3. The new teepee is therefore the one free thing the player *earns* through the two-action tutorial, not a free starting building. The axe is a starter tool, not a tracked resource.
 4. End the day. Scout defeats one raccoon without help, returns to his watch post, and the **Stick Launcher** recipe unlocks.
 
@@ -26,7 +26,7 @@ This roadmap protects the core loop: use the day to shape a small homestead, the
 - **Map scale:** the single authored map is a 15×15 meadow with a small centered clearing and a dense outer forest. Enemies can spawn from any usable perimeter cell.
 - **Scout:** a mobile melee final line. His watch radius stays centered on the daytime post; he chases, bites, and returns automatically.
 - **Stick Launcher:** the first fixed tower. It costs 2 wood and one action, has 8 health, short 2.25-cell reach, 1 damage, and fires once every 2 seconds at the nearest enemy in range.
-- **XP branches:** enemies and cleared nights award XP. Research spends XP but no day action. Scout Training I (4 XP), Arrowcraft (6 XP), Hearthkeeping I (Level 4, 5 XP), and Potato Packing are distinct early choices; there are no meat, pelt, food, or Scout-health maintenance systems.
+- **Talent Tree:** enemies and cleared nights award XP, which creates Skill Points at 10, 20, 40, 80, and later doubling total-XP thresholds. Learning costs Skill Points but no day action. Scout Training I, Arrowcraft, Hearthkeeping I, and Potato Packing are distinct early choices; there are no meat, pelt, food, or Scout-health maintenance systems.
 - **Dawn recovery:** Hearthkeeping I restores 1 HP at dawn to each surviving targetable building, capped at its maximum. It does not revive destroyed buildings.
 - **Refit rule:** upgrading a Stick Launcher into an Arrow Shooter costs 4 wood and one action, then restores the new Arrow Shooter to full health.
 - **Enemy schedule:** the first Boar is guaranteed on Level 5. New families appear no more than once every three levels; their counter must be researchable/buildable at least two levels before its guaranteed debut.
@@ -56,7 +56,7 @@ Later difficulty modes will multiply this budget: Easy 0.8×, Medium 1.0×, Hard
 - Day-only actions, automatic Scout combat, a persistent 1×/2× playback preference, optional building/enemy health bars, and no end-of-night popup.
 - Stable one-click map input, outline-only placement feedback, selected unit/building combat stats, and no Scout health UI.
 - Visible projectiles, recoil, hit flashes, brief defeat remains, and deterministic raccoon pacing: staggered groups rotate across seeded forest edges.
-- A DOM-free, data-driven `tech-tree.js` module. The first Skill Point arrives at 10 XP, then total-XP thresholds double; each branch's purchases cost 1, 2, 4, 8 Skill Points independently. **Scout Training I** adds +1 Scout damage, while **Arrowcraft** unlocks an individual tower upgrade.
+- A DOM-free, data-driven `talent-tree.js` module with five player-facing branches: Hunting, Farming, Building, Nurturing, and Scouting. The first Skill Point arrives at 10 XP, then total-XP thresholds double; each branch's purchases cost 1, 2, 4, 8 Skill Points independently. **Scout Training I** adds +1 Scout damage, while **Arrowcraft** unlocks an individual tower upgrade.
 - **Arrow Shooter:** spend 4 wood and one action to convert one Stick Launcher. It has 1.5× damage, attack speed, and range; this paid refit restores it to full health.
 - Shared building recipes specify health, repair, targetability, path blocking, and optional combat. `balance-sim.js` compares named plans and verifies their replay checkpoints before a Threat Budget or tower stat is changed.
 
@@ -93,14 +93,14 @@ The **Potato Patch** is the deliberate setup for the next distinct defense after
 
 Its job is not crowd control or a universal replacement for launchers. It gives the player a deliberate answer to a tough approach, while the Stick Launcher remains cheap steady pressure.
 
-### Future research branches
+### Future Talent Tree branches
 
 - **Hivecraft:** appears on Level 6 and unlocks a Bee Hive before the Level 8 enemy family. Bees deal small chip damage and apply **Honeyed**, a longer, lighter visible slow on the enemy. Honey is a status effect, not a new stored resource. It does not stack with itself or another slow.
 - **Fungal Craft:** a future XP research node that unlocks a Mushroom Launcher. Its shot creates a visible cloud which damages enemies over time in a small area. Start with no stacking clouds; this is the future grouped-enemy counter.
 
 ### Environment purpose
 
-- **Hearthcraft / Fire Pit (roadmap, not live contract):** Hearthcraft appears on Level 5, requires Arrowcraft, and follows the Huntcraft branch-cost progression. It unlocks an earned Fire Pit, rather than placing a free campfire. Then spend **2 wood and one action** to construct it in the central clearing. Its sole purpose is a non-targetable, non-damaging, non-healing, non-blocking **1.5-cell Warmth zone** that slows enemies **25%**. It is a narrow safety net that buys Scout or a nearby tower one more attack, not a replacement for a defense.
+- **Hearthcraft / Fire Pit (roadmap, not live contract):** Hearthcraft appears on Level 5, requires Arrowcraft, and follows the Hunting branch-cost progression. It unlocks an earned Fire Pit, rather than placing a free campfire. Then spend **2 wood and one action** to construct it in the central clearing. Its sole purpose is a non-targetable, non-damaging, non-healing, non-blocking **1.5-cell Warmth zone** that slows enemies **25%**. It is a narrow safety net that buys Scout or a nearby tower one more attack, not a replacement for a defense.
 - **Water:** do not add a water inventory. Later, water should be an environmental moisture source that enables fungal/garden structures near it; its first real purpose is to create location-specific choices for the Mushroom branch rather than another generic currency.
 
 ### Tree and placement UX corrections (delivered)
@@ -135,7 +135,7 @@ Keep the engine values precise, but make the player-facing contract legible. Sho
 - Save/load/reset, speed, and health-bar toggles are compact secondary controls. The primary play surface focuses on the map, resources, selected object, and **End day**.
 - Generic Field Notes are replaced by a small current-status line.
 - Selection uses a tight outline matched to the selected object or terrain cell instead of a large circular terrain highlight.
-- A compact Technology icon opens a full-screen, read-only-at-night tree overlay. It shows current and directly reachable nodes only; research remains Skill Point-only and day-only, with icon-first nodes and selection-driven descriptions.
+- A compact Talent Tree icon opens a full-screen, read-only-at-night overlay. It shows current and directly reachable nodes only; learning remains Skill Point-only and day-only, with icon-first nodes, a shared SVG icon catalog, and selection-driven descriptions.
 - Building art communicates intact, worn, damaged, and critical condition; the overnight report calls out structure damage and dawn recovery.
 
 ## Recommended collaboration documents
@@ -146,7 +146,7 @@ The module documents now live under `docs/modules/`. They avoid duplicating conf
 - `docs/modules/buildings.md` — teepee, fire, Stick Launcher, Arrow Shooter, Potato Gun, costs, placement, and repair.
 - `docs/modules/units.md` — Scout and any future friendly units.
 - `docs/modules/enemies.md` — enemy stats, approaches, target rules, and each counter relationship.
-- `docs/modules/tech-tree.md` — XP research nodes, prerequisites, and unlock effects.
+- `docs/modules/talent-tree.md` — Talent nodes, prerequisites, and unlock effects.
 - `docs/modules/terrain.md` — trees, cleared ground, fire, water, and terrain-purpose rules.
 - `docs/modules/levels.md` — unlock schedule, Threat Budget, and seed variation rules for the single map.
 

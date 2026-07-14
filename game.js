@@ -1,9 +1,11 @@
 const Engine = window.WildHearthEngine;
+const TalentIcons = window.WildHearthTalentIcons;
 
 if (!Engine) throw new Error("Wild Hearth engine did not load.");
+if (!TalentIcons) throw new Error("Wild Hearth talent icons did not load.");
 
-const SAVE_KEY = "wild-hearth-save-v13";
-const LEGACY_SAVE_KEYS = ["wild-hearth-save-v12", "wild-hearth-save-v11", "wild-hearth-save-v10"];
+const SAVE_KEY = "wild-hearth-save-v14";
+const LEGACY_SAVE_KEYS = ["wild-hearth-save-v13", "wild-hearth-save-v12", "wild-hearth-save-v11", "wild-hearth-save-v10"];
 const SETTINGS_KEY = "wild-hearth-settings-v1";
 const elements = {
   board: document.querySelector("#game-board"),
@@ -34,6 +36,8 @@ const elements = {
   actionRow: document.querySelector("#action-row"),
   axeButton: document.querySelector("#axe-button"),
   shelterButton: document.querySelector("#shelter-button"),
+  shelterLabel: document.querySelector("#shelter-label"),
+  shelterDetail: document.querySelector("#shelter-detail"),
   repairButton: document.querySelector("#repair-button"),
   upgradeButton: document.querySelector("#upgrade-button"),
   endDayButton: document.querySelector("#end-day-button"),
@@ -519,12 +523,36 @@ function techEffectSummary(definition) {
     if (effect.kind === "unlockBuildingUpgrade") return "UNLOCK ARROW REFIT";
     if (effect.kind === "unlockBuildingRefit") return "UNLOCK QUICKCORD";
     if (effect.kind === "onHitStatus" && effect.status === "movementSlow") return "POTATO SLOW";
-    return "NEW TECH";
+    return "NEW TALENT";
   }).join(" · ");
 }
 
-function techNodeIcon(definition) {
-  return definition.icon || "✦";
+function talentIconSvg(iconId, className = "") {
+  const definition = TalentIcons.icon(iconId) || TalentIcons.list()[0];
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 48 48");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "3.5");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.setAttribute("aria-hidden", "true");
+  if (className) svg.setAttribute("class", className);
+  svg.style.setProperty("--icon-optical-y", `${definition.offsetY || 0}px`);
+  definition.parts.forEach((part) => {
+    const element = document.createElementNS("http://www.w3.org/2000/svg", part.tag);
+    Object.entries(part).forEach(([key, value]) => {
+      if (key !== "tag") element.setAttribute(key, String(value));
+    });
+    svg.append(element);
+  });
+  return svg;
+}
+
+function talentIconFrame(iconId, className) {
+  const frame = createNode("span", className);
+  frame.append(talentIconSvg(iconId));
+  return frame;
 }
 
 function drawTechConnections() {
@@ -577,7 +605,7 @@ function renderTechnology() {
   const ready = !needsShelter();
   elements.techButton.hidden = !ready;
   elements.techPoints.textContent = `${state.skillPoints} SP`;
-  elements.techButton.setAttribute("aria-label", `Technology, ${state.skillPoints} Skill Point${state.skillPoints === 1 ? "" : "s"} ready`);
+  elements.techButton.setAttribute("aria-label", `Talent Tree, ${state.skillPoints} Skill Point${state.skillPoints === 1 ? "" : "s"} ready`);
   if (!ready) {
     closeTechnology({ restoreFocus: false });
     return;
@@ -585,11 +613,11 @@ function renderTechnology() {
   const level = currentLevel().number;
   const visibleNodes = Engine.techNodes().filter((node) => Engine.hasResearch(state, node.id) || node.requiredLevel <= level);
   if (!visibleNodes.length) {
-    elements.techBranches.replaceChildren(createNode("p", "tech-empty", "The first research reveals after you survive Level 1."));
-    elements.techTitle.textContent = "Research unlocks soon";
-    elements.techDetailIcon.textContent = "✦";
+    elements.techBranches.replaceChildren(createNode("p", "tech-empty", "The first talent reveals after you survive Level 1."));
+    elements.techTitle.textContent = "Talents unlock soon";
+    elements.techDetailIcon.replaceChildren(talentIconSvg("scoutTraining"));
     elements.techCopy.textContent = "Clear the first watch. Your first Skill Point arrives at 10 XP.";
-    setButtonContent(elements.researchButton, "Research unavailable", "next level");
+    setButtonContent(elements.researchButton, "Talent unavailable", "next level");
     elements.researchButton.disabled = true;
     elements.techDialogSubtitle.textContent = `Experience ${state.xp}/${Engine.nextSkillPointThreshold(state)} · thresholds double after every point · no action.`;
     return;
@@ -608,7 +636,7 @@ function renderTechnology() {
   const viewport = createNode("div", "tech-tree-viewport");
   viewport.tabIndex = 0;
   viewport.setAttribute("role", "region");
-  viewport.setAttribute("aria-label", "Technology tree. Scroll horizontally to explore future research.");
+  viewport.setAttribute("aria-label", "Talent Tree. Scroll horizontally to explore future talents.");
   const canvas = createNode("div", "tech-tree-canvas");
   canvas.style.setProperty("--tech-depth", String(treeDepth));
   const connectors = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -635,9 +663,9 @@ function renderTechnology() {
       button.style.setProperty("--tech-column", String(node.tier));
       button.style.setProperty("--tech-row", String(row));
       button.title = check.reason;
-      button.setAttribute("aria-label", `${node.label}: ${techEffectSummary(node)}. ${researched ? "Researched." : check.reason}`);
+      button.setAttribute("aria-label", `${node.label}: ${techEffectSummary(node)}. ${researched ? "Learned." : check.reason}`);
       button.append(
-        createNode("span", "tech-node-icon", techNodeIcon(node)),
+        talentIconFrame(node.icon, "tech-node-icon"),
         createNode("em", "tech-node-cost", researched ? "✓" : `${check.costSkillPoints} SP`),
       );
       track.append(button);
@@ -651,19 +679,19 @@ function renderTechnology() {
   stage.append(viewport, createNode("p", "tech-scroll-hint", "Scroll to explore →"));
   elements.techBranches.replaceChildren(stage);
   queueTechConnections();
-  elements.techDetailIcon.textContent = techNodeIcon(selectedNode);
+  elements.techDetailIcon.replaceChildren(talentIconSvg(selectedNode.icon));
   elements.techTitle.textContent = selectedNode.label;
   elements.techDialogSubtitle.textContent = state.phase === "day"
     ? `Level ${level} · ${state.skillPoints} Skill Point${state.skillPoints === 1 ? "" : "s"} ready · ${state.xp}/${Engine.nextSkillPointThreshold(state)} XP to next · no action.`
     : `Level ${level} · ${state.skillPoints} Skill Point${state.skillPoints === 1 ? "" : "s"} ready · planning is read-only during the night.`;
   if (Engine.hasResearch(state, selectedNode.id)) {
-    elements.techCopy.textContent = `${selectedNode.completeCopy} Research uses Skill Points only; no day action is spent.`;
-    setButtonContent(elements.researchButton, `${selectedNode.label} researched`, "ready");
+    elements.techCopy.textContent = `${selectedNode.completeCopy} Talents use Skill Points only; no day action is spent.`;
+    setButtonContent(elements.researchButton, `${selectedNode.label} learned`, "ready");
     elements.researchButton.disabled = true;
     return;
   }
-  elements.techCopy.textContent = `${selectedNode.copy} ${research.reason} This branch purchase costs ${research.costSkillPoints} SP; research uses no day action.`;
-  setButtonContent(elements.researchButton, `Research ${selectedNode.label}`, `${research.costSkillPoints} SP · no action`);
+  elements.techCopy.textContent = `${selectedNode.copy} ${research.reason} This branch purchase costs ${research.costSkillPoints} SP; learning uses no day action.`;
+  setButtonContent(elements.researchButton, `Learn ${selectedNode.label}`, `${research.costSkillPoints} SP · no action`);
   elements.researchButton.disabled = state.phase !== "day" || !research.available;
 }
 
@@ -693,6 +721,7 @@ function renderControls() {
   elements.controlPanel.classList.toggle("is-night", night);
   elements.controlPanel.classList.toggle("is-aftermath", state.phase === "aftermath");
   elements.actionCard.hidden = false;
+  elements.actionCard.classList.toggle("is-opening", opening);
   elements.planningCard.hidden = opening || !showPlanningCard;
   const unlockedBuildTools = renderBuildList();
   elements.buildCard.hidden = opening || !unlockedBuildTools.length;
@@ -700,9 +729,14 @@ function renderControls() {
   elements.axeButton.disabled = !day || !opening || state.hatchetCrafted || !openingSuppliesReady || state.actionPoints <= 0;
   elements.shelterButton.hidden = !opening || !state.hatchetCrafted;
   elements.shelterButton.disabled = !day || !opening || !state.hatchetCrafted || state.actionPoints <= 0;
+  const shelterArmed = opening && activeTool === "teepee";
+  elements.shelterButton.setAttribute("aria-pressed", String(shelterArmed));
+  elements.shelterLabel.textContent = shelterArmed ? "Choose shelter site" : "Place shelter";
+  elements.shelterDetail.textContent = shelterArmed ? "Click open grass" : "Free · 1 action";
   elements.dayActionList.querySelectorAll("[data-tool]").forEach((button) => {
     const tool = button.dataset.tool;
     button.classList.toggle("is-active", tool === activeTool);
+    button.setAttribute("aria-pressed", String(tool === activeTool));
     button.disabled = tool === "teepee"
       ? !day || !opening || !state.hatchetCrafted || state.actionPoints <= 0
       : opening || !day || state.actionPoints <= 0;
@@ -770,7 +804,7 @@ function renderControls() {
             : level.number === 5 && state.buildings.some((item) => Engine.canUpgradePotatoPatch(state, item))
               ? "Upgrade a mature Potato Patch into a Potato Gun before tonight’s Boar."
         : level.number === 3 && !Engine.hasResearch(state, "arrowcraft")
-          ? "Spend earned Skill Points on a Scout, launcher, forager, or defense path."
+          ? "Spend earned Skill Points on Hunting, Farming, Building, Nurturing, or Scouting talents."
         : "Place defenses on open grass; harvest trees for wood and faster routes."
     : night
       ? "Defend the hearth."

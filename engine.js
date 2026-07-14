@@ -5,13 +5,13 @@
  * headless simulator both drive these same deterministic state transitions.
  */
 (function registerWildHearthEngine(root, factory) {
-  const techTree = typeof module !== "undefined" && module.exports ? require("./tech-tree.js") : root.WildHearthTechTree;
+  const techTree = typeof module !== "undefined" && module.exports ? require("./talent-tree.js") : root.WildHearthTalentTree;
   const engine = factory(techTree);
   if (typeof module !== "undefined" && module.exports) module.exports = engine;
   root.WildHearthEngine = engine;
 }(typeof globalThis !== "undefined" ? globalThis : this, function buildEngine(TechTree) {
-  if (!TechTree) throw new Error("Wild Hearth tech tree did not load.");
-  const SAVE_VERSION = 13;
+  if (!TechTree) throw new Error("Wild Hearth Talent Tree did not load.");
+  const SAVE_VERSION = 14;
   const TICK_RATE = 20;
   const FIRST_SKILL_POINT_XP = 10;
   const BOARD = { id: "hearth-meadow", label: "Hearth Meadow", width: 15, height: 15 };
@@ -1058,7 +1058,7 @@
     if (action.type === "upgradeLauncher") {
       const building = state.buildings.find((item) => item.id === action.id && !item.destroyed);
       if (!building || building.type !== "stickLauncher") return result(state, false, "Choose a standing Stick Launcher to upgrade.");
-      if (!TechTree.hasBuildingUpgrade(state, "stickLauncher", "arrowShooter")) return result(state, false, "Research Arrowcraft before upgrading a launcher.");
+      if (!TechTree.hasBuildingUpgrade(state, "stickLauncher", "arrowShooter")) return result(state, false, "Learn Arrowcraft before upgrading a launcher.");
       const cost = { wood: 4 };
       if (!hasResources(state, cost)) return result(state, false, "An Arrow Shooter upgrade needs 4 wood.");
       if (!consumeAction(state)) return result(state, false, "Both day actions are spent.");
@@ -1100,7 +1100,7 @@
       if (!building) return result(state, false, "Choose a standing building to refit.");
       const refit = refitDefinition(building.type, action.refitId);
       if (!refit) return result(state, false, "That refit does not fit the selected building.");
-      if (!TechTree.hasBuildingRefit(state, building.type, refit.id)) return result(state, false, `Research ${refit.label} before applying this refit.`);
+      if (!TechTree.hasBuildingRefit(state, building.type, refit.id)) return result(state, false, `Learn ${refit.label} before applying this refit.`);
       if (buildingRefits(building).includes(refit.id)) return result(state, false, `${refit.label} is already fitted to this ${buildingRecipe(building.type).label}.`);
       if (!hasResources(state, refit.cost || {})) return result(state, false, `${refit.label} needs ${refit.cost?.wood || 0} wood.`);
       if (!consumeActions(state, refit.actionCost || 1)) return result(state, false, "Both day actions are spent.");
@@ -1594,7 +1594,7 @@
 
   function hydrate(serialized) {
     const parsed = typeof serialized === "string" ? JSON.parse(serialized) : serialized;
-    if (!parsed || !parsed.state || ![10, 11, 12, SAVE_VERSION].includes(parsed.version)) throw new Error("This save belongs to a different version of Wild Hearth.");
+    if (!parsed || !parsed.state || ![10, 11, 12, 13, SAVE_VERSION].includes(parsed.version)) throw new Error("This save belongs to a different version of Wild Hearth.");
     const state = parsed.version === SAVE_VERSION ? parsed.state : migrateLegacyState(parsed.state, parsed.version);
     if (state.version !== SAVE_VERSION) throw new Error("This save belongs to a different version of Wild Hearth.");
     if (!Array.isArray(state.terrain) || state.terrain.length !== BOARD.width * BOARD.height) throw new Error("This save has an invalid meadow.");
