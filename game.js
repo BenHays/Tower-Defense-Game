@@ -46,10 +46,6 @@ const elements = {
   techCopy: document.querySelector("#tech-copy"),
   techBranches: document.querySelector("#tech-branches"),
   researchButton: document.querySelector("#research-button"),
-  earlyEndDialog: document.querySelector("#early-end-dialog"),
-  earlyEndDialogCopy: document.querySelector("#early-end-dialog-copy"),
-  earlyEndCancel: document.querySelector("#early-end-cancel"),
-  earlyEndConfirm: document.querySelector("#early-end-confirm"),
   skillPointDialog: document.querySelector("#skill-point-dialog"),
   skillPointLater: document.querySelector("#skill-point-later"),
   skillPointTech: document.querySelector("#skill-point-tech"),
@@ -79,9 +75,7 @@ let techSignature = "";
 let pointerActivation = null;
 let preferredSpeed = 1;
 let lastFocusedElement = null;
-let lastEarlyEndFocusedElement = null;
 let lastSkillPointFocusedElement = null;
-let earlyEndWarningDay = null;
 const TOOLBAR_SIZES = ["compact", "standard", "large"];
 let toolbarSize = "compact";
 let buildListSignature = "";
@@ -132,7 +126,8 @@ function createNode(tag, className, text) {
 }
 
 function setButtonContent(button, label, detail) {
-  button.replaceChildren(document.createTextNode(label), createNode("span", "", detail));
+  button.replaceChildren(document.createTextNode(label));
+  if (detail) button.append(createNode("span", "", detail));
 }
 
 function place(node, x, y) {
@@ -273,37 +268,7 @@ function endDayNow() {
   }
 }
 
-function earlyEndDayKey() {
-  return `${state.seed}:${state.levelIndex}`;
-}
-
-function closeEarlyEndWarning(options = {}) {
-  if (elements.earlyEndDialog.hidden) return;
-  elements.earlyEndDialog.hidden = true;
-  document.body.classList.remove("early-end-dialog-open");
-  if (options.restoreFocus !== false && lastEarlyEndFocusedElement instanceof HTMLElement) lastEarlyEndFocusedElement.focus();
-  lastEarlyEndFocusedElement = null;
-}
-
-function openEarlyEndWarning() {
-  const unusedActions = state.actionPoints;
-  earlyEndWarningDay = earlyEndDayKey();
-  lastEarlyEndFocusedElement = document.activeElement;
-  elements.earlyEndDialogCopy.textContent = `You still have ${unusedActions} unused ${unusedActions === 1 ? "action" : "actions"}. Are you sure you want to begin the night watch?`;
-  elements.earlyEndDialog.hidden = false;
-  document.body.classList.add("early-end-dialog-open");
-  requestAnimationFrame(() => elements.earlyEndCancel.focus());
-}
-
 function beginNight() {
-  const shouldWarn = state.phase === "day"
-    && state.shelterBuilt
-    && state.actionPoints > 0
-    && earlyEndWarningDay !== earlyEndDayKey();
-  if (shouldWarn) {
-    openEarlyEndWarning();
-    return;
-  }
   endDayNow();
 }
 
@@ -503,6 +468,78 @@ function renderPreview() {
   elements.previewCopy.textContent = `${recipe.label} is ready here. It takes 1 day action.${route}`;
 }
 
+function techAmount(value) {
+  const number = Number(value) || 0;
+  return Number.isInteger(number) ? String(number) : number.toFixed(1).replace(/\.0$/, "");
+}
+
+function techEffectSummary(definition) {
+  return definition.effects.map((effect) => {
+    if (effect.kind === "stat") {
+      const amount = techAmount(effect.value);
+      if (effect.target === "unit" && effect.id === "scout" && effect.stat === "damage") return `+${amount} SCOUT DMG`;
+      if (effect.target === "unit" && effect.id === "scout" && effect.stat === "attackRange") return `+${amount} WATCH RANGE`;
+      if (effect.target === "building" && effect.id === "stickLauncher" && effect.stat === "damage") return `+${amount} LAUNCHER DMG`;
+      if (effect.target === "building" && effect.id === "stickLauncher" && effect.stat === "attackRange") return `+${amount} RANGE`;
+    }
+    if (effect.kind === "harvestWood") return `+${techAmount(effect.amount)} WOOD / TREE`;
+    if (effect.kind === "repairAmount") return `+${techAmount(effect.amount)} REPAIR HP`;
+    if (effect.kind === "dawnRepair") return `+${techAmount(effect.amount)} HP / DAWN`;
+    if (effect.kind === "maxHealth") return `+${techAmount(effect.amount)} STRUCTURE HP`;
+    if (effect.kind === "armor") return `-${techAmount(effect.amount)} HEAVY-HIT DMG`;
+    if (effect.kind === "unlockBuildingUpgrade") return "UNLOCK ARROW REFIT";
+    if (effect.kind === "unlockBuildingRefit") return "UNLOCK QUICKCORD";
+    if (effect.kind === "onHitStatus" && effect.status === "movementSlow") return "POTATO SLOW";
+    return "NEW TECH";
+  }).join(" · ");
+}
+
+function drawTechConnections() {
+  const canvas = elements.techBranches.querySelector(".tech-tree-canvas");
+  const viewport = elements.techBranches.querySelector(".tech-tree-viewport");
+  const stage = elements.techBranches.querySelector(".tech-tree-stage");
+  const connectors = elements.techBranches.querySelector(".tech-connectors");
+  if (!canvas || !viewport || !stage || !connectors) return;
+  connectors.replaceChildren();
+  const canvasRect = canvas.getBoundingClientRect();
+  const width = Math.ceil(canvas.scrollWidth);
+  const height = Math.ceil(canvas.scrollHeight);
+  connectors.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  connectors.setAttribute("width", String(width));
+  connectors.setAttribute("height", String(height));
+  const center = (node, side) => {
+    const rect = node.getBoundingClientRect();
+    return {
+      x: side === "right" ? rect.right - canvasRect.left : rect.left - canvasRect.left,
+      y: rect.top - canvasRect.top + (rect.height / 2),
+    };
+  };
+  [...canvas.querySelectorAll("[data-tech]")].forEach((button) => {
+    const definition = Engine.TECH_TREE[button.dataset.tech];
+    if (!definition) return;
+    const requiredButtons = (definition.requiresNodes || [])
+      .map((id) => canvas.querySelector(`[data-tech="${id}"]`))
+      .filter(Boolean);
+    const sources = requiredButtons.length
+      ? requiredButtons
+      : [canvas.querySelector(`[data-tech-root="${definition.branch}"]`)].filter(Boolean);
+    sources.forEach((source) => {
+      const start = center(source, "right");
+      const end = center(button, "left");
+      const bend = Math.max(start.x + 18, start.x + ((end.x - start.x) * 0.5));
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("class", `tech-connection ${definition.branch}`);
+      path.setAttribute("d", `M ${start.x} ${start.y} H ${bend} V ${end.y} H ${end.x}`);
+      connectors.append(path);
+    });
+  });
+  stage.classList.toggle("can-scroll", viewport.scrollWidth > viewport.clientWidth + 4);
+}
+
+function queueTechConnections() {
+  requestAnimationFrame(drawTechConnections);
+}
+
 function renderTechnology() {
   const ready = !needsShelter();
   elements.techButton.hidden = !ready;
@@ -530,30 +567,57 @@ function renderTechnology() {
   techSignature = signature;
   const selectedNode = Engine.TECH_TREE[activeTechId];
   const research = Engine.techAvailability(state, activeTechId);
-  const branches = new Map();
-  visibleNodes.forEach((node) => {
-    if (!branches.has(node.branch)) branches.set(node.branch, []);
-    branches.get(node.branch).push(node);
-  });
-  const fragment = document.createDocumentFragment();
+  const branches = new Map(Object.keys(Engine.TECH_BRANCHES).map((id) => [id, []]));
+  visibleNodes.forEach((node) => branches.get(node.branch).push(node));
+  const treeDepth = Math.max(1, ...visibleNodes.map((node) => node.tier));
+  const stage = createNode("div", "tech-tree-stage");
+  const viewport = createNode("div", "tech-tree-viewport");
+  viewport.tabIndex = 0;
+  viewport.setAttribute("role", "region");
+  viewport.setAttribute("aria-label", "Technology tree. Scroll horizontally to explore future research.");
+  const canvas = createNode("div", "tech-tree-canvas");
+  canvas.style.setProperty("--tech-depth", String(treeDepth));
+  const connectors = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  connectors.setAttribute("class", "tech-connectors");
+  connectors.setAttribute("aria-hidden", "true");
+  canvas.append(connectors);
   [...branches.entries()].forEach(([branchId, nodes]) => {
     const branch = createNode("section", "tech-branch");
+    branch.dataset.branch = branchId;
     branch.setAttribute("aria-label", `${Engine.TECH_BRANCHES[branchId].label} branch`);
-    branch.append(createNode("h3", "tech-branch-label", Engine.TECH_BRANCHES[branchId].label));
-    const lane = createNode("div", "tech-node-lane");
+    const label = createNode("h3", "tech-branch-label", Engine.TECH_BRANCHES[branchId].label);
+    label.dataset.techRoot = branchId;
+    const track = createNode("div", "tech-node-track");
+    track.style.setProperty("--tech-depth", String(treeDepth));
+    const tierRows = new Map();
     nodes.forEach((node) => {
+      const row = (tierRows.get(node.tier) || 0) + 1;
+      tierRows.set(node.tier, row);
       const check = Engine.techAvailability(state, node.id);
-      const button = createNode("button", `tech-node${node.id === activeTechId ? " is-selected" : ""}${Engine.hasResearch(state, node.id) ? " is-researched" : ""}`);
+      const researched = Engine.hasResearch(state, node.id);
+      const button = createNode("button", `tech-node${node.id === activeTechId ? " is-selected" : ""}${researched ? " is-researched" : ""}`);
       button.type = "button";
       button.dataset.tech = node.id;
-      button.append(document.createTextNode(node.label), createNode("span", "", Engine.hasResearch(state, node.id) ? "researched" : `${node.costSkillPoints} SP`));
+      button.style.setProperty("--tech-column", String(node.tier));
+      button.style.setProperty("--tech-row", String(row));
       button.title = check.reason;
-      lane.append(button);
+      button.setAttribute("aria-label", `${node.label}: ${techEffectSummary(node)}. ${researched ? "Researched." : check.reason}`);
+      button.append(
+        createNode("strong", "tech-node-title", node.label),
+        createNode("small", "tech-node-effect", techEffectSummary(node)),
+        createNode("em", "tech-node-cost", researched ? "researched" : `${node.costSkillPoints} SP`),
+      );
+      track.append(button);
     });
-    branch.append(lane);
-    fragment.append(branch);
+    const rowCount = Math.max(1, ...tierRows.values());
+    track.style.setProperty("--tech-row-count", String(rowCount));
+    branch.append(label, track);
+    canvas.append(branch);
   });
-  elements.techBranches.replaceChildren(fragment);
+  viewport.append(canvas);
+  stage.append(viewport, createNode("p", "tech-scroll-hint", "Scroll to explore →"));
+  elements.techBranches.replaceChildren(stage);
+  queueTechConnections();
   elements.techTitle.textContent = selectedNode.label;
   elements.techDialogSubtitle.textContent = state.phase === "day"
     ? `Level ${level} · ${state.skillPoints} Skill Point${state.skillPoints === 1 ? "" : "s"} ready · ${state.xp}/${Engine.nextSkillPointThreshold(state)} XP to the next point · no action.`
@@ -618,7 +682,7 @@ function renderControls() {
   else if (refit) setButtonContent(elements.upgradeButton, `Refit ${refit.label}`, `${upgradeCost} wood · 1 action · full HP`);
   else setButtonContent(elements.upgradeButton, "Upgrade selected", "Arrowcraft · 4 wood · 1 action");
   elements.endDayButton.disabled = opening || !day;
-  setButtonContent(elements.endDayButton, day ? "End day" : night ? "Night watch" : "Dawn", day ? "Begin night watch →" : "Automatic defense");
+  setButtonContent(elements.endDayButton, day ? "End Day" : night ? "Night Watch" : "Dawn");
   elements.overlayButton.hidden = !day || !hasPlanningTarget;
   elements.overlayButton.disabled = opening || !day;
   elements.overlayButton.textContent = planning ? "Hide planning overlay" : "Show planning overlay";
@@ -848,14 +912,6 @@ elements.researchButton.addEventListener("click", () => {
 elements.techButton.addEventListener("click", openTechnology);
 elements.techCloseButton.addEventListener("click", () => closeTechnology());
 elements.endDayButton.addEventListener("click", beginNight);
-elements.earlyEndCancel.addEventListener("click", () => closeEarlyEndWarning());
-elements.earlyEndConfirm.addEventListener("click", () => {
-  closeEarlyEndWarning({ restoreFocus: false });
-  endDayNow();
-});
-elements.earlyEndDialog.addEventListener("click", (event) => {
-  if (event.target === elements.earlyEndDialog) closeEarlyEndWarning();
-});
 elements.skillPointLater.addEventListener("click", () => closeSkillPointNotice());
 elements.skillPointTech.addEventListener("click", () => {
   closeSkillPointNotice({ restoreFocus: false });
@@ -880,13 +936,6 @@ document.addEventListener("keydown", (event) => {
     }
     return;
   }
-  if (!elements.earlyEndDialog.hidden) {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      closeEarlyEndWarning();
-    }
-    return;
-  }
   if (elements.techDialog.hidden) return;
   if (event.key === "Escape") {
     event.preventDefault();
@@ -906,6 +955,9 @@ document.addEventListener("keydown", (event) => {
       first.focus();
     }
   }
+});
+window.addEventListener("resize", () => {
+  if (!elements.techDialog.hidden) queueTechConnections();
 });
 document.querySelector("#save-button").addEventListener("click", saveGame);
 document.querySelector("#load-button").addEventListener("click", loadGame);

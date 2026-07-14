@@ -26,4 +26,4 @@
 ## Decisions made
 
 - Tech nodes unlock a distinct choice, never a maintenance obligation.
-- Technology opens from a compact icon into a full-screen overlay. Keep only current and directly reachable nodes visible so the tree is legible without spoiling later content.
+- Technology opens from a compact icon into a full-screen, horizontally scrollable dependency canvas. Keep only current and directly reachable nodes visible; each node shows its concise effect, cost, and prerequisite line before selection.

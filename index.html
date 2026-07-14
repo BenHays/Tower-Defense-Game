@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="A deterministic, top-down homestead defense prototype." />
     <title>Wild Hearth — Hearth Meadow</title>
-    <link rel="stylesheet" href="styles.css?v=skill-points-1" />
+    <link rel="stylesheet" href="styles.css?v=tech-tree-canvas-1" />
   </head>
   <body>
     <main class="game-shell" id="top">
@@ -68,7 +68,7 @@
             <button class="secondary-button" id="repair-button" type="button">Repair selected <span>1 wood · 1 action</span></button>
             <button class="secondary-button" id="upgrade-button" type="button">Upgrade selected <span>Arrowcraft · 4 wood · 1 action</span></button>
           </div>
-          <button class="primary-button wide" id="end-day-button" type="button">End day <span>Begin night watch →</span></button>
+          <button class="primary-button wide" id="end-day-button" type="button">End Day</button>
         </section>
 
         <aside class="planning-card" id="planning-card" aria-label="Planning and night controls">
@@ -115,19 +115,6 @@
       </section>
     </div>
 
-    <div class="early-end-dialog" id="early-end-dialog" hidden>
-      <section class="early-end-dialog-panel" role="dialog" aria-modal="true" aria-labelledby="early-end-dialog-title" aria-describedby="early-end-dialog-copy" tabindex="-1">
-        <p class="eyebrow">Unused actions</p>
-        <h2 id="early-end-dialog-title">End the day early?</h2>
-        <p id="early-end-dialog-copy">You still have actions available.</p>
-        <p class="early-end-dialog-note">This warning appears once per day.</p>
-        <div class="early-end-dialog-actions">
-          <button class="secondary-button" id="early-end-cancel" type="button">Keep planning</button>
-          <button class="primary-button" id="early-end-confirm" type="button">End day anyway</button>
-        </div>
-      </section>
-    </div>
-
     <div class="skill-point-dialog" id="skill-point-dialog" hidden>
       <section class="skill-point-dialog-panel" role="dialog" aria-modal="true" aria-labelledby="skill-point-dialog-title" aria-describedby="skill-point-dialog-copy" tabindex="-1">
         <p class="eyebrow">New knowledge</p>
@@ -140,8 +127,8 @@
       </section>
     </div>
 
-    <script src="tech-tree.js?v=skill-points-1"></script>
-    <script src="engine.js?v=skill-points-1"></script>
-    <script src="game.js?v=skill-points-1"></script>
+    <script src="tech-tree.js?v=tech-tree-canvas-1"></script>
+    <script src="engine.js?v=tech-tree-canvas-1"></script>
+    <script src="game.js?v=tech-tree-canvas-1"></script>
   </body>
 </html>

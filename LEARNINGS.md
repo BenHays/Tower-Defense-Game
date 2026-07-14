@@ -39,10 +39,11 @@
 - Drive the Build strip from `state.unlocks`: it should show only unlocked, directly constructible structures, beginning with Stick Launcher and growing horizontally as new construction unlocks arrive.
 - Keep the Build strip as a one-row rail of square, icon-first tiles. Fixed tile dimensions and horizontal scrolling let the roster expand without making the play dock taller or less readable.
 - Let the optional building health bar communicate both condition and amount: green at full health, yellow below full, and red below 30%, with no separate dot or condition label.
-- Treat an unused-action end-day guard as presentation-only. Warn only on the first early-end attempt for a given day, while keeping the engine transition and replay action log unchanged.
+- Keep End Day decisive: unused actions are a player choice, so one click starts the night without a confirmation modal or explanatory copy.
 
 ## Progression and occupancy
 
 - Scout reserves only the day-placed watch post: construction and Scout placement reject overlaps, while enemies still target only real targetable buildings and Scout retains no health economy.
 - Keep the technology catalog declarative by branch: Huntcraft, Forager, Fortification, and Scout use Skill Point costs, node dependencies, and typed effects so combat and daytime actions stay generic.
+- Render that declarative tech data as one horizontally scrollable dependency canvas. A card must state its own short effect, while the detail pane carries the longer explanation.
 - Roll hide drops from a seed, level id, and enemy id rather than runtime randomness. Saves and replay checksums can then reproduce rewards exactly.
