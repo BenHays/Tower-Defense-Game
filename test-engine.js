@@ -73,6 +73,14 @@ assert.equal(Engine.toolPreview(run, "stickLauncher", 4, 5).valid, true, "the sa
 action(run, { type: "build", buildingType: "stickLauncher", x: 4, y: 5 });
 const launcher = run.buildings.find((building) => building.type === "stickLauncher");
 assert.ok(launcher);
+assert.equal(launcher.maxHealth, 8, "the base Stick Launcher has 8 health");
+const legacyLauncherSave = JSON.parse(Engine.serialize(run));
+const legacyLauncher = legacyLauncherSave.state.buildings.find((building) => building.id === launcher.id);
+legacyLauncher.maxHealth = 6;
+legacyLauncher.health = 6;
+const migratedLauncher = Engine.hydrate(legacyLauncherSave).buildings.find((building) => building.id === launcher.id);
+assert.equal(migratedLauncher.maxHealth, 8, "saved Stick Launchers inherit the new maximum health without a save reset");
+assert.equal(migratedLauncher.health, 6, "the health-cap adjustment never grants a saved tower a free heal");
 assert.deepEqual(run.resources, { wood: 0 }, "unused legacy resources must not leak into a wood-only run");
 assert.equal(run.actionPoints, 0);
 assert.equal(Engine.BUILDINGS.stickLauncher.attackRange, 2.25);

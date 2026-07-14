@@ -25,7 +25,7 @@ This roadmap protects the core loop: use the day to shape a small homestead, the
 - **Grass placement:** any unoccupied `open` or `cleared` grass cell can hold a defense. Trees, water, rubble, and buildings block placement by default. Clearing a tree earns wood and opens its grass cell; it is not a prerequisite for every defense.
 - **All-angle invasion:** enemies can spawn from any usable perimeter cell.
 - **Scout:** a mobile melee final line. His watch radius stays centered on the daytime post; he chases, bites, and returns automatically.
-- **Stick Launcher:** the first fixed tower. It costs 2 wood and one action, has 6 health, short 2.25-cell reach, 1 damage, and fires once every 2 seconds at the nearest enemy in range.
+- **Stick Launcher:** the first fixed tower. It costs 2 wood and one action, has 8 health, short 2.25-cell reach, 1 damage, and fires once every 2 seconds at the nearest enemy in range.
 - **XP branches:** enemies and cleared nights award XP. Research spends XP but no day action. Scout Training I (4 XP), Arrowcraft (6 XP), Hearthkeeping I (Level 4, 5 XP), and Potato Packing are distinct early choices; there are no meat, pelt, food, or Scout-health maintenance systems.
 - **Dawn recovery:** Hearthkeeping I restores 1 HP at dawn to each surviving targetable building, capped at its maximum. It does not revive destroyed buildings.
 - **Refit rule:** upgrading a Stick Launcher into an Arrow Shooter costs 4 wood and one action, then restores the new Arrow Shooter to full health.

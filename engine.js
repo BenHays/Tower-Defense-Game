@@ -90,7 +90,7 @@
       id: "stickLauncher",
       label: "Stick launcher",
       footprint: { width: 1, height: 1 },
-      maxHealth: 6,
+      maxHealth: 8,
       cost: { wood: 2 },
       actionCost: 1,
       role: "tower",
@@ -1366,6 +1366,11 @@
     if (![1, 2].includes(state.speed)) throw new Error("This save has an invalid speed setting.");
     if (!state.telemetry || !state.telemetry.total || !Array.isArray(state.telemetry.nightReports) || !Array.isArray(state.replaySnapshots) || !Array.isArray(state.remains)) throw new Error("This save has an invalid night record.");
     if (!state.buildings.every((building) => Array.isArray(building.refits || []) && buildingRefits(building).every((refitId) => refitDefinition(building.type, refitId)))) throw new Error("This save has an invalid building refit.");
+    state.buildings.forEach((building) => {
+      if (building.type !== "stickLauncher") return;
+      building.maxHealth = BUILDINGS.stickLauncher.maxHealth;
+      building.health = Math.min(building.health, building.maxHealth);
+    });
     const teepeeCount = state.buildings.filter((building) => building.type === "teepee" && !building.destroyed).length;
     if ((state.shelterBuilt && teepeeCount !== 1) || (!state.shelterBuilt && teepeeCount !== 0)) throw new Error("This save has an invalid shelter state.");
     pathCaches.delete(state);
