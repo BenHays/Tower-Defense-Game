@@ -56,7 +56,7 @@ Later difficulty modes will multiply this budget: Easy 0.8×, Medium 1.0×, Hard
 - Day-only actions, automatic Scout combat, a persistent 1×/2× playback preference, optional building/enemy health bars, and no end-of-night popup.
 - Stable one-click map input, outline-only placement feedback, selected unit/building combat stats, and no Scout health UI.
 - Visible projectiles, recoil, hit flashes, brief defeat remains, and deterministic raccoon pacing: staggered groups rotate across seeded forest edges.
-- A DOM-free, data-driven `tech-tree.js` module. **Scout Training I** costs 4 XP on Level 2 (+1 Scout damage); **Arrowcraft** costs 6 XP on Level 3 and unlocks an individual tower upgrade.
+- A DOM-free, data-driven `tech-tree.js` module. The first Skill Point arrives at 10 XP, then total-XP thresholds double; each branch's purchases cost 1, 2, 4, 8 Skill Points independently. **Scout Training I** adds +1 Scout damage, while **Arrowcraft** unlocks an individual tower upgrade.
 - **Arrow Shooter:** spend 4 wood and one action to convert one Stick Launcher. It has 1.5× damage, attack speed, and range; this paid refit restores it to full health.
 - Shared building recipes specify health, repair, targetability, path blocking, and optional combat. `balance-sim.js` compares named plans and verifies their replay checkpoints before a Threat Budget or tower stat is changed.
 
@@ -100,7 +100,7 @@ Its job is not crowd control or a universal replacement for launchers. It gives 
 
 ### Environment purpose
 
-- **Hearthcraft / Fire Pit (roadmap, not live contract):** Hearthcraft appears on Level 5, costs 8 XP, and requires Arrowcraft. It unlocks an earned Fire Pit, rather than placing a free campfire. Then spend **2 wood and one action** to construct it in the central clearing. Its sole purpose is a non-targetable, non-damaging, non-healing, non-blocking **1.5-cell Warmth zone** that slows enemies **25%**. It is a narrow safety net that buys Scout or a nearby tower one more attack, not a replacement for a defense.
+- **Hearthcraft / Fire Pit (roadmap, not live contract):** Hearthcraft appears on Level 5, requires Arrowcraft, and follows the Huntcraft branch-cost progression. It unlocks an earned Fire Pit, rather than placing a free campfire. Then spend **2 wood and one action** to construct it in the central clearing. Its sole purpose is a non-targetable, non-damaging, non-healing, non-blocking **1.5-cell Warmth zone** that slows enemies **25%**. It is a narrow safety net that buys Scout or a nearby tower one more attack, not a replacement for a defense.
 - **Water:** do not add a water inventory. Later, water should be an environmental moisture source that enables fungal/garden structures near it; its first real purpose is to create location-specific choices for the Mushroom branch rather than another generic currency.
 
 ### Tree and placement UX corrections (delivered)
@@ -135,7 +135,7 @@ Keep the engine values precise, but make the player-facing contract legible. Sho
 - Save/load/reset, speed, and health-bar toggles are compact secondary controls. The primary play surface focuses on the map, resources, selected object, and **End day**.
 - Generic Field Notes are replaced by a small current-status line.
 - Selection uses a tight outline matched to the selected object or terrain cell instead of a large circular terrain highlight.
-- A compact Technology icon opens a full-screen, read-only-at-night tree overlay. It shows current and directly reachable nodes only; research remains XP-only and day-only.
+- A compact Technology icon opens a full-screen, read-only-at-night tree overlay. It shows current and directly reachable nodes only; research remains Skill Point-only and day-only, with icon-first nodes and selection-driven descriptions.
 - Building art communicates intact, worn, damaged, and critical condition; the overnight report calls out structure damage and dawn recovery.
 
 ## Recommended collaboration documents

@@ -11,9 +11,9 @@
   root.WildHearthEngine = engine;
 }(typeof globalThis !== "undefined" ? globalThis : this, function buildEngine(TechTree) {
   if (!TechTree) throw new Error("Wild Hearth tech tree did not load.");
-  const SAVE_VERSION = 12;
+  const SAVE_VERSION = 13;
   const TICK_RATE = 20;
-  const SKILL_POINT_XP = 8;
+  const FIRST_SKILL_POINT_XP = 10;
   const BOARD = { id: "hearth-meadow", label: "Hearth Meadow", width: 15, height: 15 };
   const STARTING_ACTIONS = 2;
   const DEFAULT_SEED = "HEARTH-1042";
@@ -674,19 +674,20 @@
   }
 
   function nextSkillPointThreshold(state) {
-    return ((state.skillPointsEarned || 0) + 1) * SKILL_POINT_XP;
+    return FIRST_SKILL_POINT_XP * (2 ** Math.max(0, state.skillPointsEarned || 0));
   }
 
   function grantExperience(state, amount) {
     const gained = Math.max(0, Number(amount) || 0);
     if (!gained) return { gained: 0, skillPoints: 0 };
-    const before = Math.floor(state.xp / SKILL_POINT_XP);
     state.xp += gained;
-    const after = Math.floor(state.xp / SKILL_POINT_XP);
-    const earned = Math.max(0, after - before);
+    let earned = 0;
+    while (state.xp >= nextSkillPointThreshold(state)) {
+      state.skillPoints += 1;
+      state.skillPointsEarned = (state.skillPointsEarned || 0) + 1;
+      earned += 1;
+    }
     if (earned > 0) {
-      state.skillPoints += earned;
-      state.skillPointsEarned = (state.skillPointsEarned || 0) + earned;
       if (!state.firstSkillPointAcknowledged) state.firstSkillPointReady = true;
     }
     return { gained, skillPoints: earned };
@@ -1557,8 +1558,8 @@
     const state = clone(legacyState);
     state.version = SAVE_VERSION;
     if (version === 10) state.hatchetCrafted = Boolean(state.shelterBuilt);
-    state.openingPickups = OPENING_PICKUPS.map((pickup) => ({ ...pickup, collected: Boolean(state.hatchetCrafted || state.shelterBuilt) }));
-    if (Array.isArray(state.actionLog)) {
+    if (version <= 11) state.openingPickups = OPENING_PICKUPS.map((pickup) => ({ ...pickup, collected: Boolean(state.hatchetCrafted || state.shelterBuilt) }));
+    if (version <= 11 && Array.isArray(state.actionLog)) {
       const migratedActions = [];
       let supplied = false;
       const collectedIds = new Set();
@@ -1593,7 +1594,7 @@
 
   function hydrate(serialized) {
     const parsed = typeof serialized === "string" ? JSON.parse(serialized) : serialized;
-    if (!parsed || !parsed.state || ![10, 11, SAVE_VERSION].includes(parsed.version)) throw new Error("This save belongs to a different version of Wild Hearth.");
+    if (!parsed || !parsed.state || ![10, 11, 12, SAVE_VERSION].includes(parsed.version)) throw new Error("This save belongs to a different version of Wild Hearth.");
     const state = parsed.version === SAVE_VERSION ? parsed.state : migrateLegacyState(parsed.state, parsed.version);
     if (state.version !== SAVE_VERSION) throw new Error("This save belongs to a different version of Wild Hearth.");
     if (!Array.isArray(state.terrain) || state.terrain.length !== BOARD.width * BOARD.height) throw new Error("This save has an invalid meadow.");
@@ -1679,7 +1680,7 @@
     ENEMY_COUNTERS,
     LEVELS,
     STARTING_ACTIONS,
-    SKILL_POINT_XP,
+    FIRST_SKILL_POINT_XP,
     DEFAULT_SEED,
     SPAWN_CELLS,
     createRun,
@@ -1688,6 +1689,8 @@
     levelFor,
     mediumThreatBudget,
     techAvailability: TechTree.availability,
+    techBranchResearchCount: TechTree.branchResearchCount,
+    techCostFor: TechTree.costFor,
     hasResearch: TechTree.isResearched,
     terrainAt,
     inBounds,

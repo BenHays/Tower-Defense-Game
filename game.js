@@ -2,8 +2,8 @@ const Engine = window.WildHearthEngine;
 
 if (!Engine) throw new Error("Wild Hearth engine did not load.");
 
-const SAVE_KEY = "wild-hearth-save-v12";
-const LEGACY_SAVE_KEYS = ["wild-hearth-save-v11", "wild-hearth-save-v10"];
+const SAVE_KEY = "wild-hearth-save-v13";
+const LEGACY_SAVE_KEYS = ["wild-hearth-save-v12", "wild-hearth-save-v11", "wild-hearth-save-v10"];
 const SETTINGS_KEY = "wild-hearth-settings-v1";
 const elements = {
   board: document.querySelector("#game-board"),
@@ -44,6 +44,7 @@ const elements = {
   techDialog: document.querySelector("#tech-dialog"),
   techCloseButton: document.querySelector("#tech-close-button"),
   techDialogSubtitle: document.querySelector("#tech-dialog-subtitle"),
+  techDetailIcon: document.querySelector("#tech-detail-icon"),
   techTitle: document.querySelector("#tech-title"),
   techCopy: document.querySelector("#tech-copy"),
   techBranches: document.querySelector("#tech-branches"),
@@ -522,6 +523,10 @@ function techEffectSummary(definition) {
   }).join(" · ");
 }
 
+function techNodeIcon(definition) {
+  return definition.icon || "✦";
+}
+
 function drawTechConnections() {
   const canvas = elements.techBranches.querySelector(".tech-tree-canvas");
   const viewport = elements.techBranches.querySelector(".tech-tree-viewport");
@@ -554,10 +559,10 @@ function drawTechConnections() {
     sources.forEach((source) => {
       const start = center(source, "right");
       const end = center(button, "left");
-      const bend = Math.max(start.x + 18, start.x + ((end.x - start.x) * 0.5));
+      const curve = Math.max(26, (end.x - start.x) * 0.45);
       const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
       path.setAttribute("class", `tech-connection ${definition.branch}`);
-      path.setAttribute("d", `M ${start.x} ${start.y} H ${bend} V ${end.y} H ${end.x}`);
+      path.setAttribute("d", `M ${start.x} ${start.y} C ${start.x + curve} ${start.y}, ${end.x - curve} ${end.y}, ${end.x} ${end.y}`);
       connectors.append(path);
     });
   });
@@ -582,10 +587,11 @@ function renderTechnology() {
   if (!visibleNodes.length) {
     elements.techBranches.replaceChildren(createNode("p", "tech-empty", "The first research reveals after you survive Level 1."));
     elements.techTitle.textContent = "Research unlocks soon";
-    elements.techCopy.textContent = "Clear the first watch. Every 8 XP earns one Skill Point for lasting research.";
+    elements.techDetailIcon.textContent = "✦";
+    elements.techCopy.textContent = "Clear the first watch. Your first Skill Point arrives at 10 XP.";
     setButtonContent(elements.researchButton, "Research unavailable", "next level");
     elements.researchButton.disabled = true;
-    elements.techDialogSubtitle.textContent = `Experience ${state.xp}/${Engine.nextSkillPointThreshold(state)} · research uses Skill Points, not actions.`;
+    elements.techDialogSubtitle.textContent = `Experience ${state.xp}/${Engine.nextSkillPointThreshold(state)} · thresholds double after every point · no action.`;
     return;
   }
   const available = visibleNodes.find((node) => Engine.techAvailability(state, node.id).available);
@@ -623,7 +629,7 @@ function renderTechnology() {
       tierRows.set(node.tier, row);
       const check = Engine.techAvailability(state, node.id);
       const researched = Engine.hasResearch(state, node.id);
-      const button = createNode("button", `tech-node${node.id === activeTechId ? " is-selected" : ""}${researched ? " is-researched" : ""}`);
+      const button = createNode("button", `tech-node${node.id === activeTechId ? " is-selected" : ""}${researched ? " is-researched" : ""}${check.available ? " is-available" : " is-locked"}`);
       button.type = "button";
       button.dataset.tech = node.id;
       button.style.setProperty("--tech-column", String(node.tier));
@@ -631,9 +637,8 @@ function renderTechnology() {
       button.title = check.reason;
       button.setAttribute("aria-label", `${node.label}: ${techEffectSummary(node)}. ${researched ? "Researched." : check.reason}`);
       button.append(
-        createNode("strong", "tech-node-title", node.label),
-        createNode("small", "tech-node-effect", techEffectSummary(node)),
-        createNode("em", "tech-node-cost", researched ? "researched" : `${node.costSkillPoints} SP`),
+        createNode("span", "tech-node-icon", techNodeIcon(node)),
+        createNode("em", "tech-node-cost", researched ? "✓" : `${check.costSkillPoints} SP`),
       );
       track.append(button);
     });
@@ -646,9 +651,10 @@ function renderTechnology() {
   stage.append(viewport, createNode("p", "tech-scroll-hint", "Scroll to explore →"));
   elements.techBranches.replaceChildren(stage);
   queueTechConnections();
+  elements.techDetailIcon.textContent = techNodeIcon(selectedNode);
   elements.techTitle.textContent = selectedNode.label;
   elements.techDialogSubtitle.textContent = state.phase === "day"
-    ? `Level ${level} · ${state.skillPoints} Skill Point${state.skillPoints === 1 ? "" : "s"} ready · ${state.xp}/${Engine.nextSkillPointThreshold(state)} XP to the next point · no action.`
+    ? `Level ${level} · ${state.skillPoints} Skill Point${state.skillPoints === 1 ? "" : "s"} ready · ${state.xp}/${Engine.nextSkillPointThreshold(state)} XP to next · no action.`
     : `Level ${level} · ${state.skillPoints} Skill Point${state.skillPoints === 1 ? "" : "s"} ready · planning is read-only during the night.`;
   if (Engine.hasResearch(state, selectedNode.id)) {
     elements.techCopy.textContent = `${selectedNode.completeCopy} Research uses Skill Points only; no day action is spent.`;
@@ -656,8 +662,8 @@ function renderTechnology() {
     elements.researchButton.disabled = true;
     return;
   }
-  elements.techCopy.textContent = `${selectedNode.copy} ${research.reason} Research uses Skill Points only; no day action is spent.`;
-  setButtonContent(elements.researchButton, `Research ${selectedNode.label}`, `${selectedNode.costSkillPoints} SP · no action`);
+  elements.techCopy.textContent = `${selectedNode.copy} ${research.reason} This branch purchase costs ${research.costSkillPoints} SP; research uses no day action.`;
+  setButtonContent(elements.researchButton, `Research ${selectedNode.label}`, `${research.costSkillPoints} SP · no action`);
   elements.researchButton.disabled = state.phase !== "day" || !research.available;
 }
 

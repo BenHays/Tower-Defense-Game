@@ -4,7 +4,7 @@
 
 - Day is untimed and starts with two day actions.
 - Harvesting a tree, building a defense, converting a mature patch, repairing, and placing Scout each use one action.
-- XP is permanent progress: every 8 XP earns one Skill Point. Research spends Skill Points and does not use a day action.
+- XP is permanent progress: the first Skill Point arrives at 10 XP, then thresholds double to 20, 40, 80, and beyond. Research spends Skill Points and does not use a day action.
 - Level 1 begins with a clickable stick and rock in the starting clearing. Both pickups are free. **Craft axe** becomes available after both are collected and uses one action; **Place shelter** then uses the second action on any unoccupied grass cell. The guided pair unlocks every normal control. **End day** stays disabled until the teepee exists.
 - The player ends the day with one click; unused actions do not create a confirmation. Night combat is automatic and Scout returns before the next day begins.
 - Every resolved night creates a deterministic replay checkpoint and a compact Night Record for balance testing. The dawn report summarizes enemies stopped, hides earned, structure damage, and any recovery.

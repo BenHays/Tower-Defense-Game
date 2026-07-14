@@ -2,8 +2,8 @@
 
 ## Live now
 
-- XP comes from defeated enemies and surviving a night; every 8 XP earns one Skill Point. XP is never spent.
-- `tech-tree.js` is the single editable catalog for branches, nodes, dependencies, Skill Point costs, and typed effects.
+- XP comes from defeated enemies and surviving a night; the first Skill Point arrives at 10 XP, then the total-XP milestones double to 20, 40, 80, and beyond. XP is never spent.
+- `tech-tree.js` is the single editable catalog for branches, icon glyphs, nodes, dependencies, and typed effects. A branch's 1st, 2nd, 3rd, and 4th purchases cost 1, 2, 4, and 8 Skill Points; each branch tracks this independently.
 - **Scout Training I** is in the Scout branch. It reveals on Level 2, costs 1 Skill Point, and adds +1 Scout damage; **Trail Sense** follows with +0.5 watch range.
 - **Huntcraft** begins with **Hardwood Throws** (+1 Stick Launcher damage), then **Longer Arm** (+0.5 range), then **Arrowcraft**. Arrowcraft enables the Arrow Shooter upgrade; **Quickcord** follows as its attack-speed refit.
 - **Forager** provides **Woodland Yield** (+1 wood per tree) and **Field Mending** (+1 repair HP).
@@ -26,4 +26,4 @@
 ## Decisions made
 
 - Tech nodes unlock a distinct choice, never a maintenance obligation.
-- Technology opens from a compact icon into a full-screen, horizontally scrollable dependency canvas. Keep only current and directly reachable nodes visible; each node shows its concise effect, cost, and prerequisite line before selection.
+- Technology opens from a compact icon into a full-screen, horizontally scrollable dependency canvas. Keep only current and directly reachable nodes visible; the canvas stays icon-first while the selected-node pane carries the effect, cost, and prerequisite detail.

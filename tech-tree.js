@@ -1,9 +1,9 @@
 /*
  * Wild Hearth technology catalog.
  *
- * This module is the single editable source for branches, Skill Point costs,
- * dependencies, and typed effects. Experience earns Skill Points in the
- * engine; research spends points without spending a day action.
+ * This module is the single editable source for branches, dependencies,
+ * icons, and typed effects. Experience earns Skill Points in the engine;
+ * a branch's purchase count sets its next research cost.
  */
 (function registerWildHearthTechTree(root, factory) {
   const techTree = factory();
@@ -23,7 +23,7 @@
       label: "Hardwood Throws",
       branch: "huntcraft",
       tier: 1,
-      costSkillPoints: 1,
+      icon: "✹",
       requiredLevel: 2,
       requiresNodes: [],
       requiresUnlocks: ["stickLauncher"],
@@ -36,7 +36,7 @@
       label: "Longer Arm",
       branch: "huntcraft",
       tier: 2,
-      costSkillPoints: 1,
+      icon: "↗",
       requiredLevel: 3,
       requiresNodes: ["hardwoodThrows"],
       requiresUnlocks: [],
@@ -49,7 +49,7 @@
       label: "Arrowcraft",
       branch: "huntcraft",
       tier: 3,
-      costSkillPoints: 1,
+      icon: "➶",
       requiredLevel: 3,
       requiresNodes: ["launcherRange"],
       requiresUnlocks: [],
@@ -62,7 +62,7 @@
       label: "Quickcord",
       branch: "huntcraft",
       tier: 4,
-      costSkillPoints: 1,
+      icon: "≈",
       requiredLevel: 4,
       requiresNodes: ["arrowcraft"],
       requiresUnlocks: [],
@@ -75,7 +75,7 @@
       label: "Potato Packing",
       branch: "huntcraft",
       tier: 2,
-      costSkillPoints: 1,
+      icon: "●",
       requiredLevel: 4,
       requiresNodes: [],
       requiresUnlocks: ["potatoGun"],
@@ -97,7 +97,7 @@
       label: "Woodland Yield",
       branch: "forager",
       tier: 1,
-      costSkillPoints: 1,
+      icon: "♣",
       requiredLevel: 2,
       requiresNodes: [],
       requiresUnlocks: [],
@@ -110,7 +110,7 @@
       label: "Field Mending",
       branch: "forager",
       tier: 2,
-      costSkillPoints: 1,
+      icon: "✚",
       requiredLevel: 3,
       requiresNodes: ["woodlandYield"],
       requiresUnlocks: [],
@@ -123,7 +123,7 @@
       label: "Hearthkeeping I",
       branch: "fortification",
       tier: 1,
-      costSkillPoints: 1,
+      icon: "⌂",
       requiredLevel: 3,
       requiresNodes: [],
       requiresUnlocks: [],
@@ -136,7 +136,7 @@
       label: "Reinforced Frames",
       branch: "fortification",
       tier: 2,
-      costSkillPoints: 1,
+      icon: "▣",
       requiredLevel: 4,
       requiresNodes: ["hearthkeeping1"],
       requiresUnlocks: [],
@@ -149,7 +149,7 @@
       label: "Bark Armor",
       branch: "fortification",
       tier: 3,
-      costSkillPoints: 2,
+      icon: "◈",
       requiredLevel: 5,
       requiresNodes: ["reinforcedFrames"],
       requiresUnlocks: [],
@@ -162,7 +162,7 @@
       label: "Scout Training I",
       branch: "scout",
       tier: 1,
-      costSkillPoints: 1,
+      icon: "✦",
       requiredLevel: 2,
       requiresNodes: [],
       requiresUnlocks: [],
@@ -175,7 +175,7 @@
       label: "Trail Sense",
       branch: "scout",
       tier: 2,
-      costSkillPoints: 1,
+      icon: "◌",
       requiredLevel: 3,
       requiresNodes: ["scoutTraining1"],
       requiresUnlocks: [],
@@ -189,13 +189,20 @@
   function node(id) { return NODES[id] || null; }
   function nodesForBranch(branch) { return nodes().filter((definition) => definition.branch === branch); }
   function isResearched(state, id) { return Array.isArray(state.research) && state.research.includes(id); }
+  function branchResearchCount(state, branch) {
+    return (state.research || []).map(node).filter((definition) => definition?.branch === branch).length;
+  }
+  function costFor(state, idOrDefinition) {
+    const definition = typeof idOrDefinition === "string" ? node(idOrDefinition) : idOrDefinition;
+    return definition ? 2 ** branchResearchCount(state, definition.branch) : 0;
+  }
 
   function validate() {
     const seenIds = new Set();
     nodes().forEach((definition) => {
       if (!definition.id || seenIds.has(definition.id)) throw new Error(`Invalid technology id: ${definition.id || "missing"}.`);
       if (!BRANCHES[definition.branch]) throw new Error(`Technology ${definition.id} has an unknown branch.`);
-      if (!Number.isFinite(definition.costSkillPoints) || definition.costSkillPoints < 1) throw new Error(`Technology ${definition.id} needs a positive Skill Point cost.`);
+      if (typeof definition.icon !== "string" || !definition.icon) throw new Error(`Technology ${definition.id} needs an icon.`);
       if (!Number.isInteger(definition.requiredLevel) || definition.requiredLevel < 1) throw new Error(`Technology ${definition.id} has an invalid level gate.`);
       (definition.requiresNodes || []).forEach((requiredId) => {
         if (!NODES[requiredId]) throw new Error(`Technology ${definition.id} requires an unknown node.`);
@@ -219,20 +226,21 @@
   function availability(state, id) {
     const definition = node(id);
     if (!definition) return { available: false, reason: "Unknown research.", node: null };
-    if (isResearched(state, id)) return { available: false, reason: "Researched.", node: definition };
-    if ((state.levelIndex || 0) + 1 < definition.requiredLevel) return { available: false, reason: `Reveals on Level ${definition.requiredLevel}.`, node: definition };
+    const costSkillPoints = costFor(state, definition);
+    if (isResearched(state, id)) return { available: false, reason: "Researched.", node: definition, costSkillPoints };
+    if ((state.levelIndex || 0) + 1 < definition.requiredLevel) return { available: false, reason: `Reveals on Level ${definition.requiredLevel}.`, node: definition, costSkillPoints };
     const missingNode = (definition.requiresNodes || []).find((requiredId) => !isResearched(state, requiredId));
-    if (missingNode) return { available: false, reason: `Requires ${node(missingNode).label}.`, node: definition };
+    if (missingNode) return { available: false, reason: `Requires ${node(missingNode).label}.`, node: definition, costSkillPoints };
     const missingUnlock = (definition.requiresUnlocks || []).find((unlock) => !(state.unlocks || []).includes(unlock));
-    if (missingUnlock) return { available: false, reason: `Requires ${missingUnlock === "stickLauncher" ? "Stick Launcher" : missingUnlock}.`, node: definition };
-    if ((state.skillPoints || 0) < definition.costSkillPoints) return { available: false, reason: `Needs ${definition.costSkillPoints - (state.skillPoints || 0)} more Skill Point${definition.costSkillPoints - (state.skillPoints || 0) === 1 ? "" : "s"}.`, node: definition };
-    return { available: true, reason: "Ready to research.", node: definition };
+    if (missingUnlock) return { available: false, reason: `Requires ${missingUnlock === "stickLauncher" ? "Stick Launcher" : missingUnlock}.`, node: definition, costSkillPoints };
+    if ((state.skillPoints || 0) < costSkillPoints) return { available: false, reason: `Needs ${costSkillPoints - (state.skillPoints || 0)} more Skill Point${costSkillPoints - (state.skillPoints || 0) === 1 ? "" : "s"}.`, node: definition, costSkillPoints };
+    return { available: true, reason: "Ready to research.", node: definition, costSkillPoints };
   }
 
   function research(state, id) {
     const check = availability(state, id);
     if (!check.available) return { ok: false, message: check.reason, node: check.node };
-    state.skillPoints -= check.node.costSkillPoints;
+    state.skillPoints -= check.costSkillPoints;
     state.research.push(id);
     return { ok: true, message: `${check.node.label} researched. ${check.node.completeCopy}`, node: check.node };
   }
@@ -269,6 +277,8 @@
     node,
     nodesForBranch,
     isResearched,
+    branchResearchCount,
+    costFor,
     availability,
     research,
     effectsFor,

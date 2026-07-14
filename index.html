@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="A deterministic, top-down homestead defense prototype." />
     <title>Wild Hearth — Hearth Meadow</title>
-    <link rel="stylesheet" href="styles.css?v=axe-swing-2" />
+    <link rel="stylesheet" href="styles.css?v=talent-tree-2" />
   </head>
   <body>
     <main class="game-shell" id="top">
@@ -100,7 +100,7 @@
           <div>
             <p class="eyebrow">Homestead knowledge</p>
             <h2 id="tech-dialog-title">Technology</h2>
-            <p class="tech-dialog-subtitle" id="tech-dialog-subtitle">Earn 1 Skill Point per 8 XP. Research uses Skill Points, not day actions.</p>
+            <p class="tech-dialog-subtitle" id="tech-dialog-subtitle">First Skill Point at 10 XP. Thresholds double: 20, 40, 80… Research never uses a day action.</p>
           </div>
           <button class="quiet-button tech-close" id="tech-close-button" type="button">Close <span aria-hidden="true">×</span></button>
         </header>
@@ -108,6 +108,7 @@
           <div class="tech-branches" id="tech-branches" aria-label="Technology branches"></div>
           <aside class="tech-detail" aria-live="polite">
             <p class="eyebrow">Selected research</p>
+            <div class="tech-detail-icon" id="tech-detail-icon" aria-hidden="true">✦</div>
             <strong id="tech-title">Research</strong>
             <p id="tech-copy">Clear levels and turn earned Skill Points into lasting knowledge.</p>
             <button class="primary-button wide" id="research-button" type="button">Research <span>Skill Points · no action</span></button>
@@ -120,7 +121,7 @@
       <section class="skill-point-dialog-panel" role="dialog" aria-modal="true" aria-labelledby="skill-point-dialog-title" aria-describedby="skill-point-dialog-copy" tabindex="-1">
         <p class="eyebrow">New knowledge</p>
         <h2 id="skill-point-dialog-title">Your first Skill Point</h2>
-        <p id="skill-point-dialog-copy">Every 8 Experience earns one Skill Point. Spend them in Technology whenever you are ready; research never uses a day action.</p>
+        <p id="skill-point-dialog-copy">Your first Skill Point arrives at 10 Experience. Each next threshold doubles: 20, 40, 80… Spend points in Technology whenever you are ready; research never uses a day action.</p>
         <div class="skill-point-dialog-actions">
           <button class="secondary-button" id="skill-point-later" type="button">Later</button>
           <button class="primary-button" id="skill-point-tech" type="button">Open Technology</button>
@@ -128,8 +129,8 @@
       </section>
     </div>
 
-    <script src="tech-tree.js?v=axe-swing-2"></script>
-    <script src="engine.js?v=axe-swing-2"></script>
-    <script src="game.js?v=axe-swing-2"></script>
+    <script src="tech-tree.js?v=talent-tree-2"></script>
+    <script src="engine.js?v=talent-tree-2"></script>
+    <script src="game.js?v=talent-tree-2"></script>
   </body>
 </html>
