@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="A deterministic, top-down homestead defense prototype." />
+    <title>Wild Hearth — Hearth Meadow</title>
+    <link rel="stylesheet" href="styles.css?v=art-scroll-1" />
+  </head>
+  <body>
+    <main class="game-shell" id="top">
+      <header class="game-header">
+        <div class="brand" aria-label="Wild Hearth">
+          <span class="brand-mark" aria-hidden="true">✦</span>
+          <span><span class="eyebrow">Wild Hearth</span><strong>Hearth Meadow</strong></span>
+        </div>
+        <div class="phase-chip" id="phase-chip" aria-live="polite" hidden>
+          <span class="phase-dot"></span><span id="phase-label">Day planning</span><span class="phase-time" id="phase-detail">Untimed</span>
+        </div>
+        <div class="run-tools" aria-label="Game controls">
+          <span class="seed-pill">Seed <code id="seed-value">HEARTH-1042</code></span>
+          <button class="tech-launcher" id="tech-button" type="button" aria-haspopup="dialog" aria-controls="tech-dialog" hidden><span class="tech-tree-mark" aria-hidden="true">✣</span> Talents <strong id="tech-points">0 SP</strong></button>
+          <button class="quiet-button" id="new-seed-button" type="button">New seed</button>
+          <button class="quiet-button" id="save-button" type="button">Save</button>
+          <button class="quiet-button" id="load-button" type="button">Load</button>
+          <button class="quiet-button" id="reset-button" type="button">Reset</button>
+        </div>
+      </header>
+
+      <section class="topline" aria-label="Current objective and homestead status">
+        <div class="level-strip">
+          <p class="eyebrow" id="level-label">Level 01 · first watch</p>
+          <p class="level-objective" id="level-copy">Build a shelter before the first watch.</p>
+        </div>
+        <dl class="resource-row" aria-label="Homestead resources">
+          <div class="resource-chip resource-actions"><dt><span class="resource-icon" aria-hidden="true">☀</span><span>Actions</span></dt><dd id="action-points">2</dd></div>
+          <div class="resource-chip resource-wood"><dt><span class="resource-icon wood-icon" aria-hidden="true">🪵</span><span>Wood</span></dt><dd id="wood-value">0</dd></div>
+          <div class="resource-chip resource-xp"><dt><span class="resource-icon" aria-hidden="true">✦</span><span>XP</span></dt><dd id="xp-value">0</dd></div>
+          <div class="resource-chip resource-hides"><dt><span class="resource-icon hide-icon" aria-hidden="true">◆</span><span>Hides</span></dt><dd id="hides-value">0</dd></div>
+        </dl>
+      </section>
+
+      <section class="game-board day-scene" id="game-board" aria-label="Top-down Hearth Meadow">
+        <div class="meadow-texture" aria-hidden="true"></div>
+        <div class="board-grid" id="board-grid" aria-label="Hidden-square meadow board"></div>
+        <div class="entity-layer" id="entity-layer" aria-hidden="true"></div>
+        <div class="effect-layer" id="effect-layer" aria-hidden="true"></div>
+        <div class="board-caption" id="board-caption">Build a shelter before the first watch.</div>
+      </section>
+
+      <section class="control-panel" id="control-panel" aria-label="Game controls">
+        <section class="action-card" id="action-card" aria-label="Day actions">
+          <div class="action-heading">
+            <p class="eyebrow">Day actions</p>
+            <strong id="action-badge">2 actions</strong>
+          </div>
+          <p class="action-hint" id="action-hint">Choose one action, then select a map cell.</p>
+          <div class="day-action-list" id="day-action-list">
+            <button class="tool-button opening-action" id="axe-button" type="button"><span class="tool-icon" aria-hidden="true">🪓</span><span class="tool-copy"><strong>Craft axe</strong><small>Stick + rock · 1 action</small></span></button>
+            <button class="tool-button opening-action shelter-button" id="shelter-button" data-tool="teepee" type="button" aria-pressed="false"><span class="tool-icon" aria-hidden="true">⌂</span><span class="tool-copy"><strong id="shelter-label">Place shelter</strong><small id="shelter-detail">Free · 1 action</small></span></button>
+            <button class="tool-button" data-tool="clear" type="button"><span class="tool-icon" aria-hidden="true">🪓</span><span class="tool-copy"><strong>Harvest tree</strong><small>+2 wood</small></span></button>
+            <button class="tool-button" data-tool="scout" type="button"><span class="tool-icon" aria-hidden="true">●</span><span class="tool-copy"><strong>Place Scout</strong><small>1 action</small></span></button>
+          </div>
+          <div class="action-row" id="action-row">
+            <button class="secondary-button" id="repair-button" type="button">Repair selected <span>1 wood · 1 action</span></button>
+            <button class="secondary-button" id="upgrade-button" type="button">Upgrade selected <span>Arrowcraft · 4 wood · 1 action</span></button>
+          </div>
+          <button class="primary-button wide" id="end-day-button" type="button">End Day</button>
+        </section>
+
+        <section class="build-card" id="build-card" aria-label="Available structures">
+          <p class="eyebrow">Build</p>
+          <div class="build-list" id="build-list" aria-label="Buildable structures"></div>
+        </section>
+
+        <aside class="planning-card settings-card" id="planning-card" aria-label="Settings">
+          <p class="eyebrow" id="utility-label">Settings</p>
+          <div class="settings-controls" aria-label="Display and sound settings">
+            <div class="toolbar-size-controls" role="group" aria-label="Control size">
+              <button class="toolbar-size-button" id="toolbar-smaller" type="button" aria-label="Make controls smaller" title="Make controls smaller">−</button>
+              <span id="toolbar-size-label" aria-live="polite">Compact</span>
+              <button class="toolbar-size-button" id="toolbar-larger" type="button" aria-label="Make controls larger" title="Make controls larger">+</button>
+            </div>
+            <label class="setting-toggle" id="health-bars-setting" for="health-bars-toggle"><input id="health-bars-toggle" type="checkbox" checked /> <span>Health bars</span></label>
+            <div class="audio-settings" id="audio-settings" aria-label="Sound settings">
+              <button class="audio-mute-button" id="audio-mute-button" type="button" aria-pressed="false">Sound on</button>
+              <label class="audio-volume" for="effects-volume"><span>SFX</span><input id="effects-volume" type="range" min="0" max="100" value="55" /></label>
+              <label class="audio-volume" for="music-volume"><span>Music</span><input id="music-volume" type="range" min="0" max="100" value="22" /></label>
+            </div>
+          </div>
+          <button class="secondary-button wide" id="overlay-button" type="button">Show planning overlay <span>range + routes</span></button>
+          <p class="preview-copy" id="preview-copy">Choose a tool, then select unoccupied grass.</p>
+          <p class="dawn-report" id="dawn-report" hidden></p>
+          <div class="speed-controls" id="speed-controls" aria-label="Night speed">
+            <button class="speed-button" id="pause-button" type="button">Pause</button>
+            <button class="speed-button is-active" data-speed="1" type="button">1×</button>
+            <button class="speed-button" data-speed="2" type="button">2×</button>
+            <button class="speed-button" data-speed="5" type="button">5×</button>
+          </div>
+        </aside>
+      </section>
+
+      <section class="event-log" id="event-log-wrap" aria-label="Game update" aria-live="polite" hidden><p id="event-log"></p></section>
+    </main>
+
+    <div class="tech-dialog" id="tech-dialog" hidden>
+      <section class="tech-dialog-panel" role="dialog" aria-modal="true" aria-labelledby="tech-dialog-title" tabindex="-1">
+        <header class="tech-dialog-header">
+          <div>
+            <p class="eyebrow">Homestead talents</p>
+            <h2 id="tech-dialog-title">Talent Tree</h2>
+            <p class="tech-dialog-subtitle" id="tech-dialog-subtitle">First Skill Point at 10 XP. Thresholds double: 20, 40, 80… Learning never uses a day action.</p>
+          </div>
+          <button class="quiet-button tech-close" id="tech-close-button" type="button">Close <span aria-hidden="true">×</span></button>
+        </header>
+        <div class="tech-dialog-body">
+          <div class="tech-branches" id="tech-branches" aria-label="Talent Tree branches"></div>
+          <aside class="tech-detail" aria-live="polite">
+            <p class="eyebrow">Selected talent</p>
+            <div class="tech-detail-icon" id="tech-detail-icon" aria-hidden="true">✦</div>
+            <strong id="tech-title">Talent</strong>
+            <span class="tech-effect" id="tech-effect"></span>
+            <p id="tech-copy">Clear levels and turn earned Skill Points into lasting knowledge.</p>
+            <button class="primary-button wide" id="research-button" type="button">Learn Talent <span>Skill Points · no action</span></button>
+          </aside>
+        </div>
+      </section>
+    </div>
+
+    <div class="skill-point-dialog" id="skill-point-dialog" hidden>
+      <section class="skill-point-dialog-panel" role="dialog" aria-modal="true" aria-labelledby="skill-point-dialog-title" aria-describedby="skill-point-dialog-copy" tabindex="-1">
+        <p class="eyebrow">New knowledge</p>
+        <h2 id="skill-point-dialog-title">Your first Skill Point</h2>
+        <p id="skill-point-dialog-copy">Your first Skill Point arrives at 10 Experience. Each next threshold doubles: 20, 40, 80… Spend points in the Talent Tree whenever you are ready; learning never uses a day action.</p>
+        <div class="skill-point-dialog-actions">
+          <button class="secondary-button" id="skill-point-later" type="button">Later</button>
+          <button class="primary-button" id="skill-point-tech" type="button">Open Talent Tree</button>
+        </div>
+      </section>
+    </div>
+
+    <aside class="skill-point-toast" id="skill-point-toast" role="status" aria-live="polite" hidden>
+      <span class="skill-point-toast-mark" aria-hidden="true">✦</span>
+      <div>
+        <strong id="skill-point-toast-title">Skill Point earned</strong>
+        <p id="skill-point-toast-copy">Spend it in the Talent Tree whenever you are ready.</p>
+      </div>
+    </aside>
+
+    <div class="early-end-dialog" id="early-end-dialog" hidden>
+      <section class="early-end-dialog-panel" role="dialog" aria-modal="true" aria-labelledby="early-end-dialog-title" aria-describedby="early-end-dialog-copy" tabindex="-1">
+        <p class="eyebrow">Unused actions</p>
+        <h2 id="early-end-dialog-title">End the day early?</h2>
+        <p id="early-end-dialog-copy">You still have actions available.</p>
+        <p class="early-end-dialog-note">This reminder appears once each day.</p>
+        <div class="early-end-dialog-actions">
+          <button class="secondary-button" id="early-end-cancel" type="button">Keep planning</button>
+          <button class="primary-button" id="early-end-confirm" type="button">End day anyway</button>
+        </div>
+      </section>
+    </div>
+
+    <script src="talent-icons.js?v=talent-workbench-1"></script>
+    <script src="talent-tree.js?v=balance-pathing-1"></script>
+    <script src="engine.js?v=night-speed-5x-1"></script>
+    <script src="audio.js?v=audio-controls-1"></script>
+    <script src="game.js?v=night-speed-5x-1"></script>
+  </body>
+</html>
