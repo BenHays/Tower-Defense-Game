@@ -5,16 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="A deterministic, top-down homestead defense prototype." />
     <title>Wild Hearth — Hearth Meadow</title>
-    <link rel="stylesheet" href="styles.css?v=night-speed-5x-1" />
+    <link rel="stylesheet" href="styles.css?v=dock-settings-1" />
   </head>
   <body>
     <main class="game-shell" id="top">
       <header class="game-header">
-        <a class="brand" href="#top" aria-label="Restart Wild Hearth" id="brand-reset">
+        <div class="brand" aria-label="Wild Hearth">
           <span class="brand-mark" aria-hidden="true">✦</span>
           <span><span class="eyebrow">Wild Hearth</span><strong>Hearth Meadow</strong></span>
-        </a>
-        <div class="phase-chip" id="phase-chip" aria-live="polite">
+        </div>
+        <div class="phase-chip" id="phase-chip" aria-live="polite" hidden>
           <span class="phase-dot"></span><span id="phase-label">Day planning</span><span class="phase-time" id="phase-detail">Untimed</span>
         </div>
         <div class="run-tools" aria-label="Game controls">
@@ -52,11 +52,6 @@
         <section class="action-card" id="action-card" aria-label="Day actions">
           <div class="action-heading">
             <p class="eyebrow">Day actions</p>
-            <div class="toolbar-size-controls" role="group" aria-label="Control size">
-              <button class="toolbar-size-button" id="toolbar-smaller" type="button" aria-label="Make controls smaller" title="Make controls smaller">−</button>
-              <span id="toolbar-size-label" aria-live="polite">Compact</span>
-              <button class="toolbar-size-button" id="toolbar-larger" type="button" aria-label="Make controls larger" title="Make controls larger">+</button>
-            </div>
             <strong id="action-badge">2 actions</strong>
           </div>
           <p class="action-hint" id="action-hint">Choose one action, then select a map cell.</p>
@@ -71,7 +66,21 @@
             <button class="secondary-button" id="upgrade-button" type="button">Upgrade selected <span>Arrowcraft · 4 wood · 1 action</span></button>
           </div>
           <button class="primary-button wide" id="end-day-button" type="button">End Day</button>
-          <div class="always-settings">
+        </section>
+
+        <section class="build-card" id="build-card" aria-label="Available structures">
+          <p class="eyebrow">Build</p>
+          <div class="build-list" id="build-list" aria-label="Buildable structures"></div>
+        </section>
+
+        <aside class="planning-card settings-card" id="planning-card" aria-label="Settings">
+          <p class="eyebrow" id="utility-label">Settings</p>
+          <div class="settings-controls" aria-label="Display and sound settings">
+            <div class="toolbar-size-controls" role="group" aria-label="Control size">
+              <button class="toolbar-size-button" id="toolbar-smaller" type="button" aria-label="Make controls smaller" title="Make controls smaller">−</button>
+              <span id="toolbar-size-label" aria-live="polite">Compact</span>
+              <button class="toolbar-size-button" id="toolbar-larger" type="button" aria-label="Make controls larger" title="Make controls larger">+</button>
+            </div>
             <label class="setting-toggle" id="health-bars-setting" for="health-bars-toggle"><input id="health-bars-toggle" type="checkbox" checked /> <span>Health bars</span></label>
             <div class="audio-settings" id="audio-settings" aria-label="Sound settings">
               <button class="audio-mute-button" id="audio-mute-button" type="button" aria-pressed="false">Sound on</button>
@@ -79,10 +88,6 @@
               <label class="audio-volume" for="music-volume"><span>Music</span><input id="music-volume" type="range" min="0" max="100" value="22" /></label>
             </div>
           </div>
-        </section>
-
-        <aside class="planning-card" id="planning-card" aria-label="Planning and night controls">
-          <p class="eyebrow" id="utility-label">Tools</p>
           <button class="secondary-button wide" id="overlay-button" type="button">Show planning overlay <span>range + routes</span></button>
           <p class="preview-copy" id="preview-copy">Choose a tool, then select unoccupied grass.</p>
           <p class="dawn-report" id="dawn-report" hidden></p>
@@ -93,11 +98,6 @@
             <button class="speed-button" data-speed="5" type="button">5×</button>
           </div>
         </aside>
-
-        <section class="build-card" id="build-card" aria-label="Available structures">
-          <p class="eyebrow">Build</p>
-          <div class="build-list" id="build-list" aria-label="Buildable structures"></div>
-        </section>
       </section>
 
       <section class="event-log" id="event-log-wrap" aria-label="Game update" aria-live="polite" hidden><p id="event-log"></p></section>

@@ -260,20 +260,9 @@ button[hidden], [hidden] { display: none !important; }
   to { transform: scale(1.18); opacity: 0; }
 }
 
-/* This preference belongs with always-available day controls, not the conditional planning card. */
-.action-card > .always-settings {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 7px;
-  justify-content: flex-end;
-  margin-top: -2px;
-}
 .audio-settings { display: inline-flex; align-items: center; gap: 6px; padding-left: 8px; border-left: 1px solid var(--line); }
 .audio-mute-button { min-height: 24px; padding: 4px 7px; border: 1px solid rgba(53,108,82,.34); border-radius: 7px; cursor: pointer; color: var(--moss-dark); background: #f4f8f0; font-size: .55rem; font-weight: 900; letter-spacing: .03em; text-transform: uppercase; }.audio-mute-button[aria-pressed="true"] { color: #866142; background: #fbf0dc; border-color: rgba(139,96,57,.4); }
 .audio-volume { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: .53rem; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; }.audio-volume input { width: 48px; height: 16px; margin: 0; accent-color: var(--moss); cursor: pointer; }
-@media(max-width:430px) { .action-card > .always-settings { justify-content: space-between; }.audio-settings { padding-left: 0; border-left: 0; }.audio-volume input { width: 40px; } }
 
 /* The opening teaches two concrete actions without introducing a new resource. */
 .day-action-list .opening-action { grid-column: 1 / -1; }
@@ -323,3 +312,52 @@ button[hidden], [hidden] { display: none !important; }
 .enemy.vulture { width: 68px; height: 50px; background: none; filter: drop-shadow(0 8px 2px rgba(18,42,37,.25)); animation: vulture-glide .48s ease-in-out infinite alternate; }.enemy.vulture::before { display: block; left: 4px; bottom: 8px; width: 61px; height: 27px; background: linear-gradient(154deg,transparent 0 17%,#463c35 18% 39%,#7a6758 40% 55%,#403931 56% 100%); clip-path: polygon(0 53%,26% 0,49% 42%,76% 7%,100% 63%,69% 80%,48% 65%,20% 88%); }.enemy.vulture::after { display: block; right: 5px; bottom: 14px; width: 20px; height: 17px; border-radius: 52% 46% 46% 54%; background: radial-gradient(circle at 34% 36%,#d9c281 0 2px,transparent 3px),#84735d; box-shadow: 10px 9px 0 -6px #d8b94f; }
 .projectile.straw { width: 20px; height: 5px; border-radius: 0 99px 99px 0; background: repeating-linear-gradient(90deg,#e8cf76 0 4px,#9e7936 5px 7px); box-shadow: 0 0 4px rgba(241,218,128,.78),0 1px 2px rgba(16,39,32,.45); }.impact.straw { border-color: rgba(235,208,106,.94); background: radial-gradient(circle,rgba(255,245,180,.8) 0 13%,rgba(221,183,74,.4) 17% 40%,transparent 45%); }.remains.vulture { width: 36px; height: 10px; background: linear-gradient(90deg,#403931,#7a6758,#403931); }
 @keyframes scarecrow-fling { from { transform: rotate(-4deg); } to { transform: rotate(7deg) translateX(3px); } }@keyframes vulture-glide { from { transform: translate(-50%,-50%) translateY(-2px) rotate(-2deg); } to { transform: translate(-50%,-50%) translateY(2px) rotate(2deg); } }
+
+/* The dock stays in player-reading order: actions, construction, then preferences. */
+.brand { cursor: default; }
+.settings-card {
+  display: grid !important;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: 7px 10px;
+  padding: 8px 10px !important;
+}
+.settings-card .eyebrow { display: block !important; margin: 0; }
+.settings-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px 8px;
+  min-width: 0;
+}
+.settings-card .toolbar-size-controls { margin: 0; }
+.settings-card .audio-settings { padding-left: 8px; border-left: 1px solid var(--line); }
+.settings-card #overlay-button,
+.settings-card .preview-copy,
+.settings-card .dawn-report,
+.settings-card .speed-controls { grid-column: 1 / -1; }
+.settings-card #overlay-button { max-width: 230px; }
+.settings-card .preview-copy { margin: 0; }
+.settings-card .dawn-report { margin: 0; }
+.settings-card .speed-controls { width: min(300px, 100%); }
+.control-panel.is-day .settings-card,
+.control-panel.is-night .settings-card,
+.control-panel.is-aftermath .settings-card {
+  display: grid !important;
+  grid-column: 1 / -1;
+  grid-template-columns: max-content minmax(0, 1fr);
+  justify-content: stretch;
+}
+@media (max-width: 700px) {
+  .settings-card,
+  .control-panel.is-day .settings-card,
+  .control-panel.is-night .settings-card,
+  .control-panel.is-aftermath .settings-card { grid-template-columns: 1fr; }
+  .settings-controls { justify-content: flex-start; }
+  .settings-card #overlay-button { max-width: none; }
+}
+@media (max-width: 430px) {
+  .settings-card .audio-settings { padding-left: 0; border-left: 0; }
+  .settings-card .audio-volume input { width: 40px; }
+}

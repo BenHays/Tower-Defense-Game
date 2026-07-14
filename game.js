@@ -863,16 +863,14 @@ function renderControls() {
   const opening = needsShelter();
   const openingSuppliesReady = Engine.hasOpeningSupplies(state);
   const hasPlanningTarget = Boolean(selectedScout() || towerRecipe(building?.type));
-  // Keep pace settings anchored below the meadow once the opening is complete.
-  // The range overlay remains contextual, but 1×/2×/5× is a player preference
-  // rather than a night-only combat control.
-  const showPlanningCard = !opening;
+  // Keep display, sound, and pacing preferences anchored below the Build strip.
+  // The range overlay remains contextual, while 1×/2×/5× is a saved preference.
   elements.controlPanel.classList.toggle("is-day", day);
   elements.controlPanel.classList.toggle("is-night", night);
   elements.controlPanel.classList.toggle("is-aftermath", state.phase === "aftermath");
   elements.actionCard.hidden = false;
   elements.actionCard.classList.toggle("is-opening", opening);
-  elements.planningCard.hidden = opening || !showPlanningCard;
+  elements.planningCard.hidden = false;
   const unlockedBuildTools = renderBuildList();
   elements.buildCard.hidden = opening || !unlockedBuildTools.length;
   elements.axeButton.hidden = !opening || state.hatchetCrafted;
@@ -925,10 +923,10 @@ function renderControls() {
   elements.pauseButton.disabled = !night;
   elements.pauseButton.textContent = state.paused ? "Resume" : "Pause";
   elements.speedButtons.forEach((button) => {
-    button.disabled = opening;
+    button.disabled = false;
     button.classList.toggle("is-active", Number(button.dataset.speed) === preferredSpeed);
   });
-  elements.speedControls.hidden = opening;
+  elements.speedControls.hidden = false;
   elements.healthBarsSetting.hidden = false;
   elements.healthBarsToggle.checked = showHealthBars;
   syncAudioControls();
@@ -942,7 +940,7 @@ function renderControls() {
           : "Click the stick and rock in the meadow."
       : "Choose an action, then select the meadow."
     : "Scout is defending the hearth.";
-  elements.utilityLabel.textContent = night ? "Night watch" : state.phase === "aftermath" ? "Dawn" : "Tools";
+  elements.utilityLabel.textContent = "Settings";
   syncToolbarSizeControls();
   elements.levelLabel.textContent = `Level ${String(level.number).padStart(2, "0")} · ${level.title}`;
   elements.levelCopy.textContent = day
@@ -1291,7 +1289,6 @@ document.querySelector("#save-button").addEventListener("click", saveGame);
 document.querySelector("#load-button").addEventListener("click", loadGame);
 document.querySelector("#new-seed-button").addEventListener("click", () => resetRun(Engine.nextSeed(state.seed)));
 document.querySelector("#reset-button").addEventListener("click", () => resetRun(state.seed));
-document.querySelector("#brand-reset").addEventListener("click", (event) => { event.preventDefault(); resetRun(state.seed); });
 function frame(timestamp) {
   if (!lastFrame) lastFrame = timestamp;
   const elapsed = Math.min(timestamp - lastFrame, 250);
