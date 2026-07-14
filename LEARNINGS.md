@@ -36,5 +36,5 @@
 - Derive central anchors from the board dimensions. The 15×15 meadow preserves the 21-cell opening and Scout's relative post while gaining a dense outer ring; board-size changes also require a save-version bump and a renderer grid update.
 - Treat toolbar density as a browser preference, not game state. Discrete compact, standard, and large layout tokens preserve clickable controls and interaction flow without making a strategy decision depend on a screen setting.
 - Keep the Field Kit spatially stable through the night. Disabled day tools preserve orientation, while fast combat events belong in animation and telemetry rather than a notification strip the player cannot read.
-- Use a simple traffic-light health signal for buildings: green at full health, yellow below full, and red below 30%. Exact ratios remain opt-in through health bars rather than condition labels.
+- Let the optional building health bar communicate both condition and amount: green at full health, yellow below full, and red below 30%, with no separate dot or condition label.
 - Treat an unused-action end-day guard as presentation-only. Warn only on the first early-end attempt for a given day, while keeping the engine transition and replay action log unchanged.

@@ -134,9 +134,10 @@ function place(node, x, y) {
   node.style.top = `${((y + 0.5) / Engine.BOARD.height) * 100}%`;
 }
 
-function addHealthBar(node, entity, tone) {
+function addHealthBar(node, entity, tone, colorByHealth = false) {
   if (!showHealthBars) return;
-  const health = createNode("span", `health-bar ${tone || ""}`);
+  const condition = colorByHealth ? healthTone(entity) : "";
+  const health = createNode("span", `health-bar ${tone || ""} ${condition}`);
   const fill = createNode("span");
   fill.style.width = `${Math.max(0, (entity.health / entity.maxHealth) * 100)}%`;
   health.append(fill);
@@ -381,8 +382,7 @@ function renderEntities() {
     if (building.firingTicks > 0) node.classList.add("is-firing");
     if (building.hitTicks > 0) node.classList.add("is-hit");
     place(node, building.x, building.y);
-    addHealthBar(node, building, "building-health");
-    node.append(createNode("span", `health-signal ${healthTone(building)}`));
+    addHealthBar(node, building, "building-health", true);
     fragment.append(node);
   });
 
