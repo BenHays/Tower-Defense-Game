@@ -11,7 +11,7 @@
   root.WildHearthEngine = engine;
 }(typeof globalThis !== "undefined" ? globalThis : this, function buildEngine(TechTree) {
   if (!TechTree) throw new Error("Wild Hearth Talent Tree did not load.");
-  const SAVE_VERSION = 14;
+  const SAVE_VERSION = 15;
   const TICK_RATE = 20;
   const SPEED_OPTIONS = [1, 2, 5];
   const FIRST_SKILL_POINT_XP = 10;
@@ -43,30 +43,50 @@
     },
   };
 
+  // The authoritative enemy catalog. Levels, damage rules, counters, loot, and
+  // renderer ids all point here; add a new enemy here before using its id elsewhere.
   const ENEMIES = {
-    raccoon: {
-      id: "raccoon",
-      label: "Raccoon",
+    mouse: {
+      id: "mouse",
+      label: "Mouse",
       threat: 1,
-      health: 5,
-      damage: 0.5,
-      attackSpeed: 0.85,
-      moveSpeed: 1.3,
-      attackRange: 0.72,
-      collisionRadius: 0.28,
+      health: 2,
+      damage: 0.25,
+      attackSpeed: 0.8,
+      moveSpeed: 1.45,
+      attackRange: 0.62,
+      collisionRadius: 0.2,
       targetRule: "closest-reachable-building",
       targetType: "building",
       approach: "sneak",
       arrivalPauseTicks: 5,
-      forestMoveCost: 1.32,
+      forestMoveCost: 1.26,
       xp: 1,
+      drops: { hides: { min: 0, max: 1 } },
+    },
+    raccoon: {
+      id: "raccoon",
+      label: "Raccoon",
+      threat: 2,
+      health: 8,
+      damage: 1,
+      attackSpeed: 0.78,
+      moveSpeed: 1.18,
+      attackRange: 0.76,
+      collisionRadius: 0.31,
+      targetRule: "closest-reachable-building",
+      targetType: "building",
+      approach: "sneak",
+      arrivalPauseTicks: 3,
+      forestMoveCost: 1.42,
+      xp: 2,
       drops: { hides: { min: 1, max: 2 } },
     },
     boar: {
       id: "boar",
       label: "Boar",
       threat: 5,
-      health: 12,
+      health: 15,
       damage: 2,
       attackSpeed: 0.72,
       moveSpeed: 1.2,
@@ -79,6 +99,27 @@
       forestMoveCost: 1.82,
       xp: 3,
       drops: { hides: { min: 2, max: 4 } },
+      projectileDamageMultipliers: { stick: 0, arrow: 0 },
+    },
+    bear: {
+      id: "bear",
+      label: "Bear",
+      threat: 8,
+      health: 30,
+      damage: 3,
+      attackSpeed: 0.48,
+      moveSpeed: 0.76,
+      attackRange: 0.92,
+      collisionRadius: 0.56,
+      targetRule: "closest-reachable-building",
+      targetType: "building",
+      approach: "trudge",
+      arrivalPauseTicks: 0,
+      forestMoveCost: 2.05,
+      xp: 5,
+      drops: { hides: { min: 4, max: 6 } },
+      knockbackMultiplier: 0.25,
+      statusDamageMultipliers: { burn: 2 },
     },
   };
 
@@ -167,7 +208,7 @@
       targetable: true,
       blocksPath: true,
       tags: ["defense", "heavy"],
-      damage: 3,
+      damage: 4,
       attackSpeed: 0.45,
       attackRange: 3,
       projectile: { type: "potato", speed: 3.5 },
@@ -176,12 +217,41 @@
       repairAmount: 3,
       repairCost: { wood: 1 },
     },
+    campfire: {
+      id: "campfire",
+      label: "Campfire",
+      footprint: { width: 1, height: 1 },
+      maxHealth: 10,
+      cost: { wood: 4 },
+      actionCost: 1,
+      role: "fire tower",
+      targetable: true,
+      blocksPath: true,
+      tags: ["defense", "fire", "bear-counter"],
+      damage: 1,
+      attackSpeed: 0.5,
+      attackRange: 2.5,
+      projectile: { type: "fireball", speed: 4.8 },
+      statuses: [{
+        status: "burn",
+        statusSource: "campfireBurn",
+        durationTicks: 60,
+        damagePerTick: 1,
+        tickIntervalTicks: TICK_RATE,
+        stackRule: "refresh",
+      }],
+      targetRule: "nearest-enemy-in-range",
+      repairAmount: 3,
+      repairCost: { wood: 1 },
+    },
   };
   const TOWER_TYPES = Object.values(BUILDINGS).filter((recipe) => recipe.projectile && recipe.damage > 0).map((recipe) => recipe.id);
 
   const ENEMY_COUNTERS = {
-    raccoon: { building: "stickLauncher", explanation: "A stick launcher weakens a raccoon before Scout needs to intercept." },
-    boar: { building: "potatoGun", explanation: "A Potato Gun gives heavy targets a forceful setback." },
+    mouse: { unit: "scout", explanation: "Scout can turn away a mouse before it harms the hearth." },
+    raccoon: { building: "stickLauncher", explanation: "Stick Launchers are the first reliable answer to raccoons." },
+    boar: { building: "potatoGun", explanation: "Boars ignore Stick and Arrow tower shots; a Potato Gun is the heavy answer." },
+    bear: { building: "campfire", explanation: "Campfire fireballs burn bears for double damage over time." },
   };
 
   const LEVELS = [
@@ -189,7 +259,7 @@
       id: "first-watch",
       number: 1,
       title: "First watch",
-      enemyPool: ["raccoon"],
+      enemyPool: ["mouse"],
       survivalXp: 2,
       unlock: "stickLauncher",
       unlockLabel: "Stick launcher",
@@ -200,6 +270,7 @@
       number: 2,
       title: "First line",
       enemyPool: ["raccoon"],
+      minimumEnemies: { raccoon: 1 },
       survivalXp: 3,
       unlock: "potatoPatch",
       unlockLabel: "Potato patch",
@@ -209,7 +280,7 @@
       id: "arrowcraft",
       number: 3,
       title: "Arrowcraft",
-      enemyPool: ["raccoon"],
+      enemyPool: ["mouse", "raccoon"],
       survivalXp: 4,
       unlock: null,
     },
@@ -217,7 +288,7 @@
       id: "hearthkeeping",
       number: 4,
       title: "Hearthkeeping",
-      enemyPool: ["raccoon"],
+      enemyPool: ["mouse", "raccoon"],
       survivalXp: 5,
       unlock: "potatoGun",
       unlockLabel: "Potato Gun",
@@ -236,9 +307,29 @@
       id: "heavy-footing",
       number: 6,
       title: "Heavy footing",
-      enemyPool: ["raccoon", "boar"],
+      enemyPool: ["mouse", "raccoon", "boar"],
       minimumEnemies: { boar: 1 },
       survivalXp: 8,
+      unlock: "campfire",
+      unlockLabel: "Campfire",
+      unlockCopy: "Build a 4-wood Campfire before the first Bear. Its fireballs burn enemies.",
+    },
+    {
+      id: "embers",
+      number: 7,
+      title: "Embers",
+      enemyPool: ["mouse", "raccoon", "boar"],
+      minimumEnemies: { boar: 1 },
+      survivalXp: 9,
+      unlock: null,
+    },
+    {
+      id: "first-bear",
+      number: 8,
+      title: "First bear",
+      enemyPool: ["mouse", "raccoon", "boar", "bear"],
+      minimumEnemies: { bear: 1 },
+      survivalXp: 11,
       unlock: null,
     },
   ];
@@ -338,7 +429,7 @@
       id: `night-${number}`,
       number,
       title: "Growing pressure",
-      enemyPool: number >= 7 ? ["raccoon", "boar"] : ["raccoon"],
+      enemyPool: number >= 8 ? ["mouse", "raccoon", "boar", "bear"] : number >= 5 ? ["mouse", "raccoon", "boar"] : ["mouse", "raccoon"],
       minimumEnemies: {},
       survivalXp: Math.max(3, Math.ceil(number * 1.25)),
       unlock: null,
@@ -1236,6 +1327,11 @@
     state.lastEvent = `${source} turns away the ${recipe.label.toLowerCase()}: +${reward} XP, +${hides} hides.`;
   }
 
+  function projectileDamageAgainst(enemy, projectile) {
+    const multiplier = Number(enemyRecipe(enemy.type).projectileDamageMultipliers?.[projectile.type]);
+    return Math.max(0, projectile.damage * (Number.isFinite(multiplier) ? multiplier : 1));
+  }
+
   function updateProjectiles(state) {
     state.impacts = state.impacts.filter((impact) => impact.ticks > 1).map((impact) => ({ ...impact, ticks: impact.ticks - 1 }));
     state.remains = state.remains.filter((remains) => remains.ticks > 1).map((remains) => ({ ...remains, ticks: remains.ticks - 1 }));
@@ -1247,8 +1343,9 @@
       if (distance(projectile, target) <= travel + enemyRecipe(target.type).collisionRadius) {
         projectile.x = target.x;
         projectile.y = target.y;
-        const appliedDamage = Math.min(target.health, projectile.damage);
-        target.health = Math.max(0, target.health - projectile.damage);
+        const damage = projectileDamageAgainst(target, projectile);
+        const appliedDamage = Math.min(target.health, damage);
+        target.health = Math.max(0, target.health - damage);
         target.hitTicks = 6;
         recordDamageDealt(state, projectile.sourceLabel, appliedDamage);
         if (target.health > 0) {
@@ -1272,9 +1369,11 @@
     const dy = enemy.y - projectile.originY;
     const length = Math.hypot(dx, dy);
     if (length === 0) return;
+    const push = projectile.knockback * (enemyRecipe(enemy.type).knockbackMultiplier ?? 1);
+    if (push <= 0) return;
     const destination = {
-      x: enemy.x + (dx / length) * projectile.knockback,
-      y: enemy.y + (dy / length) * projectile.knockback,
+      x: enemy.x + (dx / length) * push,
+      y: enemy.y + (dy / length) * push,
     };
     if (!isPassable(state, Math.round(destination.x), Math.round(destination.y))) return;
     enemy.x = destination.x;
@@ -1301,33 +1400,54 @@
   function applyStatus(enemy, status) {
     const durationTicks = Math.max(0, Math.floor(Number(status.durationTicks) || 0));
     const movementMultiplier = Number(status.movementMultiplier);
-    if (!status.status || !status.statusSource || durationTicks <= 0 || !Number.isFinite(movementMultiplier)) return;
+    const damagePerTick = Math.max(0, Number(status.damagePerTick) || 0);
+    const tickIntervalTicks = Math.max(1, Math.floor(Number(status.tickIntervalTicks) || TICK_RATE));
+    if (!status.status || !status.statusSource || durationTicks <= 0 || (!Number.isFinite(movementMultiplier) && damagePerTick <= 0)) return;
     const statuses = statusBuckets(enemy);
     const bucket = statuses[status.status] || { stackRule: status.stackRule || "strongestOnly", sources: {} };
     const existing = bucket.sources[status.statusSource];
     bucket.sources[status.statusSource] = {
       source: status.statusSource,
       remainingTicks: Math.max(existing?.remainingTicks || 0, durationTicks),
-      movementMultiplier: Math.min(existing?.movementMultiplier ?? 1, movementMultiplier),
+      elapsedTicks: existing?.elapsedTicks || 0,
+      movementMultiplier: Number.isFinite(movementMultiplier) ? Math.min(existing?.movementMultiplier ?? 1, movementMultiplier) : existing?.movementMultiplier,
+      damagePerTick: Math.max(existing?.damagePerTick || 0, damagePerTick),
+      tickIntervalTicks,
+      sourceLabel: status.sourceLabel || existing?.sourceLabel || "Status",
     };
     statuses[status.status] = bucket;
   }
 
-  function tickStatuses(enemy) {
+  function tickStatuses(state, enemy) {
     const statuses = statusBuckets(enemy);
-    Object.keys(statuses).forEach((statusId) => {
+    for (const statusId of Object.keys(statuses)) {
       const bucket = statuses[statusId];
       if (!bucket?.sources || typeof bucket.sources !== "object") {
         delete statuses[statusId];
-        return;
+        continue;
       }
-      Object.keys(bucket.sources).forEach((sourceId) => {
+      for (const sourceId of Object.keys(bucket.sources)) {
         const source = bucket.sources[sourceId];
+        source.elapsedTicks = (source.elapsedTicks || 0) + 1;
+        const interval = Math.max(1, Math.floor(source.tickIntervalTicks || TICK_RATE));
+        if (source.damagePerTick > 0 && source.elapsedTicks % interval === 0) {
+          const multiplier = enemyRecipe(enemy.type).statusDamageMultipliers?.[statusId] ?? 1;
+          const damage = source.damagePerTick * multiplier;
+          const appliedDamage = Math.min(enemy.health, damage);
+          enemy.health = Math.max(0, enemy.health - damage);
+          enemy.hitTicks = 6;
+          recordDamageDealt(state, source.sourceLabel || "Status", appliedDamage);
+          if (enemy.health === 0) {
+            defeatEnemy(state, enemy, source.sourceLabel || "Status");
+            return false;
+          }
+        }
         source.remainingTicks = Math.max(0, (source.remainingTicks || 0) - 1);
         if (source.remainingTicks === 0) delete bucket.sources[sourceId];
-      });
+      }
       if (!Object.keys(bucket.sources).length) delete statuses[statusId];
-    });
+    }
+    return true;
   }
 
   function statusMovementMultiplier(enemy) {
@@ -1359,7 +1479,10 @@
         damage: recipe.damage,
         speed: recipe.projectile.speed,
         knockback: recipe.knockback || 0,
-        statuses: hitStatusesFor(state, "building", tower.type),
+        statuses: [
+          ...(recipe.statuses || []).map((status) => ({ ...status, sourceLabel: status.sourceLabel || recipe.label })),
+          ...hitStatusesFor(state, "building", tower.type),
+        ],
         originX: tower.x,
         originY: tower.y,
         angle: Math.atan2(target.y - tower.y, target.x - tower.x) * (180 / Math.PI),
@@ -1368,7 +1491,9 @@
       recordShot(state, recipe.label);
       tower.cooldown = Math.max(1, Math.round(TICK_RATE / recipe.attackSpeed));
       tower.firingTicks = 5;
-      state.lastEvent = tower.type === "arrowShooter"
+      state.lastEvent = tower.type === "campfire"
+        ? "The Campfire hurls a fireball through the trees."
+        : tower.type === "arrowShooter"
         ? "The Arrow Shooter sends an arrow through the trees."
         : tower.type === "potatoGun"
           ? "The Potato Gun thumps a heavy shot through the trees."
@@ -1438,7 +1563,7 @@
     const recipe = enemyRecipe(enemy.type);
     enemy.knockbackTicks = Math.max(0, (enemy.knockbackTicks || 0) - 1);
     enemy.hitTicks = Math.max(0, (enemy.hitTicks || 0) - 1);
-    tickStatuses(enemy);
+    if (!tickStatuses(state, enemy)) return;
     if (enemy.approachDelay > 0) {
       enemy.approachDelay -= 1;
       enemy.intent = "sneaking";
@@ -1465,7 +1590,6 @@
     enemy.intent = `moving-${targetId}`;
     const nextStep = target.path.length > 1 ? target.path[1] : target.approach;
     const stepCost = travelCost(state, nextStep.x, nextStep.y, recipe);
-    enemy.inWarmth = false;
     moveTowards(enemy, nextStep, recipe.moveSpeed * statusMovementMultiplier(enemy) / TICK_RATE / stepCost);
   }
 
@@ -1637,7 +1761,7 @@
 
   function hydrate(serialized) {
     const parsed = typeof serialized === "string" ? JSON.parse(serialized) : serialized;
-    if (!parsed || !parsed.state || ![10, 11, 12, 13, SAVE_VERSION].includes(parsed.version)) throw new Error("This save belongs to a different version of Wild Hearth.");
+    if (!parsed || !parsed.state || ![10, 11, 12, 13, 14, SAVE_VERSION].includes(parsed.version)) throw new Error("This save belongs to a different version of Wild Hearth.");
     const state = parsed.version === SAVE_VERSION ? parsed.state : migrateLegacyState(parsed.state, parsed.version);
     if (state.version !== SAVE_VERSION) throw new Error("This save belongs to a different version of Wild Hearth.");
     if (!Array.isArray(state.terrain) || state.terrain.length !== BOARD.width * BOARD.height) throw new Error("This save has an invalid meadow.");

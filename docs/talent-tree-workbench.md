@@ -47,7 +47,7 @@ This is the collaboration sheet for the Talent Tree. Add ideas to **Proposal que
 ## What makes an idea ready to implement
 
 1. Put it in one branch and give it one main job.
-2. State the exact number or unlock it grants, such as `+1 damage`, `+0.5 range`, or `unlocks Bee Hive`.
+2. State the exact number or unlock it grants, such as `+1 damage`, `+0.5 range`, or `unlocks Mushroom Launcher`.
 3. Choose an earliest level and prerequisite so it arrives before the enemy/problem it answers.
 4. Pick an existing icon id, or add a requested new icon to the proposal.
 5. Mark its status **Ready**. I will translate it into a tested effect in [`talent-tree.js`](../talent-tree.js).

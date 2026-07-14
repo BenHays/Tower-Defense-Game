@@ -107,6 +107,7 @@ const BUILD_CARD_ICONS = {
   stickLauncher: "stick-launcher-icon",
   potatoPatch: "potato-patch-icon",
   potatoGun: "potato-gun-icon",
+  campfire: "campfire-icon",
 };
 
 try {
@@ -518,10 +519,10 @@ function renderEntities() {
   state.enemies.forEach((enemy) => {
     const node = createNode("div", `entity enemy ${enemy.type}`);
     if (enemy.intent === "sneaking") node.classList.add("is-sneaking");
-    if (enemy.inWarmth) node.classList.add("is-warmed");
     if (enemy.knockbackTicks > 0) node.classList.add("is-knocked");
     if (enemy.hitTicks > 0) node.classList.add("is-hit");
     if (enemy.statuses?.movementSlow?.sources && Object.keys(enemy.statuses.movementSlow.sources).length) node.classList.add("is-slowed");
+    if (enemy.statuses?.burn?.sources && Object.keys(enemy.statuses.burn.sources).length) node.classList.add("is-burning");
     addHealthBar(node, enemy, "enemy-health");
     place(node, enemy.x, enemy.y);
     fragment.append(node);
@@ -883,13 +884,19 @@ function renderControls() {
           ? "Craft an axe, then place the shelter."
           : "Collect the stick and rock from the meadow."
       : level.number === 1
-        ? "Scout can hold the first raccoon. Harvest a tree for wood when ready."
+        ? "Scout can hold the first mouse. Harvest a tree for wood when ready."
+        : level.number === 2
+          ? "Raccoons need Stick Launchers. Harvest a tree, then build your first one."
         : level.number === 3 && state.unlocks.includes("potatoPatch") && !state.buildings.some((item) => item.type === "potatoPatch" && !item.destroyed)
           ? "Plant a Potato Patch now; it needs two held nights before the Boar arrives."
           : level.number === 4 && state.buildings.some((item) => item.type === "potatoPatch" && !Engine.isPotatoPatchMature(item))
             ? "Your Potato Patch needs one more held night before it can become a heavy launcher."
-            : level.number === 5 && state.buildings.some((item) => Engine.canUpgradePotatoPatch(state, item))
-              ? "Upgrade a mature Potato Patch into a Potato Gun before tonight’s Boar."
+          : level.number === 5 && state.buildings.some((item) => Engine.canUpgradePotatoPatch(state, item))
+            ? "Upgrade a mature Potato Patch into a Potato Gun before tonight’s Boar."
+            : level.number === 7 && state.unlocks.includes("campfire") && !state.buildings.some((item) => item.type === "campfire" && !item.destroyed)
+              ? "Build a Campfire before the Bear arrives. Fireballs burn Bears for double damage."
+              : level.number === 8
+                ? "Bears resist Potato knockback. Campfire burn is the answer."
         : level.number === 3 && !Engine.hasResearch(state, "arrowcraft")
           ? "Spend earned Skill Points on Hunting, Farming, Building, Nurturing, or Scouting talents."
         : "Place defenses on open grass; harvest trees for wood and faster routes."

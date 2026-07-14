@@ -4,20 +4,24 @@
 
 | Enemy | Health | Approach | Counter |
 | --- | ---: | --- | --- |
-| Raccoon | 5 | Sneaks from any usable edge in seeded, staggered waves and attacks the closest reachable targetable building. | Stick Launcher and Scout. |
-| Boar | 12 | Moves quickly through forest for a heavy target and hits targetable buildings hard. Its first appearance is a guaranteed Level 5 showcase. | Potato Gun, especially Potato Packing slow. |
+| Mouse | 2 | Small first-night nuisance. | Scout. |
+| Raccoon | 8 | First tower-pressure enemy; attacks the closest reachable targetable building. | Stick Launcher. |
+| Boar | 15 | Heavy Level 5 enemy. It takes **0 Stick Launcher or Arrow Shooter damage**. | Potato Gun. |
+| Bear | 30 | Slow, high-health siege enemy. Potato knockback is only 25% effective. | Campfire Burn; Bears take 2× Burn damage. |
 
-Enemies award XP when defeated and roll deterministic hide drops: Raccoons give 1–2 Hides and Boars give 2–4. Hides are visible inventory with no spending use until a later trade, food, or upgrade decision is designed.
+Enemies award XP when defeated and roll deterministic hide drops. Hides are visible inventory with no spending use until a later trade, food, or upgrade decision is designed.
+
+## Source of truth
+
+`engine.js` → `ENEMIES` is the only live enemy-stat catalog. The same stable IDs are referenced by `LEVELS` and `ENEMY_COUNTERS` in that file; renderer classes only provide visuals and never own combat values.
 
 ## Proposed next
 
-- The next enemy family debuts on Level 8. Hivecraft and the Bee Hive are available from Level 6 as its counter.
-- The following enemy family may arrive no earlier than Level 11, paired with the Mushroom Launcher.
+- The next enemy family may arrive no earlier than Level 11, paired with the Mushroom Launcher.
 
 ## Open questions
 
-- Boar Threat allocation after its guaranteed first-showcase night.
-- Final identity and Threat value for the Level 8 enemy family.
+- Bear Threat allocation after its guaranteed first-showcase night.
 
 ## Decisions made
 

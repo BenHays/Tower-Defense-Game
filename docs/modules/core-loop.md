@@ -14,7 +14,7 @@
 ## Proposed next
 
 - Keep the player decision focused on expansion, placement, and Talent Tree choices. Do not add direct night combat controls.
-- Use a shared non-stacking status-effect contract for Potato slow, future Honeyed, and future Warmth rather than separate timing rules for each tower.
+- Use the shared status-effect contract for Potato slow, Campfire Burn, and future Honeyed rather than separate timing rules for each tower. Burn refreshes rather than stacking and its periodic damage can be modified by the enemy recipe.
 
 ## Open questions
 

@@ -8,7 +8,8 @@
 | Stick Launcher | 2 wood, 1 action | 8 health; 1 hit, slow tempo, short reach. |
 | Arrow Shooter | 4 wood, 1 action upgrade | 1.5× launcher damage, tempo, and reach after Arrowcraft; a paid refit starts at full health. |
 | Potato Patch | 1 wood, 1 action | Non-targetable, non-blocking setup that matures after two held nights. |
-| Potato Gun | 3 wood, 1 action conversion | Converts a mature Potato Patch after Level 4; 8 health, 3 hit, slow medium reach, one-cell knockback; Potato Packing adds a short non-stacking slow. |
+| Potato Gun | 3 wood, 1 action conversion | Converts a mature Potato Patch after Level 4; 8 health, 4 hit, slow medium reach, one-cell knockback; Potato Packing adds a short non-stacking slow. |
+| Campfire | 4 wood, 1 action | Unlocks after Level 6. A targetable fire tower whose fireballs apply refreshable Burn; the Bear takes 2× Burn damage. |
 
 All defenses must be built on unoccupied grass. Both original meadow grass and grass revealed by harvesting a tree are valid; trees, water, rubble, and buildings are not.
 
@@ -16,7 +17,6 @@ All live building recipes use one shared contract: footprint, health, repair, ta
 
 ## Proposed next
 
-- **Fire Pit:** Hearthcraft is a Level 5 Skill Point research (cost TBD) that requires Arrowcraft. The Fire Pit then costs 2 wood and one action. It is an earned, non-targetable support feature at the homestead, not a free starting map object. Its sole initial effect is a 1.5-cell Warmth zone that slows enemies by 25%; it deals no damage, healing, or path blocking.
 - **Bee Hive:** Hivecraft research becomes available on Level 6, before its dedicated Level 8 enemy. It shoots bees for light damage and applies the longer, lighter non-stacking Honeyed slow.
 - Mushroom Launcher after Fungal Craft research.
 

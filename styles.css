@@ -211,6 +211,24 @@ button[hidden], [hidden] { display: none !important; }
   filter: drop-shadow(0 0 7px rgba(255, 224, 121, .9)) drop-shadow(0 4px 2px rgba(31, 56, 38, .3));
 }
 
+/* The Campfire is a real targetable tower: a small hearth that throws a visible ember. */
+.building.campfire { z-index: 8; width: 62px; height: 62px; background: none; filter: drop-shadow(0 4px 2px rgba(31,56,38,.3)); }
+.building.campfire::before { display: block; inset: 18px 7px 8px; border-radius: 50%; background: radial-gradient(ellipse at 50% 70%,#3f3026 0 15%,#735137 16% 38%,transparent 40%),repeating-linear-gradient(28deg,transparent 0 8px,#6d432a 9px 12px,transparent 13px 20px); }
+.building.campfire::after { display: block; left: 19px; top: 3px; width: 27px; height: 42px; border-radius: 72% 28% 66% 34%; background: radial-gradient(ellipse at 37% 67%,#fff4b0 0 15%,#f6b541 16% 36%,#dc6536 38% 61%,transparent 63%); transform: rotate(13deg); filter: drop-shadow(0 0 8px rgba(252,175,66,.84)); }
+.building.campfire.is-firing::after { animation: campfire-cast .28s ease-out alternate 2; }
+.building.campfire.is-selected { filter: drop-shadow(0 0 7px rgba(255, 202, 105, .96)) drop-shadow(0 4px 2px rgba(31,56,38,.3)); }
+
+.build-icon.campfire-icon { background: radial-gradient(circle at 50% 64%,#fff4ae 0 12%,#ef9b3c 13% 29%,#ce5a34 30% 42%,transparent 44%),repeating-linear-gradient(28deg,transparent 0 7px,#70472d 8px 11px,transparent 12px 18px),#e9f1df; }
+.build-icon.campfire-icon::before { position: absolute; left: 39%; top: 7%; width: 27%; height: 62%; border-radius: 70% 30% 67% 33%; background: linear-gradient(#fff6ae,#ed8c32 62%,#cf5134); content: ""; transform: rotate(17deg); }.build-icon.campfire-icon::after { display: none; }
+.build-button.is-active .build-icon.campfire-icon { background-color: rgba(255,255,255,.87); }
+
+/* Mouse and Bear are CSS silhouettes so roster growth does not require a sprite-sheet edit. */
+.enemy.mouse { width: 31px; height: 27px; background: none; filter: drop-shadow(0 3px 2px rgba(24,47,37,.25)); }.enemy.mouse::before { display: block; left: 5px; bottom: 5px; width: 22px; height: 13px; border-radius: 58% 45% 47% 47%; background: #a68d7a; box-shadow: -8px 5px 0 -5px #bda99a; }.enemy.mouse::after { display: block; right: 1px; bottom: 14px; width: 10px; height: 10px; border-radius: 50%; background: radial-gradient(circle at 68% 40%,#20332d 0 1px,transparent 2px),#c6b1a1; }
+.enemy.bear { width: 70px; height: 59px; background: none; filter: drop-shadow(0 5px 3px rgba(24,47,37,.34)); }.enemy.bear::before { display: block; left: 3px; bottom: 4px; width: 60px; height: 39px; border-radius: 54% 47% 43% 43%; background: linear-gradient(145deg,#4a3429,#7b5439); box-shadow: inset -10px -7px rgba(31,21,18,.14),0 5px 2px rgba(24,47,37,.2); }.enemy.bear::after { display: block; right: 0; bottom: 25px; width: 28px; height: 26px; border-radius: 48% 48% 43% 43%; background: radial-gradient(circle at 32% 40%,#1e2823 0 2px,transparent 3px),radial-gradient(circle at 69% 40%,#1e2823 0 2px,transparent 3px),radial-gradient(ellipse at 51% 72%,#d0aa7f 0 18%,transparent 20%),#876044; box-shadow: -14px -5px 0 -7px #5a3d2d,10px -5px 0 -7px #5a3d2d; }
+.enemy.is-burning { filter: drop-shadow(0 0 7px rgba(255,150,55,.95)) saturate(1.18); }.enemy.is-burning::after { box-shadow: 0 0 0 3px rgba(244,105,42,.42),0 -7px 7px -4px rgba(255,212,94,.98); }
+.projectile.fireball { width: 15px; height: 15px; border-radius: 50%; background: radial-gradient(circle at 35% 30%,#fff8ba 0 12%,#ffbf4d 14% 36%,#e65d34 38% 62%,rgba(198,68,40,.15) 64%); box-shadow: 0 0 12px rgba(255,158,53,.96),0 2px 3px rgba(16,39,32,.45); }.impact.fireball { border-color: rgba(255,181,70,.96); background: radial-gradient(circle,rgba(255,248,185,.92) 0 12%,rgba(255,157,56,.55) 16% 43%,transparent 48%); }
+@keyframes campfire-cast { from { transform: scale(.92) rotate(-7deg); } to { transform: scale(1.08) rotate(8deg); } }
+
 .build-icon.stick-launcher-icon,
 .build-icon.potato-gun-icon,
 .build-button.is-active .build-icon.stick-launcher-icon,

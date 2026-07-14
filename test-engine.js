@@ -39,6 +39,7 @@ assert.equal(Engine.terrainAt(run, centralBuildSite.x, centralBuildSite.y), "ope
 assert.equal(Engine.terrainAt(run, Engine.SHELTER_SITE.x + 3, Engine.SHELTER_SITE.y), "tree", "the added outer ring remains dense forest");
 assert.deepEqual(run.resources, { wood: 0, hides: 0 });
 assert.equal(run.actionPoints, 2);
+assert.deepEqual(Object.keys(Engine.ENEMIES), ["mouse", "raccoon", "boar", "bear"], "the complete enemy roster lives in the single engine catalog");
 assert.equal(run.shelterBuilt, false);
 assert.equal(run.hatchetCrafted, false);
 assert.equal(Engine.hasShelter(run), false);
@@ -81,13 +82,13 @@ action(playerPlacedShelterRun, { type: "constructShelter", ...playerShelterSite 
 assert.deepEqual([playerPlacedShelterRun.buildings[0].x, playerPlacedShelterRun.buildings[0].y], [playerShelterSite.x, playerShelterSite.y], "the player can place the shelter on any valid grass in the opening");
 action(run, { type: "endDay" });
 assert.equal(run.encounter.threatBudget, 1);
-assert.deepEqual(run.encounter.units, ["raccoon"]);
+assert.deepEqual(run.encounter.units, ["mouse"]);
 settleToNextDay(run);
 assert.equal(run.levelIndex, 1);
 assert.equal(run.xp, 3, "the first kill and cleared night award only XP");
 assert.equal(run.skillPoints, 0, "Skill Points begin after the first 10 XP milestone");
 assert.equal(run.skillPointsEarned, 0);
-assert.ok(run.resources.hides >= 1 && run.resources.hides <= 2, "a raccoon rolls a small hide drop");
+assert.ok(run.resources.hides >= 0 && run.resources.hides <= 1, "a mouse rolls a small hide drop");
 assert.ok(run.unlocks.includes("stickLauncher"));
 assert.equal(run.telemetry.nightReports.length, 1, "each completed night records a balance report");
 assert.equal(run.telemetry.nightReports[0].spawned, 1);
@@ -162,7 +163,7 @@ v13Save.version = 13;
 v13Save.state.version = 13;
 v13Save.state.research = ["woodlandYield"];
 const migratedV13 = Engine.hydrate(v13Save);
-assert.equal(migratedV13.version, 14, "v13 saves migrate into the renamed Talent Tree version");
+assert.equal(migratedV13.version, 15, "v13 saves migrate into the current roster version");
 assert.deepEqual(migratedV13.research, ["woodlandYield"], "a migrated v13 save keeps its learned talents");
 assert.equal(run.resources.wood, 0, "building still spends the whole first wood bundle");
 assert.equal(run.actionPoints, 0);
@@ -174,7 +175,7 @@ assert.equal(run.speed, 5, "chosen 5× speed survives the completed turn");
 assert.equal(Engine.hydrate(Engine.serialize(run)).speed, 5, "chosen 5× speed survives save/load");
 assert.ok(run.unlocks.includes("potatoPatch"), "holding Level 2 unlocks the Potato Patch for Level 3 planning");
 assert.equal(run.unlocks.includes("potatoGun"), false, "the heavy launcher stays locked until the growing path is complete");
-assert.equal(Engine.BUILDINGS.potatoGun.damage, 3);
+assert.equal(Engine.BUILDINGS.potatoGun.damage, 4);
 assert.equal(Engine.BUILDINGS.potatoGun.knockback, 1);
 assert.equal(run.xp, 8, "Experience remains lifetime progress after a level resolves");
 assert.equal(run.skillPoints, 0, "8 XP is still short of the first spendable Skill Point");
@@ -322,8 +323,61 @@ Engine.advanceTick(potatoRun);
 assert.equal(potatoRun.projectiles[0].type, "potato");
 assert.equal(potatoRun.projectiles[0].knockback, 1);
 Engine.advanceTicks(potatoRun, 10);
-assert.equal(potatoRun.enemies[0].health, 2, "the Potato Gun deals its heavy hit on impact");
+assert.equal(potatoRun.enemies[0].health, 1, "the Potato Gun deals its heavy hit on impact");
 assert.ok(potatoRun.enemies[0].knockbackTicks > 0, "a surviving target is visibly knocked back");
+
+// Boars ignore the basic Stick Launcher, while Bear control is visibly weaker than normal potato pushback.
+const immunityRun = Engine.createRun("TEST-BOAR-IMMUNITY");
+constructShelter(immunityRun);
+immunityRun.unlocks.push("stickLauncher");
+immunityRun.resources.wood = 2;
+immunityRun.actionPoints = 2;
+action(immunityRun, { type: "build", buildingType: "stickLauncher", ...centralBuildSite });
+immunityRun.phase = "night";
+immunityRun.encounter = { waves: [{ spawned: true }], spawned: 1 };
+immunityRun.scout.x = immunityRun.scout.postX = 0;
+immunityRun.scout.y = immunityRun.scout.postY = 0;
+immunityRun.enemies = [{ id: "e-boar-immune", type: "boar", ...centralEnemySite, health: 15, maxHealth: 15, cooldown: 4, approachDelay: 0, statuses: {} }];
+Engine.advanceTick(immunityRun);
+Engine.advanceTicks(immunityRun, 10);
+assert.equal(immunityRun.enemies[0].health, 15, "a Boar takes zero damage from Stick Launcher projectiles");
+assert.equal(Engine.ENEMIES.boar.projectileDamageMultipliers.arrow, 0, "the same Boar armor also rejects Arrow Shooter projectiles");
+
+const bearPushRun = Engine.createRun("TEST-BEAR-PUSH");
+constructShelter(bearPushRun);
+bearPushRun.unlocks.push("potatoPatch", "potatoGun");
+bearPushRun.resources.wood = 1;
+bearPushRun.actionPoints = 2;
+action(bearPushRun, { type: "build", buildingType: "potatoPatch", ...centralBuildSite });
+const bearPatch = bearPushRun.buildings.find((building) => building.type === "potatoPatch");
+bearPatch.growthNights = 2;
+bearPushRun.resources.wood = 3;
+bearPushRun.actionPoints = 1;
+action(bearPushRun, { type: "upgradePotatoPatch", id: bearPatch.id });
+bearPushRun.phase = "night";
+bearPushRun.encounter = { waves: [{ spawned: true }], spawned: 1 };
+bearPushRun.enemies = [{ id: "e-bear-push", type: "bear", ...centralEnemySite, health: 30, maxHealth: 30, cooldown: 4, approachDelay: 0, statuses: {} }];
+const bearStartY = bearPushRun.enemies[0].y;
+Engine.advanceTick(bearPushRun);
+Engine.advanceTicks(bearPushRun, 12);
+assert.ok(bearPushRun.enemies[0].y > bearStartY - 0.4, "a Bear only yields a small fraction of the Potato Gun knockback");
+
+// Campfire damage is broadly reusable Burn status damage, with Bears taking double over time.
+const campfireRun = Engine.createRun("TEST-CAMPFIRE-BURN");
+constructShelter(campfireRun);
+campfireRun.unlocks.push("campfire");
+campfireRun.resources.wood = 4;
+campfireRun.actionPoints = 2;
+action(campfireRun, { type: "build", buildingType: "campfire", ...centralBuildSite });
+campfireRun.phase = "night";
+campfireRun.encounter = { waves: [{ spawned: true }], spawned: 1 };
+campfireRun.scout.x = campfireRun.scout.postX = 0;
+campfireRun.scout.y = campfireRun.scout.postY = 0;
+campfireRun.enemies = [{ id: "e-bear-burn", type: "bear", x: centralBuildSite.x, y: centralBuildSite.y - 1.1, health: 30, maxHealth: 30, cooldown: 4, approachDelay: 0, statuses: {} }];
+Engine.advanceTick(campfireRun);
+Engine.advanceTicks(campfireRun, 24);
+assert.ok(campfireRun.enemies[0].statuses.burn.sources.campfireBurn, "Campfire hits apply a refreshable Burn status");
+assert.equal(campfireRun.enemies[0].health, 27, "a Bear takes one fireball damage plus double first Burn damage");
 
 // Potato Packing adds one short, strongest-only slow status without changing the basic Potato Gun contract.
 const slowRun = Engine.createRun("TEST-POTATO-SLOW");
@@ -499,7 +553,7 @@ action(multiWaveRun, { type: "endDay" });
 const earlyEdges = multiWaveRun.encounter.waves.slice(0, 4).map((wave) => wave.entry.edge);
 assert.equal(new Set(earlyEdges).size, earlyEdges.length, "early waves rotate through different forest edges");
 assert.ok(multiWaveRun.encounter.waves.every((wave) => wave.entries.length === wave.units.length && wave.staggerTicks.length === wave.units.length));
-assert.ok(multiWaveRun.encounter.waves.some((wave) => wave.units.length === 3), "Level 7 pressure can group three enemies together");
+assert.ok(multiWaveRun.encounter.waves.some((wave) => wave.units.length >= 2) && multiWaveRun.encounter.waves.every((wave) => wave.units.length <= 3), "Level 7 pressure keeps compact late groups without exceeding three enemies");
 assert.ok(multiWaveRun.encounter.waves.slice(1).every((wave, index) => wave.spawnTick - multiWaveRun.encounter.waves[index].spawnTick <= 38), "Level 7 groups arrive on the tighter late-pressure cadence");
 
 // New enemy families get an authored showcase before seeded mixes use them.
@@ -508,12 +562,17 @@ constructShelter(boarIntroRun);
 boarIntroRun.levelIndex = 4;
 action(boarIntroRun, { type: "endDay" });
 assert.deepEqual(boarIntroRun.encounter.units, ["boar"], "Level 5 guarantees a single Boar introduction");
-assert.deepEqual([Engine.ENEMIES.boar.health, Engine.ENEMIES.boar.moveSpeed], [12, 1.2], "the Boar is a durable, faster heavy target for the Potato Gun showcase");
+assert.deepEqual([Engine.ENEMIES.boar.health, Engine.ENEMIES.boar.moveSpeed], [15, 1.2], "the Boar is a durable, faster heavy target for the Potato Gun showcase");
 const boarMixRun = Engine.createRun("BOAR-MIX");
 constructShelter(boarMixRun);
 boarMixRun.levelIndex = 5;
 action(boarMixRun, { type: "endDay" });
 assert.ok(boarMixRun.encounter.units.includes("boar"), "Level 6 retains a minimum Boar before mixed allocations");
+const bearIntroRun = Engine.createRun("FIRST-BEAR");
+constructShelter(bearIntroRun);
+bearIntroRun.levelIndex = 7;
+action(bearIntroRun, { type: "endDay" });
+assert.ok(bearIntroRun.encounter.units.includes("bear"), "Level 8 guarantees the first Bear after Campfires are available");
 
 // Replay includes research and automatic between-level continuation, with no manual Continue action.
 const replaySource = Engine.createRun("REPLAY-SEED");
