@@ -759,7 +759,10 @@ function renderControls() {
   const opening = needsShelter();
   const openingSuppliesReady = Engine.hasOpeningSupplies(state);
   const hasPlanningTarget = Boolean(selectedScout() || towerRecipe(building?.type));
-  const showPlanningCard = night || state.phase === "aftermath" || (day && hasPlanningTarget);
+  // Keep pace settings anchored below the meadow once the opening is complete.
+  // The range overlay remains contextual, but 1×/2×/5× is a player preference
+  // rather than a night-only combat control.
+  const showPlanningCard = !opening;
   elements.controlPanel.classList.toggle("is-day", day);
   elements.controlPanel.classList.toggle("is-night", night);
   elements.controlPanel.classList.toggle("is-aftermath", state.phase === "aftermath");
@@ -821,7 +824,7 @@ function renderControls() {
     button.disabled = opening;
     button.classList.toggle("is-active", Number(button.dataset.speed) === preferredSpeed);
   });
-  elements.speedControls.hidden = !night;
+  elements.speedControls.hidden = opening;
   elements.healthBarsSetting.hidden = false;
   elements.healthBarsToggle.checked = showHealthBars;
   elements.actionBadge.textContent = day ? `${state.actionPoints} action${state.actionPoints === 1 ? "" : "s"}` : night ? "Scout on watch" : "Dawn";

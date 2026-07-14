@@ -174,7 +174,7 @@ button[hidden], [hidden] { display: none !important; }
   filter: drop-shadow(0 4px 2px rgba(31, 56, 38, .3));
 }
 
-.building.stickLauncher { background-image: url("assets/stick-launcher-v2.png"); }
+.building.stickLauncher { background-image: url("assets/stick-launcher-v2.png?v=stick-launcher-cutout-1"); }
 .building.potatoGun { background-image: url("assets/potato-gun-v2.png"); }
 
 .building.stickLauncher::before,
@@ -221,7 +221,7 @@ button[hidden], [hidden] { display: none !important; }
 
 .build-icon.stick-launcher-icon,
 .build-button.is-active .build-icon.stick-launcher-icon {
-  background-image: url("assets/stick-launcher-v2.png");
+  background-image: url("assets/stick-launcher-v2.png?v=stick-launcher-cutout-1");
 }
 
 .build-icon.potato-gun-icon,

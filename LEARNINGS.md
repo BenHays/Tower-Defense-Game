@@ -49,6 +49,7 @@
 - Keep End Day decisive but safe: one concise warning per day catches an accidental early watch; after that the player can end the day without repeated interruption.
 - Speed is a renderer pacing preference, not simulation math: keep fixed ticks and raise the per-frame catch-up cap enough for the fastest supported setting.
 - Use each generated tower portrait in both its meadow entity and Build-strip tile. This keeps purchase decisions visually connected to their placed defense while projectile and firing state stay CSS-driven.
+- When replacing a generated raster at the same static URL, bump its CSS query token so browsers do not retain an obsolete background-baked version from cache.
 
 ## Progression and occupancy
 
