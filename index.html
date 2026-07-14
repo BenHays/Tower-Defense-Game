@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="A deterministic, top-down homestead defense prototype." />
     <title>Wild Hearth — Hearth Meadow</title>
-    <link rel="stylesheet" href="styles.css?v=health-color-1" />
+    <link rel="stylesheet" href="styles.css?v=early-end-warning-1" />
   </head>
   <body>
     <main class="game-shell" id="top">
@@ -118,8 +118,21 @@
       </section>
     </div>
 
-    <script src="tech-tree.js?v=health-color-1"></script>
-    <script src="engine.js?v=health-color-1"></script>
-    <script src="game.js?v=health-color-1"></script>
+    <div class="early-end-dialog" id="early-end-dialog" hidden>
+      <section class="early-end-dialog-panel" role="dialog" aria-modal="true" aria-labelledby="early-end-dialog-title" aria-describedby="early-end-dialog-copy" tabindex="-1">
+        <p class="eyebrow">Unused actions</p>
+        <h2 id="early-end-dialog-title">End the day early?</h2>
+        <p id="early-end-dialog-copy">You still have actions available.</p>
+        <p class="early-end-dialog-note">This warning appears once per day.</p>
+        <div class="early-end-dialog-actions">
+          <button class="secondary-button" id="early-end-cancel" type="button">Keep planning</button>
+          <button class="primary-button" id="early-end-confirm" type="button">End day anyway</button>
+        </div>
+      </section>
+    </div>
+
+    <script src="tech-tree.js?v=early-end-warning-1"></script>
+    <script src="engine.js?v=early-end-warning-1"></script>
+    <script src="game.js?v=early-end-warning-1"></script>
   </body>
 </html>

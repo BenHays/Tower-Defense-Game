@@ -49,6 +49,10 @@ const elements = {
   techCopy: document.querySelector("#tech-copy"),
   techBranches: document.querySelector("#tech-branches"),
   researchButton: document.querySelector("#research-button"),
+  earlyEndDialog: document.querySelector("#early-end-dialog"),
+  earlyEndDialogCopy: document.querySelector("#early-end-dialog-copy"),
+  earlyEndCancel: document.querySelector("#early-end-cancel"),
+  earlyEndConfirm: document.querySelector("#early-end-confirm"),
   dawnReport: document.querySelector("#dawn-report"),
   utilityLabel: document.querySelector("#utility-label"),
   pauseButton: document.querySelector("#pause-button"),
@@ -75,6 +79,8 @@ let techSignature = "";
 let pointerActivation = null;
 let preferredSpeed = 1;
 let lastFocusedElement = null;
+let lastEarlyEndFocusedElement = null;
+let earlyEndWarningDay = null;
 const TOOLBAR_SIZES = ["compact", "standard", "large"];
 let toolbarSize = "compact";
 
@@ -205,12 +211,46 @@ function setPreferredSpeed(speed) {
   dispatch({ type: "speed", speed });
 }
 
-function beginNight() {
+function endDayNow() {
   const outcome = dispatch({ type: "endDay" });
   if (outcome.ok && state.phase === "night") {
     state.speed = preferredSpeed;
     render();
   }
+}
+
+function earlyEndDayKey() {
+  return `${state.seed}:${state.levelIndex}`;
+}
+
+function closeEarlyEndWarning(options = {}) {
+  if (elements.earlyEndDialog.hidden) return;
+  elements.earlyEndDialog.hidden = true;
+  document.body.classList.remove("early-end-dialog-open");
+  if (options.restoreFocus !== false && lastEarlyEndFocusedElement instanceof HTMLElement) lastEarlyEndFocusedElement.focus();
+  lastEarlyEndFocusedElement = null;
+}
+
+function openEarlyEndWarning() {
+  const unusedActions = state.actionPoints;
+  earlyEndWarningDay = earlyEndDayKey();
+  lastEarlyEndFocusedElement = document.activeElement;
+  elements.earlyEndDialogCopy.textContent = `You still have ${unusedActions} unused ${unusedActions === 1 ? "action" : "actions"}. Are you sure you want to begin the night watch?`;
+  elements.earlyEndDialog.hidden = false;
+  document.body.classList.add("early-end-dialog-open");
+  requestAnimationFrame(() => elements.earlyEndCancel.focus());
+}
+
+function beginNight() {
+  const shouldWarn = state.phase === "day"
+    && state.shelterBuilt
+    && state.actionPoints > 0
+    && earlyEndWarningDay !== earlyEndDayKey();
+  if (shouldWarn) {
+    openEarlyEndWarning();
+    return;
+  }
+  endDayNow();
 }
 
 function describeCell(x, y) {
@@ -831,6 +871,14 @@ elements.researchButton.addEventListener("click", () => {
 elements.techButton.addEventListener("click", openTechnology);
 elements.techCloseButton.addEventListener("click", () => closeTechnology());
 elements.endDayButton.addEventListener("click", beginNight);
+elements.earlyEndCancel.addEventListener("click", () => closeEarlyEndWarning());
+elements.earlyEndConfirm.addEventListener("click", () => {
+  closeEarlyEndWarning({ restoreFocus: false });
+  endDayNow();
+});
+elements.earlyEndDialog.addEventListener("click", (event) => {
+  if (event.target === elements.earlyEndDialog) closeEarlyEndWarning();
+});
 elements.overlayButton.addEventListener("click", () => { planning = !planning; gridSignature = ""; render(); });
 elements.pauseButton.addEventListener("click", () => dispatch({ type: "pause" }));
 elements.speedButtons.forEach((button) => button.addEventListener("click", () => setPreferredSpeed(Number(button.dataset.speed))));
@@ -840,6 +888,13 @@ elements.healthBarsToggle.addEventListener("change", () => {
   render();
 });
 document.addEventListener("keydown", (event) => {
+  if (!elements.earlyEndDialog.hidden) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeEarlyEndWarning();
+    }
+    return;
+  }
   if (elements.techDialog.hidden) return;
   if (event.key === "Escape") {
     event.preventDefault();
