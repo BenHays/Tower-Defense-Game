@@ -11,6 +11,7 @@
 
 - A compact level strip shows only the present objective or newly relevant unlock.
 - Add Easy, Hard, and Very Hard only after Medium is balanced.
+- Level 1 opens at a shelter site with only **Construct shelter** enabled; teepee construction is free but consumes the first full day. The first real clear/build choice begins after that tutorial action.
 
 ## Open questions
 

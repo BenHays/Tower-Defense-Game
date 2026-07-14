@@ -121,7 +121,7 @@ function describeCell(x, y) {
   if (building) return Engine.BUILDINGS[building.type].label;
   if (Engine.hasRubble(state, x, y)) return "Rubble";
   const terrain = Engine.terrainAt(state, x, y);
-  return terrain === "tree" ? "Tree" : "Open meadow";
+  return terrain === "tree" ? "Tree" : terrain === "cleared" ? "Cleared grass" : "Open grass";
 }
 
 function renderGrid() {
@@ -144,7 +144,12 @@ function renderGrid() {
       cell.disabled = state.phase !== "day";
       cell.setAttribute("aria-label", describeCell(x, y));
       cell.classList.add(`terrain-${terrain}`);
-      if (terrain === "tree") cell.classList.add(`tree-tone-${(x * 7 + y * 3) % 3}`);
+      if (terrain === "tree") {
+        cell.classList.add(`tree-tone-${(x * 7 + y * 3) % 6}`);
+        const canopy = createNode("span", "tree-canopy");
+        canopy.setAttribute("aria-hidden", "true");
+        cell.append(canopy);
+      }
       if (sameCell(chosen, { x, y })) cell.classList.add("is-selected");
       if (sameCell(hoverCell, { x, y }) && state.phase === "day" && activeTool !== "none") {
         cell.classList.add("is-hover", toolCellValid(x, y) ? "valid" : "invalid");
@@ -274,21 +279,21 @@ function renderSelection() {
   if (cell) {
     const terrain = Engine.terrainAt(state, cell.x, cell.y);
     const rubble = Engine.hasRubble(state, cell.x, cell.y);
-    elements.selectedTitle.textContent = rubble ? "Rubble" : terrain === "tree" ? "Tree" : terrain === "cleared" ? "Cleared forest" : "Home clearing";
+    elements.selectedTitle.textContent = rubble ? "Rubble" : terrain === "tree" ? "Tree" : terrain === "cleared" ? "Cleared grass" : "Open grass";
     elements.selectedCopy.textContent = rubble
-      ? "Clear rubble with one day action to reopen the build site."
+      ? "Clear rubble with one day action to reopen the grass."
       : terrain === "tree"
         ? "Clear for 1 wood. This takes the full day."
         : terrain === "cleared"
-          ? "A defense can be built here."
-          : "The original clearing is reserved for the homestead.";
+          ? "Open grass: a defense can be built here."
+          : "Unoccupied grass can hold a defense.";
     elements.selectionMeterWrap.hidden = true;
     elements.selectionFootnote.textContent = "Choose a day action only when you are ready to use it.";
     return;
   }
   const toolCopy = {
-    none: ["Hearth Meadow", "Select a tree, cleared site, or building."],
-    clear: ["Clear tree", "Full day · gain 1 wood · create one build site."],
+    none: ["Hearth Meadow", "Select a tree, grass, or building."],
+    clear: ["Clear tree", "Full day · gain 1 wood · open grass."],
     scout: ["Place Scout", "Spend one action to set Scout’s night watch post."],
     stickLauncher: ["Stick launcher", "1 wood · full day · steady protection."],
     potatoGun: ["Potato gun", "3 wood · full day · heavy knockback shot."],
@@ -296,7 +301,7 @@ function renderSelection() {
   elements.selectedTitle.textContent = toolCopy[activeTool][0];
   elements.selectedCopy.textContent = toolCopy[activeTool][1];
   elements.selectionMeterWrap.hidden = true;
-  elements.selectionFootnote.textContent = "Defenses can only stand on cleared forest.";
+  elements.selectionFootnote.textContent = "Defenses can stand on any unoccupied grass.";
 }
 
 function renderPreview() {
@@ -304,11 +309,11 @@ function renderPreview() {
   if (!preview) {
     elements.previewCopy.textContent = planning
       ? "Scout’s watch and the selected tower’s reach are visible."
-      : "Select a defense, then choose cleared forest.";
+      : "Select a defense, then choose unoccupied grass.";
     return;
   }
   if (!preview.valid) {
-    elements.previewCopy.textContent = "Build on a cleared, unoccupied forest cell.";
+    elements.previewCopy.textContent = "Build on unoccupied grass. Trees, water, rubble, and buildings block placement.";
     return;
   }
   const recipe = Engine.BUILDINGS[activeTool];
@@ -372,7 +377,7 @@ function renderControls() {
         ? "Arrowcraft research is available when you have enough XP."
         : state.unlocks.includes("potatoGun") && state.resources.wood < 3
           ? "Save wood for a Potato Gun, or build another first line."
-          : "Expand from cleared forest before Scout is overwhelmed."
+          : "Place defenses on open grass; clear trees for wood and faster routes."
     : night
       ? "Defend the hearth."
       : state.phase === "aftermath"

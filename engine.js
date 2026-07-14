@@ -294,6 +294,10 @@
     return !buildingAt(state, x, y);
   }
 
+  function isBuildableGrass(state, x, y) {
+    return ["open", "cleared"].includes(terrainAt(state, x, y));
+  }
+
   function travelCost(state, x, y, recipe) {
     if (terrainAt(state, x, y) === "tree") return recipe?.forestMoveCost || 1.5;
     return 1;
@@ -466,7 +470,7 @@
       nextEntityId: 1,
       kills: 0,
       actionLog: [],
-      lastEvent: "Clear one tree to make the first build site. The meadow waits until you end the day.",
+      lastEvent: "Clear one tree for wood. Defenses can stand on any open grass.",
       outcome: null,
       aftermathTicks: 0,
       paused: false,
@@ -540,7 +544,7 @@
     if (!recipe) return false;
     for (let row = y; row < y + recipe.footprint.height; row += 1) {
       for (let column = x; column < x + recipe.footprint.width; column += 1) {
-        if (!inBounds(column, row) || terrainAt(state, column, row) !== "cleared" || hasRubble(state, column, row) || buildingAt(state, column, row)) return false;
+        if (!inBounds(column, row) || !isBuildableGrass(state, column, row) || hasRubble(state, column, row) || buildingAt(state, column, row)) return false;
       }
     }
     return true;
@@ -589,12 +593,12 @@
         setTerrain(state, action.x, action.y, "cleared");
         state.resources.wood += 1;
         invalidatePaths(state);
-        return result(state, true, "Tree cleared: +1 wood. The day is spent and the new site is ready.", action, shouldRecord);
+        return result(state, true, "Tree cleared: +1 wood. The day is spent; the grass is now open.", action, shouldRecord);
       }
       if (!consumeAction(state)) return result(state, false, "Both day actions are spent.");
       state.rubble = state.rubble.filter((rubble) => !(rubble.x === action.x && rubble.y === action.y));
       invalidatePaths(state);
-      return result(state, true, "Rubble cleared. The build site is open again.", action, shouldRecord);
+      return result(state, true, "Rubble cleared. The grass is open again.", action, shouldRecord);
     }
 
     if (action.type === "repair") {
@@ -625,7 +629,7 @@
       const recipe = buildingRecipe(action.buildingType);
       if (!recipe || ["teepee", "arrowShooter"].includes(action.buildingType)) return result(state, false, "That building cannot be placed here.");
       if (!hasUnlock(state, action.buildingType)) return result(state, false, `${recipe.label} has not been unlocked yet.`);
-      if (!validFootprint(state, action.buildingType, action.x, action.y)) return result(state, false, "That build site is blocked or occupied.");
+      if (!validFootprint(state, action.buildingType, action.x, action.y)) return result(state, false, "That grass is blocked or occupied.");
       if (!hasResources(state, recipe.cost)) return result(state, false, `Need ${recipe.cost.wood || 0} wood to build this.`);
       if (!consumeActions(state, recipe.actionCost || 1)) return result(state, false, `${recipe.label} takes the full day to build.`);
       spendResources(state, recipe.cost);
@@ -1037,6 +1041,7 @@
     buildingCells,
     buildingAt,
     isPassable,
+    isBuildableGrass,
     hasRubble,
     validFootprint,
     buildPreview,

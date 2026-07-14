@@ -21,11 +21,15 @@ const run = Engine.createRun("HEARTH-1042");
 assert.deepEqual(run.resources, { wood: 0 });
 assert.equal(run.actionPoints, 2);
 assert.equal(run.terrain.includes("boulder"), false, "stone is out of the current resource loop");
-assert.equal(Engine.validFootprint(run, "stickLauncher", 4, 5), false, "the original teepee clearing is not a defense build site");
+assert.equal(Engine.validFootprint(run, "stickLauncher", 4, 5), true, "original unoccupied grass is a defense build site");
+assert.equal(Engine.validFootprint(run, "stickLauncher", 1, 3), false, "standing trees still block placement");
+const waterRun = Engine.createRun("FUTURE-WATER");
+waterRun.terrain[0] = "water";
+assert.equal(Engine.validFootprint(waterRun, "stickLauncher", 0, 0), false, "future terrain blocks placement until it explicitly opts in");
 action(run, { type: "clear", x: 1, y: 3 });
 assert.equal(Engine.terrainAt(run, 1, 3), "cleared");
 assert.equal(run.resources.wood, 1);
-assert.equal(Engine.validFootprint(run, "stickLauncher", 1, 3), true, "a cleared tree becomes the build site");
+assert.equal(Engine.validFootprint(run, "stickLauncher", 1, 3), true, "cleared-tree grass remains buildable");
 assert.equal(run.actionPoints, 0, "clearing a tree consumes both daylight actions");
 action(run, { type: "endDay" });
 assert.equal(run.encounter.threatBudget, 1);
@@ -37,7 +41,7 @@ assert.equal(run.xp, 3, "the first kill and cleared night award only XP");
 assert.ok(run.unlocks.includes("stickLauncher"));
 
 // The first defense is a real full-day decision: it spends the saved wood and both actions.
-action(run, { type: "build", buildingType: "stickLauncher", x: 1, y: 3 });
+action(run, { type: "build", buildingType: "stickLauncher", x: 4, y: 5 });
 const launcher = run.buildings.find((building) => building.type === "stickLauncher");
 assert.ok(launcher);
 assert.deepEqual(run.resources, { wood: 0 }, "unused legacy resources must not leak into a wood-only run");

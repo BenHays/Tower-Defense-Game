@@ -20,6 +20,7 @@
 - Keep new progression modules separate from combat simulation: XP tech should expose declarative effects and purchase validation, while the engine and UI remain separate consumers.
 - A deterministic balance probe should compare named build plans before changing pressure or tower values; an upgrade that arrives after its defense line reliably falls is not a real choice.
 - Keep the current resource loop narrow: wood is for construction and repair, while XP is the only enemy/level reward. Do not add food, pelts, or Scout health maintenance without a distinct decision it creates.
-- Keep planning values explicitly separate from live values. Tower economy must be tuned against the cleared-cell expansion rule, not by increasing early wood yield alone.
-- Model cleared forest as its own terrain value rather than generic open ground. That makes outward-only building placement deterministic, survives rubble cleanup, and prevents the original teepee clearing from becoming a tower pad.
+- Keep planning values explicitly separate from live values. Tower economy must be tuned against wood income and broad grass placement, not by increasing early wood yield alone.
+- Model cleared forest as its own terrain value rather than generic open ground. It preserves the harvested-tree visual and faster movement while both terrain values remain valid grass for building placement.
 - Keep permanent environmental effects such as the campfire outside `state.buildings`, so closest-building enemy targeting cannot select or damage them.
+- A survival aid cannot be free by default: introduce the teepee through a forced zero-cost Level 1 shelter action, and defer fire until it is an XP-researched, wood-built safety net with one clear purpose.

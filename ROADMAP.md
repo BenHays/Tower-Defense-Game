@@ -4,13 +4,13 @@ This roadmap protects the core loop: use the day to shape a small homestead, the
 
 ## Current opening contract
 
-### Level 1 — First watch
+### Level 1 — Shelter and first watch (proposed replacement)
 
-1. Start with Scout, a branch teepee, **0 wood**, and two daylight actions.
-2. Clear one tree. It uses both actions, gives **1 wood**, and creates a dedicated forest build site.
-3. End the day. Scout defeats one raccoon without help.
-4. Scout returns to his watch post. The next day begins automatically.
-5. The **Stick Launcher** recipe unlocks.
+1. Start with Scout, a **shelter site**, **0 wood**, and two daylight actions. There is no teepee or fire yet.
+2. The only active control is **Construct shelter**. It costs no wood, consumes the full first day, and places the branch teepee. Every other action, research, and build control—including **End day**—is disabled until this is complete.
+3. The new teepee is therefore the one free thing the player *earns* through the tutorial, not a free starting building.
+4. Clear one tree on the following day. It uses both actions, gives **1 wood**, and turns that cell into open grass.
+5. End the day. Scout defeats one raccoon without help, returns to his watch post, and the **Stick Launcher** recipe unlocks.
 
 ### Level 2 — First line
 
@@ -23,7 +23,7 @@ This roadmap protects the core loop: use the day to shape a small homestead, the
 
 - **Untimed day:** daylight ends only when the player chooses **End day**.
 - **Two actions:** tree clearing and constructing or upgrading a tower take both actions. Repairing, moving Scout, and clearing rubble each take one.
-- **Forest:** trees visually cover the map, are walkable but slow enemies, and become fast buildable ground when cleared. Only cleared former-tree cells can hold new defenses; the original central clearing cannot. Buildings and rubble are hard blockers; stone is out of the MVP resource loop.
+- **Grass placement:** any unoccupied `open` or `cleared` grass cell can hold a defense. Trees, water, rubble, and buildings block placement by default. Clearing a tree earns wood and opens its grass cell; it is not a prerequisite for every defense.
 - **All-angle invasion:** enemies can spawn from any usable perimeter cell.
 - **Scout:** a mobile melee final line. His watch radius stays centered on the daytime post; he chases, bites, and returns automatically.
 - **Stick Launcher:** the first fixed tower. It costs 1 wood and a full day, has 6 health, short 2.25-cell reach, 1 damage, and fires once every 2 seconds at the nearest enemy in range.
@@ -73,7 +73,7 @@ Level 1 is intentionally safe. From Level 2 forward, the player is under real pr
 
 ## Proposed next defense path
 
-Potato Gun, the simplified early stats, cleared-cell placement, campfire, and compact UI are live. Hivecraft, Fungal Craft, and water remain planning decisions.
+Potato Gun, the simplified early stats, cleared-cell placement, and compact UI are live. The current free campfire is a temporary prototype that conflicts with the economy and must be removed in the next gameplay implementation. Hivecraft, Fungal Craft, water, and the earned hearth are planning decisions.
 
 ### Potato Gun — next new building
 
@@ -96,15 +96,21 @@ Its job is not crowd control or a universal replacement for launchers. It gives 
 
 ### Environment purpose
 
-- **Campfire:** a permanent, untargetable fire at the teepee. It does not attack. Its small inner warmth zone slows approaching enemies slightly, giving Scout a final defensive window. It is not a structure, cannot be repaired, and needs no fuel system.
+- **Hearthcraft / Fire Pit (roadmap, not live contract):** research should unlock an earned Fire Pit, rather than placing a free campfire. Proposed purpose: a non-targetable, non-damaging one-cell warmth zone that slows enemies by a small amount. It is a narrow late safety net that buys Scout or a nearby tower one more attack, not a replacement for a defense. Proposed build contract: research with XP, then spend **2 wood and a full day** to construct it at the homestead. Its research cost and unlock level remain open for playtesting.
 - **Water:** do not add a water inventory. Later, water should be an environmental moisture source that enables fungal/garden structures near it; its first real purpose is to create location-specific choices for the Mushroom branch rather than another generic currency.
+
+### Tree and placement UX corrections (roadmap)
+
+- **One clear, one target:** clicking **Clear** should arm the next tree click and clear it immediately. The present extra-click behavior is a UI bug caused by rebuilding the board during hover; replace it with stable cell input before the next gameplay slice.
+- **Neutral cleared plots:** replace the yellow glow with flattened grass, muted soil, and a small stump/log. Yellow should mean attention or selection, not permanent terrain.
+- **Explicit terrain grammar:** standing tree = wood source and slower route; any open or cleared grass = defense site; water, fire, and future structures will introduce their own placement rules when they exist. The visual treatment and tool copy must explain this rule before a player tries to build.
 
 ## Delivered challenge and stat reset
 
 The old opening produced too much early tower capacity: a cleared tree granted 2 wood while a launcher cost 1, and launchers could be placed in the original clearing. The live loop now rebalances around outward expansion:
 
 - A cleared tree grants **1 wood**.
-- New defensive buildings require a **cleared former-tree cell**, not the original teepee clearing.
+- New defensive buildings require **unoccupied grass**. Clearing trees is still valuable for wood, room, and faster paths.
 - Tree clear, new building, and tower upgrade retain their full-day cost.
 - Basic launcher projectiles are larger and slower with a short impact flash; initial reach is reduced so its fire is visible and local.
 
@@ -148,8 +154,10 @@ Every module should use the same four headings: **Live now**, **Proposed next**,
 
 ## Next implementation order
 
-1. Validate the Potato Gun's cost, unlock timing, and counter role across deterministic Medium seeds and player testing.
-2. Tune Arrowcraft and Potato Gun so neither becomes a universal answer.
-3. Add the next tech branch only after those choices create a reliable but challenging progression.
-4. Add the next enemy only with its own readable building counter.
-5. Add Easy, Hard, and Very Hard as Threat Budget multipliers after Medium is balanced.
+1. Replace the free starting teepee/fire flow with the forced Level 1 shelter build; remove the temporary campfire from the live map.
+2. Fix the clear/build click flow and convert cleared-tree art to a neutral plot treatment.
+3. Validate the Potato Gun's cost, unlock timing, and counter role across deterministic Medium seeds and player testing.
+4. Tune Arrowcraft and Potato Gun so neither becomes a universal answer.
+5. Add the next tech branch only after those choices create a reliable but challenging progression.
+6. Add the next enemy only with its own readable building counter.
+7. Add Easy, Hard, and Very Hard as Threat Budget multipliers after Medium is balanced.
