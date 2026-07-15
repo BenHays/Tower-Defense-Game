@@ -10,6 +10,7 @@
 
 - Keep the deployed version dependency-free: copy the existing browser assets into `dist/` and serve them through the platform asset binding, so each tester retains an isolated browser-local save.
 - A Cloudflare static Worker must point its `assets.directory` at `dist/`; deploying `.` uploads `node_modules` and fails the 25 MiB asset limit before the game can be published.
+- The `name` in `wrangler.jsonc` must exactly match the live Cloudflare Worker (`tdgame`); otherwise a successful build targets a different Worker and the public URL stays stale.
 
 ## Top-down expansion
 
