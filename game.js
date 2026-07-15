@@ -98,6 +98,7 @@ let showHealthBars = true;
 let activeTechId = null;
 const gridCells = new Map();
 let techSignature = "";
+let lastTechViewedLevel = null;
 let preferredSpeed = 1;
 let audioMuted = false;
 let effectsVolume = 0.55;
@@ -374,9 +375,16 @@ function startHarvestEffect(x, y) {
 function openTechnology() {
   if (needsShelter()) return;
   lastFocusedElement = document.activeElement;
+  const level = currentLevel().number;
+  if (lastTechViewedLevel !== level) {
+    activeTechId = null;
+    techSignature = "";
+    lastTechViewedLevel = level;
+  }
   elements.techDialog.hidden = false;
   document.body.classList.add("tech-dialog-open");
   renderTechnology();
+  queueTechJump({ nodeId: activeTechId });
   requestAnimationFrame(() => elements.techCloseButton.focus());
 }
 
@@ -812,6 +820,91 @@ function queueTechConnections() {
   requestAnimationFrame(drawTechConnections);
 }
 
+function createTechGuide(guide, selectedNode) {
+  const nav = createNode("nav", "tech-guide");
+  nav.setAttribute("aria-label", "Talent guide");
+
+  const heading = createNode("div", "tech-guide-heading");
+  const introduction = createNode("p");
+  introduction.append(
+    createNode("strong", "", "Talent guide"),
+    createNode("span", "", "Branch prices rise independently as you invest."),
+  );
+  const status = createNode("div", "tech-guide-status");
+  const threshold = Engine.nextSkillPointThreshold(state);
+  const previousThreshold = state.skillPointsEarned > 0 ? threshold / 2 : 0;
+  const segmentTotal = Math.max(1, threshold - previousThreshold);
+  const segmentProgress = Math.max(0, Math.min(segmentTotal, state.xp - previousThreshold));
+  const progressPercent = Math.round((segmentProgress / segmentTotal) * 100);
+  const xpProgress = createNode("span", "tech-guide-xp", `Next SP · ${Math.max(0, threshold - state.xp)} XP`);
+  xpProgress.setAttribute("role", "progressbar");
+  xpProgress.setAttribute("aria-label", `Experience toward the next Skill Point: ${segmentProgress} of ${segmentTotal}`);
+  xpProgress.setAttribute("aria-valuemin", "0");
+  xpProgress.setAttribute("aria-valuemax", String(segmentTotal));
+  xpProgress.setAttribute("aria-valuenow", String(segmentProgress));
+  xpProgress.style.setProperty("--tech-xp-progress", `${progressPercent}%`);
+  const reveal = createNode("span", "tech-guide-reveal", guide.nextRevealLevel ? `Next reveal · Level ${guide.nextRevealLevel}` : "All paths revealed");
+  status.append(xpProgress, reveal);
+  heading.append(introduction, status);
+
+  const rail = createNode("div", "tech-guide-rail");
+  rail.setAttribute("aria-label", "Talent branch shortcuts");
+  const readyCount = guide.readyNodeIds.length;
+  const readyButton = createNode("button", `tech-guide-ready${readyCount ? " has-ready" : ""}`);
+  readyButton.type = "button";
+  readyButton.dataset.techGuide = "ready";
+  readyButton.disabled = readyCount === 0;
+  readyButton.setAttribute("aria-label", readyCount
+    ? `${readyCount} ${state.phase === "day" ? "ready" : "planned"} Talent choice${readyCount === 1 ? "" : "s"}. Jump to the first.`
+    : "No Talent is currently affordable.");
+  readyButton.append(
+    createNode("span", "tech-guide-ready-mark", "✦"),
+    createNode("strong", "", state.phase === "day" ? "Ready now" : "Next day"),
+    createNode("em", "", String(readyCount)),
+  );
+  rail.append(readyButton);
+
+  guide.branches.forEach((branch) => {
+    const active = selectedNode?.branch === branch.id;
+    const chip = createNode("button", `tech-guide-chip${active ? " is-active" : ""}${branch.readyNodeIds.length ? " has-ready" : ""}`);
+    chip.type = "button";
+    chip.dataset.techGuide = "branch";
+    chip.dataset.techBranch = branch.id;
+    chip.setAttribute("aria-label", `${branch.label}: ${branch.learned} of ${branch.total} learned. ${branch.learned === branch.total ? "Branch complete." : `Next purchase costs ${branch.nextCostSkillPoints} Skill Point${branch.nextCostSkillPoints === 1 ? "" : "s"}.`} ${branch.readyNodeIds.length} affordable.`);
+    chip.append(
+      createNode("strong", "", branch.label),
+      createNode("small", "", branch.learned === branch.total ? `${branch.learned}/${branch.total} · complete` : `${branch.learned}/${branch.total} · next ${branch.nextCostSkillPoints} SP`),
+    );
+    if (branch.readyNodeIds.length) chip.append(createNode("em", "", `${branch.readyNodeIds.length} ready`));
+    rail.append(chip);
+  });
+
+  nav.append(heading, rail);
+  return nav;
+}
+
+function queueTechJump({ nodeId = null, branchId = null, focus = false } = {}) {
+  if (!nodeId && !branchId) return;
+  requestAnimationFrame(() => {
+    const target = nodeId
+      ? elements.techBranches.querySelector(`[data-tech="${nodeId}"]`)
+      : elements.techBranches.querySelector(`.tech-branch[data-branch="${branchId}"]`);
+    if (!target) return;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    target.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "nearest", inline: "center" });
+    if (focus && nodeId && !target.disabled) target.focus({ preventScroll: true });
+  });
+}
+
+function techGuideBranchCandidate(guide, branchId) {
+  const branch = guide.branches.find((candidate) => candidate.id === branchId);
+  if (!branch) return null;
+  return branch.readyNodeIds[0]
+    || branch.revealedNodeIds.find((id) => !Engine.hasResearch(state, id))
+    || branch.revealedNodeIds[0]
+    || null;
+}
+
 function renderTechnology() {
   const ready = !needsShelter();
   elements.techButton.hidden = !ready;
@@ -823,8 +916,9 @@ function renderTechnology() {
   }
   const level = currentLevel().number;
   const treeNodes = Engine.techNodes();
-  const revealedNodes = treeNodes.filter((node) => Engine.hasResearch(state, node.id) || node.requiredLevel <= level);
-  const available = revealedNodes.find((node) => Engine.techAvailability(state, node.id).available);
+  const guide = Engine.techGuide(state);
+  const revealedNodes = guide.revealedNodeIds.map((id) => Engine.TECH_TREE[id]).filter(Boolean);
+  const available = guide.readyNodeIds.length ? Engine.TECH_TREE[guide.readyNodeIds[0]] : null;
   if (!revealedNodes.some((node) => node.id === activeTechId)) activeTechId = available?.id || revealedNodes[0]?.id || null;
   const signature = [state.phase, level, state.xp, state.skillPoints, state.skillPointsEarned, state.unlocks.join(","), state.research.join(","), activeTechId].join("|");
   if (signature === techSignature) return;
@@ -883,7 +977,7 @@ function renderTechnology() {
   });
   viewport.append(canvas);
   stage.append(viewport, createNode("p", "tech-scroll-hint", "Scroll to explore ↔ ↕"));
-  elements.techBranches.replaceChildren(stage);
+  elements.techBranches.replaceChildren(createTechGuide(guide, selectedNode), stage);
   queueTechConnections();
   elements.techDialogSubtitle.textContent = state.phase === "day"
     ? `Level ${level} · ${state.skillPoints} Skill Point${state.skillPoints === 1 ? "" : "s"} ready · ${state.xp}/${Engine.nextSkillPointThreshold(state)} XP to next · no action.`
@@ -1277,11 +1371,27 @@ elements.techDialog.addEventListener("click", (event) => {
     closeTechnology();
     return;
   }
+  const guideButton = event.target.closest("[data-tech-guide]");
+  if (guideButton) {
+    const guide = Engine.techGuide(state);
+    const branchId = guideButton.dataset.techBranch || null;
+    const nodeId = guideButton.dataset.techGuide === "ready"
+      ? guide.readyNodeIds[0] || null
+      : techGuideBranchCandidate(guide, branchId);
+    if (nodeId) {
+      activeTechId = nodeId;
+      techSignature = "";
+      render();
+    }
+    queueTechJump({ nodeId, branchId, focus: Boolean(nodeId) });
+    return;
+  }
   const node = event.target.closest("[data-tech]");
   if (!node) return;
   activeTechId = node.dataset.tech;
   techSignature = "";
   render();
+  queueTechJump({ nodeId: activeTechId, focus: true });
 });
 elements.researchButton.addEventListener("click", () => {
   if (activeTechId) dispatch({ type: "research", nodeId: activeTechId });

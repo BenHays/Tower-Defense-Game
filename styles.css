@@ -985,6 +985,107 @@ body.settings-dialog-open { overflow: hidden; }
   .tech-node-effect { max-width: 44px; font-size: .3rem; }
 }
 
+/* Talent Guide: make branch investment and affordable choices readable before
+   the player commits, without hiding any part of the dependency canvas. */
+.tech-dialog .tech-branches {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+}
+.tech-guide {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid rgba(42,90,68,.2);
+  border-radius: 15px;
+  background: linear-gradient(125deg, rgba(255,254,249,.98), rgba(232,242,226,.88));
+  box-shadow: 0 4px 12px rgba(28,67,48,.06);
+}
+.tech-guide-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 2px 6px;
+}
+.tech-guide-heading p { display: flex; align-items: baseline; gap: 7px; margin: 0; }
+.tech-guide-heading p strong { color: var(--moss-dark); font-size: .59rem; letter-spacing: .05em; text-transform: uppercase; }
+.tech-guide-heading p span { color: #708477; font-size: .51rem; font-weight: 800; }
+.tech-guide-status { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.tech-guide-xp,
+.tech-guide-reveal {
+  padding: 3px 7px;
+  border: 1px solid rgba(53,108,82,.19);
+  border-radius: 99px;
+  color: #4f6a5a;
+  background: rgba(255,255,255,.68);
+  font-size: .46rem;
+  font-weight: 950;
+  letter-spacing: .025em;
+  white-space: nowrap;
+}
+.tech-guide-xp {
+  background: linear-gradient(90deg, rgba(232,195,79,.42) 0 var(--tech-xp-progress), rgba(255,255,255,.72) var(--tech-xp-progress) 100%);
+}
+.tech-guide-rail {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  padding: 1px 1px 4px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(52,104,79,.42) transparent;
+}
+.tech-guide-rail::-webkit-scrollbar { height: 5px; }
+.tech-guide-rail::-webkit-scrollbar-thumb { border-radius: 99px; background: rgba(52,104,79,.42); }
+.tech-guide-ready,
+.tech-guide-chip {
+  position: relative;
+  flex: 1 0 108px;
+  min-height: 42px;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 2px;
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--tech-color, #557867) 35%, white);
+  border-radius: 11px;
+  cursor: pointer;
+  color: var(--tech-color, var(--moss-dark));
+  background: rgba(255,254,250,.92);
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.55);
+  text-align: left;
+}
+.tech-guide-ready:hover:not(:disabled),
+.tech-guide-chip:hover { border-color: var(--tech-color, var(--moss)); background: color-mix(in srgb, var(--tech-color, var(--moss)) 8%, white); }
+.tech-guide-ready:focus-visible,
+.tech-guide-chip:focus-visible { outline: 3px solid rgba(224,173,65,.78); outline-offset: 1px; }
+.tech-guide-ready strong,
+.tech-guide-chip strong { font-size: .52rem; font-weight: 950; letter-spacing: .045em; line-height: 1; text-transform: uppercase; }
+.tech-guide-chip small { color: #718277; font-size: .43rem; font-weight: 900; line-height: 1; white-space: nowrap; }
+.tech-guide-ready { flex-basis: 98px; grid-template-columns: 16px 1fr auto; align-items: center; color: #76591f; background: rgba(245,224,154,.32); }
+.tech-guide-ready-mark { grid-row: 1; display: grid; place-items: center; width: 16px; height: 16px; border-radius: 6px; color: #fffdf8; background: #b18732; font-size: .55rem; }
+.tech-guide-ready em,
+.tech-guide-chip em { font-style: normal; font-size: .43rem; font-weight: 950; white-space: nowrap; }
+.tech-guide-ready em { grid-column: 3; grid-row: 1; display: grid; place-items: center; min-width: 18px; height: 18px; border-radius: 99px; color: #fffdf8; background: #91712c; }
+.tech-guide-ready:disabled { cursor: default; filter: grayscale(.45); opacity: .48; }
+.tech-guide-chip em { position: absolute; top: -4px; right: -3px; padding: 2px 4px; border: 1px solid #fffef9; border-radius: 99px; color: #fffdf8; background: var(--tech-color); }
+.tech-guide-chip.is-active { border-color: #d8a33e; box-shadow: inset 0 0 0 2px rgba(255,255,255,.68), 0 0 0 2px rgba(232,195,79,.36); }
+.tech-guide-chip[data-tech-branch="hunting"] { --tech-color: #a96526; }
+.tech-guide-chip[data-tech-branch="farming"] { --tech-color: #477a47; }
+.tech-guide-chip[data-tech-branch="building"] { --tech-color: #4c6f91; }
+.tech-guide-chip[data-tech-branch="nurturing"] { --tech-color: #9a5f62; }
+.tech-guide-chip[data-tech-branch="scouting"] { --tech-color: #765276; }
+
+@media (max-width: 700px) {
+  .tech-guide { padding: 6px; border-radius: 12px; }
+  .tech-guide-heading p span { display: none; }
+  .tech-guide-heading { gap: 7px; padding-bottom: 5px; }
+  .tech-guide-status { gap: 4px; }
+  .tech-guide-xp, .tech-guide-reveal { padding: 3px 5px; font-size: .41rem; }
+  .tech-guide-ready, .tech-guide-chip { flex-basis: 102px; min-height: 39px; padding: 5px 7px; }
+}
 /* Phone HUD: keep the objective readable and use the already-recognizable
    resource icons instead of squeezing four text labels beside it. */
 @media (max-width: 700px) {

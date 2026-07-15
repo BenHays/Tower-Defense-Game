@@ -145,6 +145,38 @@
     return { available: true, reason: "Ready to learn.", node: definition, costSkillPoints };
   }
 
+  function guide(state) {
+    const currentLevel = Math.max(1, (state.levelIndex || 0) + 1);
+    const orderedNodes = nodes();
+    const revealedNodes = orderedNodes.filter((definition) => isResearched(state, definition.id) || definition.requiredLevel <= currentLevel);
+    const readyNodeIds = revealedNodes.filter((definition) => availability(state, definition.id).available).map((definition) => definition.id);
+    const hiddenLevels = orderedNodes
+      .filter((definition) => !isResearched(state, definition.id) && definition.requiredLevel > currentLevel)
+      .map((definition) => definition.requiredLevel);
+    const branches = Object.values(BRANCHES).slice().sort((left, right) => left.order - right.order).map((branch) => {
+      const branchNodes = orderedNodes.filter((definition) => definition.branch === branch.id);
+      const learned = branchNodes.filter((definition) => isResearched(state, definition.id)).length;
+      const revealed = branchNodes.filter((definition) => isResearched(state, definition.id) || definition.requiredLevel <= currentLevel);
+      const ready = revealed.filter((definition) => readyNodeIds.includes(definition.id));
+      return {
+        id: branch.id,
+        label: branch.label,
+        learned,
+        total: branchNodes.length,
+        revealedNodeIds: revealed.map((definition) => definition.id),
+        readyNodeIds: ready.map((definition) => definition.id),
+        nextCostSkillPoints: 2 ** learned,
+      };
+    });
+    return {
+      currentLevel,
+      revealedNodeIds: revealedNodes.map((definition) => definition.id),
+      readyNodeIds,
+      nextRevealLevel: hiddenLevels.length ? Math.min(...hiddenLevels) : null,
+      branches,
+    };
+  }
+
   function research(state, id) {
     const check = availability(state, id);
     if (!check.available) return { ok: false, message: check.reason, node: check.node };
@@ -169,5 +201,5 @@
   function hasBuildingRefit(state, building, refit) { return hasEffect(state, (effect) => effect.kind === "unlockBuildingRefit" && effect.building === building && effect.refit === refit); }
 
   validate();
-  return { BRANCHES, NODES, nodes, node, nodesForBranch, isResearched, branchResearchCount, costFor, availability, research, effectsFor, effectsMatching, effectValue, statValue, hasEffect, hasBuildingUpgrade, hasBuildingRefit, validate };
+  return { BRANCHES, NODES, nodes, node, nodesForBranch, isResearched, branchResearchCount, costFor, availability, guide, research, effectsFor, effectsMatching, effectValue, statValue, hasEffect, hasBuildingUpgrade, hasBuildingRefit, validate };
 }));

@@ -207,6 +207,20 @@ assert.equal(Engine.grantExperience(milestoneRun, 80).skillPoints, 4, "one large
 assert.equal(milestoneRun.skillPoints, 4);
 assert.equal(Engine.nextSkillPointThreshold(milestoneRun), 160);
 
+const initialTalentGuide = Engine.techGuide(Engine.createRun("TEST-TALENT-GUIDE"));
+assert.equal(initialTalentGuide.nextRevealLevel, 2, "the guide points toward the first sealed Talent reveal without spoiling it");
+assert.deepEqual(initialTalentGuide.readyNodeIds, [], "no Talent is affordable before the first Skill Point");
+assert.ok(initialTalentGuide.branches.every((branch) => branch.learned === 0 && branch.nextCostSkillPoints === 1), "every Talent branch advertises its independent 1-SP opening cost");
+
+const revealedTalentGuideRun = Engine.createRun("TEST-TALENT-GUIDE-REVEALED");
+revealedTalentGuideRun.levelIndex = 1;
+revealedTalentGuideRun.skillPoints = 1;
+revealedTalentGuideRun.skillPointsEarned = 1;
+const revealedTalentGuide = Engine.techGuide(revealedTalentGuideRun);
+assert.deepEqual(revealedTalentGuide.readyNodeIds, ["woodlandYield", "scoutTraining1"], "the guide lists every currently affordable revealed choice in tree order");
+assert.equal(revealedTalentGuide.branches.find((branch) => branch.id === "farming").readyNodeIds.length, 1);
+assert.equal(revealedTalentGuide.branches.find((branch) => branch.id === "scouting").readyNodeIds.length, 1);
+
 // Talents are data-driven: Skill Point Scout Training permanently modifies the calculated Scout stats.
 const scoutTechRun = Engine.createRun("TEST-SCOUT-TECH");
 constructShelter(scoutTechRun);
@@ -234,6 +248,9 @@ branchCostRun.skillPointsEarned = 7;
 assert.equal(Engine.techAvailability(branchCostRun, "arrowcraft").costSkillPoints, 1, "the first Hunting purchase costs 1 Skill Point");
 assert.equal(Engine.techAvailability(branchCostRun, "scoutTraining1").costSkillPoints, 1, "a different branch still starts at 1 Skill Point");
 action(branchCostRun, { type: "research", nodeId: "arrowcraft" });
+const branchCostGuide = Engine.techGuide(branchCostRun);
+assert.equal(branchCostGuide.branches.find((branch) => branch.id === "hunting").nextCostSkillPoints, 2, "the guide updates the invested branch's next price");
+assert.equal(branchCostGuide.branches.find((branch) => branch.id === "scouting").nextCostSkillPoints, 1, "an uninvested branch keeps its opening price");
 assert.equal(Engine.techAvailability(branchCostRun, "hardwoodThrows").costSkillPoints, 2, "the second Hunting purchase costs 2 Skill Points");
 assert.equal(Engine.techAvailability(branchCostRun, "launcherRange").costSkillPoints, 2, "parallel Hunting nodes share the second purchase cost");
 assert.equal(Engine.techAvailability(branchCostRun, "potatoPacking").costSkillPoints, 2, "side nodes share their branch's escalating cost");

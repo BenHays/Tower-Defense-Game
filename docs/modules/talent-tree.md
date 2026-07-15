@@ -8,6 +8,7 @@
 - A branch's first, second, third, and fourth purchases cost 1, 2, 4, and 8 Skill Points. Branches price independently.
 - The five player-facing branches are **Hunting**, **Farming**, **Building**, **Nurturing**, and **Scouting**.
 - Learning a Talent costs Skill Points only, never a day action. Nodes appear in an icon-first horizontal canvas with a concise mechanical tag (for example, `+1 Launcher DMG`); selecting one repeats its precise effect and prerequisites in the detail pane.
+- The Talent Guide is renderer-only navigation over the catalog. It summarizes learned/total nodes, each branch's independent next cost, affordable counts, XP toward the next Skill Point, and the next sealed reveal level. Its shortcuts select and scroll to catalog nodes without changing saves or research rules.
 
 ## Collaboration
 

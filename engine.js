@@ -2066,6 +2066,7 @@
     levelFor,
     mediumThreatBudget,
     techAvailability: TechTree.availability,
+    techGuide: TechTree.guide,
     techBranchResearchCount: TechTree.branchResearchCount,
     techCostFor: TechTree.costFor,
     hasResearch: TechTree.isResearched,
