@@ -20,6 +20,7 @@
         <div class="run-tools" aria-label="Game controls">
           <span class="seed-pill">Seed <code id="seed-value">HEARTH-1042</code></span>
           <button class="tech-launcher" id="tech-button" type="button" aria-haspopup="dialog" aria-controls="tech-dialog" hidden><span class="tech-tree-mark" aria-hidden="true">✣</span> Talents <strong id="tech-points">0 SP</strong></button>
+          <button class="settings-launcher" id="settings-button" type="button" aria-haspopup="dialog" aria-controls="settings-dialog" aria-label="Open settings" title="Settings"><span aria-hidden="true">⚙</span></button>
           <button class="quiet-button" id="new-seed-button" type="button">New seed</button>
           <button class="quiet-button" id="save-button" type="button">Save</button>
           <button class="quiet-button" id="load-button" type="button">Load</button>
@@ -73,32 +74,44 @@
           <div class="build-list" id="build-list" aria-label="Buildable structures"></div>
         </section>
 
-        <aside class="planning-card settings-card" id="planning-card" aria-label="Settings">
-          <p class="eyebrow" id="utility-label">Settings</p>
-          <div class="settings-controls" aria-label="Display and sound settings">
-            <div class="toolbar-size-controls" role="group" aria-label="Control size">
-              <button class="toolbar-size-button" id="toolbar-smaller" type="button" aria-label="Make controls smaller" title="Make controls smaller">−</button>
-              <span id="toolbar-size-label" aria-live="polite">Compact</span>
-              <button class="toolbar-size-button" id="toolbar-larger" type="button" aria-label="Make controls larger" title="Make controls larger">+</button>
-            </div>
-            <label class="setting-toggle" id="health-bars-setting" for="health-bars-toggle"><input id="health-bars-toggle" type="checkbox" checked /> <span>Health bars</span></label>
-            <div class="audio-settings" id="audio-settings" aria-label="Sound settings">
-              <button class="audio-mute-button" id="audio-mute-button" type="button" aria-pressed="false">Sound on</button>
-              <label class="audio-volume" for="effects-volume"><span>SFX</span><input id="effects-volume" type="range" min="0" max="100" value="55" /></label>
-              <label class="audio-volume" for="music-volume"><span>Music</span><input id="music-volume" type="range" min="0" max="100" value="22" /></label>
-            </div>
-          </div>
-          <button class="secondary-button wide" id="overlay-button" type="button">Show planning overlay <span>range + routes</span></button>
-          <p class="preview-copy" id="preview-copy">Choose a tool, then select unoccupied grass.</p>
-          <p class="dawn-report" id="dawn-report" hidden></p>
-          <div class="speed-controls" id="speed-controls" aria-label="Night speed">
-            <button class="speed-button" id="pause-button" type="button">Pause</button>
-            <button class="speed-button is-active" data-speed="1" type="button">1×</button>
-            <button class="speed-button" data-speed="2" type="button">2×</button>
-            <button class="speed-button" data-speed="5" type="button">5×</button>
-          </div>
-        </aside>
       </section>
+
+      <div class="settings-dialog" id="settings-dialog" hidden>
+        <section class="settings-dialog-panel" role="dialog" aria-modal="true" aria-labelledby="settings-dialog-title" tabindex="-1">
+          <header class="settings-dialog-header">
+            <div>
+              <p class="eyebrow">Play preferences</p>
+              <h2 id="settings-dialog-title">Settings</h2>
+            </div>
+            <button class="quiet-button settings-close" id="settings-close-button" type="button">Close <span aria-hidden="true">×</span></button>
+          </header>
+          <aside class="planning-card settings-card" id="planning-card" aria-label="Settings">
+            <p class="eyebrow" id="utility-label">Settings</p>
+            <div class="settings-controls" aria-label="Display and sound settings">
+              <div class="toolbar-size-controls" role="group" aria-label="Control size">
+                <button class="toolbar-size-button" id="toolbar-smaller" type="button" aria-label="Make controls smaller" title="Make controls smaller">−</button>
+                <span id="toolbar-size-label" aria-live="polite">Compact</span>
+                <button class="toolbar-size-button" id="toolbar-larger" type="button" aria-label="Make controls larger" title="Make controls larger">+</button>
+              </div>
+              <label class="setting-toggle" id="health-bars-setting" for="health-bars-toggle"><input id="health-bars-toggle" type="checkbox" checked /> <span>Health bars</span></label>
+              <div class="audio-settings" id="audio-settings" aria-label="Sound settings">
+                <button class="audio-mute-button" id="audio-mute-button" type="button" aria-pressed="false">Sound on</button>
+                <label class="audio-volume" for="effects-volume"><span>SFX</span><input id="effects-volume" type="range" min="0" max="100" value="55" /></label>
+                <label class="audio-volume" for="music-volume"><span>Music</span><input id="music-volume" type="range" min="0" max="100" value="22" /></label>
+              </div>
+            </div>
+            <button class="secondary-button wide" id="overlay-button" type="button">Show planning overlay <span>range + routes</span></button>
+            <p class="preview-copy" id="preview-copy">Choose a tool, then select unoccupied grass.</p>
+            <p class="dawn-report" id="dawn-report" hidden></p>
+            <div class="speed-controls" id="speed-controls" aria-label="Night speed">
+              <button class="speed-button" id="pause-button" type="button">Pause</button>
+              <button class="speed-button is-active" data-speed="1" type="button">1×</button>
+              <button class="speed-button" data-speed="2" type="button">2×</button>
+              <button class="speed-button" data-speed="5" type="button">5×</button>
+            </div>
+          </aside>
+        </section>
+      </div>
 
       <section class="event-log" id="event-log-wrap" aria-label="Game update" aria-live="polite" hidden><p id="event-log"></p></section>
     </main>

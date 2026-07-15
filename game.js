@@ -30,6 +30,9 @@ const elements = {
   controlPanel: document.querySelector("#control-panel"),
   actionCard: document.querySelector("#action-card"),
   planningCard: document.querySelector("#planning-card"),
+  settingsButton: document.querySelector("#settings-button"),
+  settingsDialog: document.querySelector("#settings-dialog"),
+  settingsCloseButton: document.querySelector("#settings-close-button"),
   actionHint: document.querySelector("#action-hint"),
   actionBadge: document.querySelector("#action-badge"),
   dayActionList: document.querySelector("#day-action-list"),
@@ -100,6 +103,7 @@ let audioMuted = false;
 let effectsVolume = 0.55;
 let musicVolume = 0.22;
 let lastFocusedElement = null;
+let lastSettingsFocusedElement = null;
 let lastEarlyEndFocusedElement = null;
 let lastSkillPointFocusedElement = null;
 let earlyEndWarningDay = null;
@@ -379,6 +383,36 @@ function closeTechnology(options = {}) {
   document.body.classList.remove("tech-dialog-open");
   if (options.restoreFocus !== false && lastFocusedElement instanceof HTMLElement) lastFocusedElement.focus();
   lastFocusedElement = null;
+}
+
+function openSettings() {
+  lastSettingsFocusedElement = document.activeElement;
+  elements.settingsDialog.hidden = false;
+  document.body.classList.add("settings-dialog-open");
+  requestAnimationFrame(() => elements.settingsCloseButton.focus());
+}
+
+function closeSettings(options = {}) {
+  if (elements.settingsDialog.hidden) return;
+  elements.settingsDialog.hidden = true;
+  document.body.classList.remove("settings-dialog-open");
+  if (options.restoreFocus !== false && lastSettingsFocusedElement instanceof HTMLElement) lastSettingsFocusedElement.focus();
+  lastSettingsFocusedElement = null;
+}
+
+function trapDialogFocus(event, dialog) {
+  if (event.key !== "Tab") return;
+  const focusable = [...dialog.querySelectorAll("button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])")];
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (!first || !last) return;
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
 }
 
 function closeSkillPointNotice(options = {}) {
@@ -897,14 +931,13 @@ function renderControls() {
   const opening = needsShelter();
   const openingSuppliesReady = Engine.hasOpeningSupplies(state);
   const hasPlanningTarget = Boolean(selectedScout() || towerRecipe(building?.type));
-  // Keep display, sound, and pacing preferences anchored below the Build strip.
-  // The range overlay remains contextual, while 1×/2×/5× is a saved preference.
+  // Settings live behind the compact gear button, so the map and active controls
+  // keep their screen space. The range overlay and playback choices remain there.
   elements.controlPanel.classList.toggle("is-day", day);
   elements.controlPanel.classList.toggle("is-night", night);
   elements.controlPanel.classList.toggle("is-aftermath", state.phase === "aftermath");
   elements.actionCard.hidden = false;
   elements.actionCard.classList.toggle("is-opening", opening);
-  elements.planningCard.hidden = false;
   const unlockedBuildTools = renderBuildList();
   elements.buildCard.hidden = opening || !unlockedBuildTools.length;
   elements.axeButton.hidden = !opening || state.hatchetCrafted;
@@ -1208,6 +1241,11 @@ function selectTool(event) {
 
 elements.dayActionList.addEventListener("click", selectTool);
 elements.buildList.addEventListener("click", selectTool);
+elements.settingsButton.addEventListener("click", openSettings);
+elements.settingsCloseButton.addEventListener("click", () => closeSettings());
+elements.settingsDialog.addEventListener("click", (event) => {
+  if (event.target === elements.settingsDialog) closeSettings();
+});
 elements.toolbarSmaller.addEventListener("click", () => changeToolbarSize(-1));
 elements.toolbarLarger.addEventListener("click", () => changeToolbarSize(1));
 elements.axeButton.addEventListener("click", () => {
@@ -1305,25 +1343,21 @@ document.addEventListener("keydown", (event) => {
     }
     return;
   }
+  if (!elements.settingsDialog.hidden) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeSettings();
+    }
+    trapDialogFocus(event, elements.settingsDialog);
+    return;
+  }
   if (elements.techDialog.hidden) return;
   if (event.key === "Escape") {
     event.preventDefault();
     closeTechnology();
     return;
   }
-  if (event.key === "Tab") {
-    const focusable = [...elements.techDialog.querySelectorAll("button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])")];
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (!first || !last) return;
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  }
+  trapDialogFocus(event, elements.techDialog);
 });
 window.addEventListener("resize", () => {
   if (!elements.techDialog.hidden) queueTechConnections();

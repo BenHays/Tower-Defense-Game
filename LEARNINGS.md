@@ -4,7 +4,7 @@
 
 - The no-timer day still needs a fixed action budget: normal days have two actions, and clearing, building, repairing, upgrading, and Scout placement each use one. XP is lifetime progress; the first Skill Point arrives at 10 XP and each later total-XP threshold doubles, while Talent learning spends points without an action.
 - Scout is fully automatic at night; player attention stays on daytime position, terrain, and building decisions rather than combat controls.
-- Keep the lower dock in a stable order: Day Actions, unlock-driven Build, then always-visible Settings. Branding should never contain a hidden reset behavior; leave resets to an explicitly labelled control.
+- Keep the active dock in a stable order: Day Actions, then unlock-driven Build. Settings belongs behind a compact, explicitly labelled gear popup rather than reserving permanent play space; branding should never contain a hidden reset behavior.
 
 ## Hosting
 
@@ -22,6 +22,7 @@
 - Use an authored hidden square grid. The art hides the cells, while the engine gets valid placement, footprints, four-direction paths, and range calculations.
 - Trees are visually dense but walkable at a higher traversal cost; cleared ground is faster and buildable. This permits all-edge spawning without authored visible trails, while only intentional blockers such as Fence can seal a ground route.
 - Keep map terrain fixed for now. The seed changes encounter composition, spawn edge, and arrival timing, not the world layout.
+- Enlarging the meadow with responsive CSS does not require extra trees: preserve the 15×15 square board and its dense forest until a deliberate board-size/rebalance/save-version change is approved.
 
 ## Simulation
 
