@@ -1015,3 +1015,59 @@ body.settings-dialog-open { overflow: hidden; }
   .resource-row .resource-chip dt span:last-child { display: none; }
   .resource-row .resource-chip dt { font-size: .68rem; }
 }
+
+/* Desktop Day Actions should be a quick control rail, not a second panel that
+   competes with the meadow. Full detail remains available in the button names;
+   phone controls retain their roomier stacked treatment above. */
+@media (min-width: 701px) {
+  .action-card {
+    grid-template-columns: minmax(0,1fr) 104px;
+    gap: 4px 7px;
+    padding: 7px !important;
+  }
+  .action-heading { min-height: 18px; }
+  .action-heading strong { padding: 3px 5px; font-size: .53rem; }
+  .day-action-list { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 3px; }
+  .action-card .day-action-list .opening-action,
+  .action-card .day-action-list .shelter-button { grid-column: auto; }
+  .action-card .tool-button {
+    min-height: 30px;
+    flex-direction: row;
+    justify-content: center;
+    gap: 3px;
+    padding: 3px 4px;
+    border-radius: 7px;
+  }
+  .action-card .tool-button .tool-icon {
+    width: 13px;
+    min-width: 13px;
+    height: 13px;
+    border-radius: 4px;
+    font-size: .64rem;
+  }
+  .action-card .tool-button .tool-copy { display: block; min-width: 0; }
+  .action-card .tool-button .tool-copy strong {
+    display: block;
+    overflow: hidden;
+    font-size: .52rem;
+    line-height: 1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .action-card .tool-button .tool-copy small { display: none; }
+  .action-card > .primary-button {
+    min-height: 30px;
+    padding: 4px;
+    border-radius: 7px;
+    font-size: .62rem;
+  }
+  .action-card > .primary-button span { display: none; }
+  .action-card .action-row { gap: 3px; margin-top: 0; }
+  .action-card .action-row .secondary-button {
+    min-height: 28px;
+    gap: 4px;
+    padding: 4px 5px;
+    font-size: .54rem;
+  }
+  .action-card .action-row .secondary-button span { display: none; }
+}
