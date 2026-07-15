@@ -403,3 +403,23 @@ button[hidden], [hidden] { display: none !important; }
 @media (max-width: 860px) {
   .tech-tree-stage { height: min(54dvh, 520px); }
 }
+
+/* Keep the canvas itself at a known height: the viewport, not the modal body,
+   owns vertical scrolling. This keeps the final branch reachable on every screen. */
+.tech-dialog .tech-branches { height: auto; overflow: visible; }
+.tech-tree-stage {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: clamp(270px, calc(100dvh - 360px), 470px);
+  overflow: visible;
+}
+.tech-tree-viewport {
+  height: auto;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: scroll;
+  scrollbar-gutter: stable both-edges;
+}
+@media (max-width: 860px) {
+  .tech-tree-stage { height: min(42dvh, 400px); }
+}
