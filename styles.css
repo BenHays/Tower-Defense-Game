@@ -423,3 +423,66 @@ button[hidden], [hidden] { display: none !important; }
 @media (max-width: 860px) {
   .tech-tree-stage { height: min(42dvh, 400px); }
 }
+
+/* Compact Talent Tree: let the icons and connections carry the scan path, not
+   oversized empty cells. The canvas still scrolls as future rows are added. */
+.tech-dialog .tech-branch {
+  grid-template-columns: 92px max-content;
+  gap: 12px;
+  min-height: 76px;
+  padding: 5px 0;
+}
+.tech-dialog .tech-branch-label {
+  min-height: 42px;
+  padding: 6px 7px;
+  border-radius: 10px;
+  font-size: .57rem;
+}
+.tech-tree-canvas {
+  gap: 8px;
+  min-width: calc(110px + (var(--tech-depth) * 94px) + 18px);
+  padding: 10px 12px;
+}
+.tech-node-track {
+  grid-template-columns: repeat(var(--tech-depth), 64px);
+  grid-template-rows: repeat(var(--tech-row-count), 64px);
+  gap: 12px 38px;
+}
+.tech-dialog .tech-node {
+  width: 64px;
+  min-height: 64px;
+  padding: 5px;
+  border-width: 2px;
+  border-radius: 16px;
+}
+.tech-dialog .tech-node::before { inset: 4px; border-radius: 11px; }
+.tech-node-icon { font-size: clamp(1.8rem, 3vw, 2.4rem); }
+.tech-node-cost {
+  right: -6px;
+  bottom: -6px;
+  min-width: 24px;
+  padding: 3px 4px;
+  border-width: 1px;
+  font-size: .46rem;
+}
+.tech-connection { stroke-width: 3px; }
+.tech-detail {
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 7px 10px;
+  padding: 16px;
+}
+.tech-detail-icon {
+  width: 58px;
+  height: 58px;
+  border-radius: 17px;
+  font-size: 2.2rem;
+}
+@media (max-width: 860px) {
+  .tech-tree-stage { height: min(40dvh, 360px); }
+  .tech-dialog .tech-branch { grid-template-columns: 76px max-content; gap: 10px; min-height: 66px; }
+  .tech-dialog .tech-branch-label { min-height: 36px; font-size: .52rem; }
+  .tech-node-track { grid-template-columns: repeat(var(--tech-depth), 56px); grid-template-rows: repeat(var(--tech-row-count), 56px); gap: 10px 28px; }
+  .tech-dialog .tech-node { width: 56px; min-height: 56px; border-radius: 14px; }
+  .tech-tree-canvas { min-width: calc(90px + (var(--tech-depth) * 84px) + 16px); padding: 9px; }
+  .tech-node-icon { font-size: 1.75rem; }
+}
