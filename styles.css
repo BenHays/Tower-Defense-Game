@@ -1016,58 +1016,133 @@ body.settings-dialog-open { overflow: hidden; }
   .resource-row .resource-chip dt { font-size: .68rem; }
 }
 
-/* Desktop Day Actions should be a quick control rail, not a second panel that
-   competes with the meadow. Full detail remains available in the button names;
-   phone controls retain their roomier stacked treatment above. */
-@media (min-width: 701px) {
-  .action-card {
-    grid-template-columns: minmax(0,1fr) 104px;
-    gap: 4px 7px;
-    padding: 7px !important;
-  }
-  .action-heading { min-height: 18px; }
-  .action-heading strong { padding: 3px 5px; font-size: .53rem; }
-  .day-action-list { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 3px; }
-  .action-card .day-action-list .opening-action,
-  .action-card .day-action-list .shelter-button { grid-column: auto; }
-  .action-card .tool-button {
-    min-height: 30px;
-    flex-direction: row;
-    justify-content: center;
-    gap: 3px;
-    padding: 3px 4px;
-    border-radius: 7px;
-  }
-  .action-card .tool-button .tool-icon {
-    width: 13px;
-    min-width: 13px;
-    height: 13px;
-    border-radius: 4px;
-    font-size: .64rem;
-  }
-  .action-card .tool-button .tool-copy { display: block; min-width: 0; }
-  .action-card .tool-button .tool-copy strong {
-    display: block;
-    overflow: hidden;
-    font-size: .52rem;
-    line-height: 1;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .action-card .tool-button .tool-copy small { display: none; }
-  .action-card > .primary-button {
-    min-height: 30px;
-    padding: 4px;
-    border-radius: 7px;
-    font-size: .62rem;
-  }
-  .action-card > .primary-button span { display: none; }
-  .action-card .action-row { gap: 3px; margin-top: 0; }
-  .action-card .action-row .secondary-button {
-    min-height: 28px;
-    gap: 4px;
-    padding: 4px 5px;
-    font-size: .54rem;
-  }
-  .action-card .action-row .secondary-button span { display: none; }
+/* Fixed-height docks: every action and build button stays in one horizontal
+   icon rail. More choices scroll sideways instead of ever adding a second row. */
+:root[data-toolbar-size="compact"] { --action-rail-tile: 34px; --action-rail-icon: 18px; --build-rail-tile: 40px; --build-rail-icon: 29px; }
+:root[data-toolbar-size="standard"] { --action-rail-tile: 38px; --action-rail-icon: 21px; --build-rail-tile: 46px; --build-rail-icon: 34px; }
+:root[data-toolbar-size="large"] { --action-rail-tile: 44px; --action-rail-icon: 25px; --build-rail-tile: 52px; --build-rail-icon: 39px; }
+.action-card {
+  grid-template-columns: max-content minmax(0,1fr) var(--action-rail-tile);
+  grid-template-rows: var(--action-rail-tile);
+  align-items: center;
+  gap: 5px;
+  padding: 6px !important;
+}
+.action-heading {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1px;
+  min-height: 0;
+}
+.action-heading .eyebrow { font-size: .52rem; line-height: 1; }
+.action-heading strong { margin: 0; padding: 0; background: transparent; font-size: .48rem; line-height: 1; }
+.action-hint { display: none; }
+.action-rail {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  min-width: 0;
+  height: var(--action-rail-tile);
+  gap: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scroll-snap-type: x proximity;
+}
+.action-rail .day-action-list,
+.action-rail .action-row { display: contents; }
+.action-rail .tool-button,
+.action-rail .secondary-button {
+  box-sizing: border-box;
+  flex: 0 0 var(--action-rail-tile);
+  width: var(--action-rail-tile);
+  height: var(--action-rail-tile);
+  min-height: var(--action-rail-tile);
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 2px;
+  border-radius: 8px;
+  scroll-snap-align: start;
+}
+.action-rail .day-action-list .opening-action,
+.action-rail .day-action-list .shelter-button { grid-column: auto; }
+.action-rail .tool-icon {
+  width: var(--action-rail-icon);
+  min-width: var(--action-rail-icon);
+  height: var(--action-rail-icon);
+  border-radius: 5px;
+  font-size: calc(var(--action-rail-icon) * .74);
+}
+.action-rail .tool-copy {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+}
+.action-rail .secondary-button { font-size: 0; }
+.action-rail .secondary-button span { display: none; }
+.action-rail #repair-button::before { color: var(--moss-dark); content: "🛠"; font-size: calc(var(--action-rail-icon) * .88); line-height: 1; }
+.action-rail #upgrade-button::before { color: var(--moss-dark); content: "↑"; font-family: Georgia, serif; font-size: calc(var(--action-rail-icon) * 1.25); font-weight: 900; line-height: 1; }
+.action-card > #end-day-button {
+  grid-column: 3;
+  grid-row: 1;
+  box-sizing: border-box;
+  width: var(--action-rail-tile);
+  height: var(--action-rail-tile);
+  min-height: var(--action-rail-tile);
+  margin: 0;
+  padding: 2px;
+  border-radius: 8px;
+  font-size: 0;
+}
+.action-card > #end-day-button span { display: none; }
+.action-card > #end-day-button::before { content: "☾"; font-family: Georgia, serif; font-size: calc(var(--action-rail-icon) * 1.28); line-height: 1; }
+.action-rail::-webkit-scrollbar { height: 4px; }
+.action-rail::-webkit-scrollbar-thumb { border-radius: 99px; background: rgba(53,108,82,.32); }
+.build-card {
+  grid-template-columns: 38px minmax(0,1fr);
+  align-items: center;
+  inline-size: min(790px,100%);
+  min-height: 0;
+  block-size: calc(var(--build-rail-tile) + 12px);
+  padding: 6px !important;
+}
+.build-card .eyebrow { align-self: center; margin: 0; font-size: .54rem; line-height: 1.05; }
+.build-list {
+  display: flex;
+  width: 100%;
+  max-inline-size: none;
+  height: var(--build-rail-tile);
+  gap: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 0 2px;
+  scroll-snap-type: x proximity;
+}
+.build-button {
+  box-sizing: border-box;
+  flex: 0 0 var(--build-rail-tile);
+  inline-size: var(--build-rail-tile);
+  block-size: var(--build-rail-tile);
+  min-height: var(--build-rail-tile);
+  display: grid;
+  place-items: center;
+  padding: 3px;
+  border-radius: 8px;
+  scroll-snap-align: start;
+}
+.build-icon { width: var(--build-rail-icon); height: var(--build-rail-icon); border-radius: 6px; }
+.build-copy { display: none; }
+@media (max-width: 700px) {
+  :root[data-toolbar-size] { --action-rail-tile: 42px; --action-rail-icon: 23px; --build-rail-tile: 48px; --build-rail-icon: 35px; }
+  .action-card { grid-template-columns: max-content minmax(0,1fr) var(--action-rail-tile); }
+  .build-card { grid-template-columns: 38px minmax(0,1fr); }
 }

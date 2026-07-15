@@ -189,6 +189,8 @@ function createNode(tag, className, text) {
 function setButtonContent(button, label, detail) {
   button.replaceChildren(document.createTextNode(label));
   if (detail) button.append(createNode("span", "", detail));
+  button.setAttribute("aria-label", detail ? `${label}. ${detail}` : label);
+  button.title = detail ? `${label} · ${detail}` : label;
 }
 
 function place(node, x, y) {
@@ -246,6 +248,7 @@ function renderBuildList() {
     button.dataset.tool = tool;
     const actionCost = recipe.actionCost || 1;
     button.setAttribute("aria-label", `Build ${recipe.label}, ${buildCostCopy(recipe)}, ${actionCost} action${actionCost === 1 ? "" : "s"}`);
+    button.title = `Build ${recipe.label} · ${buildCostCopy(recipe)}`;
     const icon = createNode("span", `build-icon ${BUILD_CARD_ICONS[tool] || "structure-icon"}`);
     icon.setAttribute("aria-hidden", "true");
     const copy = createNode("span", "build-copy");
@@ -952,6 +955,7 @@ function renderControls() {
     "aria-label",
     shelterArmed ? "Choose shelter site. Click open grass." : "Place shelter. Free. Uses one action.",
   );
+  elements.shelterButton.title = shelterArmed ? "Choose shelter site" : "Place shelter";
   elements.shelterLabel.textContent = shelterArmed ? "Choose shelter site" : "Place shelter";
   elements.shelterDetail.textContent = shelterArmed ? "Click open grass" : "Free · 1 action";
   elements.dayActionList.querySelectorAll("[data-tool]").forEach((button) => {

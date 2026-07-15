@@ -52,15 +52,17 @@
             <strong id="action-badge">2 actions</strong>
           </div>
           <p class="action-hint" id="action-hint">Choose one action, then select a map cell.</p>
-          <div class="day-action-list" id="day-action-list">
-            <button class="tool-button opening-action" id="axe-button" type="button"><span class="tool-icon" aria-hidden="true">🪓</span><span class="tool-copy"><strong>Craft axe</strong><small>Stick + rock · 1 action</small></span></button>
-            <button class="tool-button opening-action shelter-button" id="shelter-button" data-tool="teepee" type="button" aria-pressed="false"><span class="tool-icon" aria-hidden="true">⌂</span><span class="tool-copy"><strong id="shelter-label">Place shelter</strong><small id="shelter-detail">Free · 1 action</small></span></button>
-            <button class="tool-button" data-tool="clear" type="button"><span class="tool-icon" aria-hidden="true">🪓</span><span class="tool-copy"><strong>Harvest tree</strong><small>+2 wood</small></span></button>
-            <button class="tool-button" data-tool="scout" type="button"><span class="tool-icon" aria-hidden="true">●</span><span class="tool-copy"><strong>Place Scout</strong><small>1 action</small></span></button>
-          </div>
-          <div class="action-row" id="action-row">
-            <button class="secondary-button" id="repair-button" type="button">Repair selected <span>1 wood · 1 action</span></button>
-            <button class="secondary-button" id="upgrade-button" type="button">Upgrade selected <span>Arrowcraft · 4 wood · 1 action</span></button>
+          <div class="action-rail" id="action-rail" role="group" aria-label="Day action controls">
+            <div class="day-action-list" id="day-action-list">
+              <button class="tool-button opening-action" id="axe-button" type="button" title="Craft axe"><span class="tool-icon" aria-hidden="true">🪓</span><span class="tool-copy"><strong>Craft axe</strong><small>Stick + rock · 1 action</small></span></button>
+              <button class="tool-button opening-action shelter-button" id="shelter-button" data-tool="teepee" type="button" aria-pressed="false" title="Place shelter"><span class="tool-icon" aria-hidden="true">⌂</span><span class="tool-copy"><strong id="shelter-label">Place shelter</strong><small id="shelter-detail">Free · 1 action</small></span></button>
+              <button class="tool-button" data-tool="clear" type="button" title="Harvest tree"><span class="tool-icon" aria-hidden="true">🪓</span><span class="tool-copy"><strong>Harvest tree</strong><small>+2 wood</small></span></button>
+              <button class="tool-button" data-tool="scout" type="button" title="Place Scout"><span class="tool-icon" aria-hidden="true">●</span><span class="tool-copy"><strong>Place Scout</strong><small>1 action</small></span></button>
+            </div>
+            <div class="action-row" id="action-row">
+              <button class="secondary-button" id="repair-button" type="button" aria-label="Repair selected" title="Repair selected">Repair selected <span>1 wood · 1 action</span></button>
+              <button class="secondary-button" id="upgrade-button" type="button" title="Upgrade selected">Upgrade selected <span>Arrowcraft · 4 wood · 1 action</span></button>
+            </div>
           </div>
           <button class="primary-button wide" id="end-day-button" type="button">End Day</button>
         </section>
