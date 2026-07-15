@@ -67,6 +67,7 @@
 - Scout begins off-map during the forced shelter opening, then takes a deterministic adjacent post beside the player-chosen shelter. Keep the entrance as a renderer-only persistent-overlay effect so its movement can finish without changing saves or combat state.
 - Keep the Talent Tree catalog declarative by branch: Hunting, Farming, Building, Nurturing, and Scouting use node dependencies, shared icon ids, and typed effects so combat and daytime actions stay generic; calculate 1, 2, 4, 8 Skill Point costs from each branch's purchase count.
 - Render that declarative tech data as one two-axis-scrollable dependency canvas. Nodes should spend their space on an icon and small cost badge, while the detail pane carries the longer explanation.
+- Treat the Talent Tree as a single visual system: avoid stacked prototype overrides, keep node icon frames smaller than their tiles, and render future nodes as neutral sealed markers so the early tree has shape without spoiling later rewards.
 - Roll hide drops from a seed, level id, and enemy id rather than runtime randomness. Saves and replay checksums can then reproduce rewards exactly.
 - A free starter tool can teach a verb without becoming a new resource: clicking a map stick and rock unlocks Craft Axe for the first opening action, then unlocks Harvest Tree and the normal wood loop.
 - Use a non-targetable, non-blocking Potato Patch to reserve a future tower site. Dawn-counted growth keeps the conversion timing deterministic for saves, replays, and the Level 5 Boar counter.

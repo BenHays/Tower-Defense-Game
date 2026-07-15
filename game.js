@@ -777,29 +777,18 @@ function renderTechnology() {
     return;
   }
   const level = currentLevel().number;
-  const visibleNodes = Engine.techNodes().filter((node) => Engine.hasResearch(state, node.id) || node.requiredLevel <= level);
-  if (!visibleNodes.length) {
-    elements.techBranches.replaceChildren(createNode("p", "tech-empty", "The first talent reveals after you survive Level 1."));
-    elements.techTitle.textContent = "Talents unlock soon";
-    elements.techDetailIcon.replaceChildren(talentIconSvg("scoutTraining"));
-    elements.techEffect.hidden = true;
-    elements.techEffect.textContent = "";
-    elements.techCopy.textContent = "Clear the first watch. Your first Skill Point arrives at 10 XP.";
-    setButtonContent(elements.researchButton, "Talent unavailable", "next level");
-    elements.researchButton.disabled = true;
-    elements.techDialogSubtitle.textContent = `Experience ${state.xp}/${Engine.nextSkillPointThreshold(state)} · thresholds double after every point · no action.`;
-    return;
-  }
-  const available = visibleNodes.find((node) => Engine.techAvailability(state, node.id).available);
-  if (!visibleNodes.some((node) => node.id === activeTechId)) activeTechId = available?.id || visibleNodes[0].id;
+  const treeNodes = Engine.techNodes();
+  const revealedNodes = treeNodes.filter((node) => Engine.hasResearch(state, node.id) || node.requiredLevel <= level);
+  const available = revealedNodes.find((node) => Engine.techAvailability(state, node.id).available);
+  if (!revealedNodes.some((node) => node.id === activeTechId)) activeTechId = available?.id || revealedNodes[0]?.id || null;
   const signature = [state.phase, level, state.xp, state.skillPoints, state.skillPointsEarned, state.unlocks.join(","), state.research.join(","), activeTechId].join("|");
   if (signature === techSignature) return;
   techSignature = signature;
-  const selectedNode = Engine.TECH_TREE[activeTechId];
-  const research = Engine.techAvailability(state, activeTechId);
+  const selectedNode = activeTechId ? Engine.TECH_TREE[activeTechId] : null;
+  const research = selectedNode ? Engine.techAvailability(state, activeTechId) : null;
   const branches = new Map(Object.keys(Engine.TECH_BRANCHES).map((id) => [id, []]));
-  visibleNodes.forEach((node) => branches.get(node.branch).push(node));
-  const treeDepth = Math.max(1, ...visibleNodes.map((node) => node.tier));
+  treeNodes.forEach((node) => branches.get(node.branch).push(node));
+  const treeDepth = Math.max(1, ...treeNodes.map((node) => node.tier));
   const stage = createNode("div", "tech-tree-stage");
   const viewport = createNode("div", "tech-tree-viewport");
   viewport.tabIndex = 0;
@@ -823,20 +812,22 @@ function renderTechnology() {
     nodes.forEach((node) => {
       const row = (tierRows.get(node.tier) || 0) + 1;
       tierRows.set(node.tier, row);
-      const check = Engine.techAvailability(state, node.id);
+      const revealed = Engine.hasResearch(state, node.id) || node.requiredLevel <= level;
+      const check = revealed ? Engine.techAvailability(state, node.id) : null;
       const researched = Engine.hasResearch(state, node.id);
-      const effectSummary = techEffectSummary(node);
-      const button = createNode("button", `tech-node${node.id === activeTechId ? " is-selected" : ""}${researched ? " is-researched" : ""}${check.available ? " is-available" : " is-locked"}`);
+      const effectSummary = revealed ? techEffectSummary(node) : "";
+      const button = createNode("button", `tech-node${node.id === activeTechId ? " is-selected" : ""}${researched ? " is-researched" : ""}${revealed ? check.available ? " is-available" : " is-locked" : " is-unrevealed"}`);
       button.type = "button";
       button.dataset.tech = node.id;
       button.style.setProperty("--tech-column", String(node.tier));
       button.style.setProperty("--tech-row", String(row));
-      button.title = `${effectSummary} · ${researched ? "Learned" : check.reason}`;
-      button.setAttribute("aria-label", `${node.label}: ${effectSummary}. ${researched ? "Learned." : check.reason}`);
+      button.disabled = !revealed;
+      button.title = revealed ? `${effectSummary} · ${researched ? "Learned" : check.reason}` : "Unrevealed talent";
+      button.setAttribute("aria-label", revealed ? `${node.label}: ${effectSummary}. ${researched ? "Learned." : check.reason}` : "Unrevealed talent");
       button.append(
-        talentIconFrame(node.icon, "tech-node-icon"),
+        revealed ? talentIconFrame(node.icon, "tech-node-icon") : createNode("span", "tech-node-unknown", "?"),
         createNode("span", "tech-node-effect", effectSummary),
-        createNode("em", "tech-node-cost", researched ? "✓" : `${check.costSkillPoints} SP`),
+        createNode("em", "tech-node-cost", researched ? "✓" : revealed ? `${check.costSkillPoints} SP` : ""),
       );
       track.append(button);
     });
@@ -849,13 +840,23 @@ function renderTechnology() {
   stage.append(viewport, createNode("p", "tech-scroll-hint", "Scroll to explore ↔ ↕"));
   elements.techBranches.replaceChildren(stage);
   queueTechConnections();
+  elements.techDialogSubtitle.textContent = state.phase === "day"
+    ? `Level ${level} · ${state.skillPoints} Skill Point${state.skillPoints === 1 ? "" : "s"} ready · ${state.xp}/${Engine.nextSkillPointThreshold(state)} XP to next · no action.`
+    : `Level ${level} · ${state.skillPoints} Skill Point${state.skillPoints === 1 ? "" : "s"} ready · planning is read-only during the night.`;
+  if (!selectedNode || !research) {
+    elements.techDetailIcon.replaceChildren(createNode("span", "tech-detail-unknown", "?"));
+    elements.techTitle.textContent = "Talents take root";
+    elements.techEffect.hidden = true;
+    elements.techEffect.textContent = "";
+    elements.techCopy.textContent = "Survive the first watch to reveal the first talents. Future paths stay hidden until they are earned.";
+    setButtonContent(elements.researchButton, "Talent unavailable", "keep exploring");
+    elements.researchButton.disabled = true;
+    return;
+  }
   elements.techDetailIcon.replaceChildren(talentIconSvg(selectedNode.icon));
   elements.techTitle.textContent = selectedNode.label;
   elements.techEffect.hidden = false;
   elements.techEffect.textContent = techEffectSummary(selectedNode);
-  elements.techDialogSubtitle.textContent = state.phase === "day"
-    ? `Level ${level} · ${state.skillPoints} Skill Point${state.skillPoints === 1 ? "" : "s"} ready · ${state.xp}/${Engine.nextSkillPointThreshold(state)} XP to next · no action.`
-    : `Level ${level} · ${state.skillPoints} Skill Point${state.skillPoints === 1 ? "" : "s"} ready · planning is read-only during the night.`;
   if (Engine.hasResearch(state, selectedNode.id)) {
     elements.techCopy.textContent = `${selectedNode.completeCopy} Talents use Skill Points only; no day action is spent.`;
     setButtonContent(elements.researchButton, `${selectedNode.label} learned`, "ready");
