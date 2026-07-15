@@ -31,7 +31,7 @@ Open [http://localhost:4173](http://localhost:4173). You can also open `index.ht
 
 ## Configuration
 
-There are no environment variables. Content tuning, Medium Threat allocation, the fixed 15×15 map and its centered clearing, combat contracts, loot ranges, and levels currently live in `engine.js`. In particular, `ENEMIES` is the single authoritative enemy roster; levels and counters reference its stable IDs rather than copying enemy stats. `talent-tree.js` is the executable Talent Tree catalog, including typed stat and `unlockBuilding` effects; `docs/talent-tree-workbench.md` is the plain-language collaboration sheet; and `talent-icons.js` with `talent-icons.html` owns the shared, viewable SVG icon catalog. `game.js` is the browser renderer, stable map-input layer, and full-screen Talent Tree overlay. `audio.js` is a browser-only sound layer: it plays the supplied `assets/wild-hearth-title-sketch.wav` music track plus generated effects, but never changes game state contracts. The shared Stick Launcher and Potato Gun artwork lives in `assets/` and is used in both the meadow and Build strip.
+There are no environment variables. Content tuning, Medium Threat allocation, the fixed 15×15 map and its centered clearing, combat contracts, loot ranges, and levels currently live in `engine.js`. In particular, `ENEMIES` is the single authoritative enemy roster; levels and counters reference its stable IDs rather than copying enemy stats. `talent-tree.js` is the executable Talent Tree catalog, including typed stat and `unlockBuilding` effects; `docs/talent-tree-workbench.md` is the plain-language collaboration sheet; and `talent-icons.js` with `talent-icons.html` owns the shared, viewable SVG icon catalog. `game.js` is the browser renderer, stable map-input layer, and full-screen Talent Tree overlay. `audio.js` is a browser-only sound layer: it loops the four gameplay WAVs in a fixed order—Hearth Meadow, Forest Watch, Bramble Alarm, First Light—plus generated effects, but never changes game state contracts. The shared Stick Launcher and Potato Gun artwork lives in `assets/` and is used in both the meadow and Build strip.
 
 As the roster grows, use stable IDs—not JavaScript pointers—between a small set of catalogs: `units.js`, `enemies.js`, `buildings.js`, `levels.js`, `terrain.js`, `talent-tree.js`, and `talent-icons.js`. `engine.js` should consume those catalogs and retain only simulation/state logic. Units, enemies, and buildings are still centralized inside `engine.js` today, so extracting those three registries is the next organization refactor rather than creating duplicate sources of truth.
 
@@ -39,7 +39,7 @@ Mouse, Bear, and Vulture enemies plus the Scarecrow use transparent generated cu
 
 ## Audio reference sketch
 
-[`assets/wild-hearth-title-sketch.wav`](assets/wild-hearth-title-sketch.wav) is a 55-second original title-screen music sketch: D Dorian at 68 BPM in 3/4, built from plucked strings, a small woodwind-like lead, muted string pads, and one restrained middle-section drum pulse. It is a mood reference for the homestead-at-dusk title screen, not an adaptation of an existing game track.
+[`assets/wild-hearth-title-sketch.wav`](assets/wild-hearth-title-sketch.wav) is a 55-second original title-screen music sketch: D Dorian at 68 BPM in 3/4, built from plucked strings, a small woodwind-like lead, muted string pads, and one restrained middle-section drum pulse. It is a mood reference for the homestead-at-dusk title screen, not an adaptation of an existing game track; gameplay now uses the four-track playlist below.
 
 Regenerate it after changing the source score:
 
@@ -49,7 +49,7 @@ node scripts/render-title-sketch.js
 
 ## Soundtrack preview
 
-[`soundtrack-preview.html`](soundtrack-preview.html) is a listen-first page for four original gameplay cues: **Hearth Meadow** (day), **Forest Watch** (night), **Bramble Alarm** (danger), and **First Light** (dawn). They use a broad folk-fantasy palette without reproducing any existing game's music. These WAVs are intentionally separate from the current gameplay director until their transitions are approved.
+[`soundtrack-preview.html`](soundtrack-preview.html) is a listen-first page for four original gameplay cues: **Hearth Meadow**, **Forest Watch**, **Bramble Alarm**, and **First Light**. They use a broad folk-fantasy palette without reproducing any existing game's music. Gameplay now plays them in that fixed order and repeats from Hearth Meadow, independent of the current game phase.
 
 Regenerate the preview tracks after changing the source score:
 

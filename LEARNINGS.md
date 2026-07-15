@@ -17,6 +17,7 @@
 ## Audio
 
 - Avoid sustained pseudo-random noise beds in music cues. They read as static rather than atmosphere in browser playback; use pitched pads, sparse bells, and deliberate percussion instead.
+- Keep background music independent from game phase: play the four approved cues in one fixed looping order, while phase changes continue to use short effects only. Music mute and volume should pause/resume the current playlist position rather than reset it.
 
 ## Top-down expansion
 

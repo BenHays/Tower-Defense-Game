@@ -9,6 +9,12 @@
 }(typeof globalThis !== "undefined" ? globalThis : this, function buildWildHearthAudio() {
   const browserGlobal = typeof globalThis !== "undefined" ? globalThis : window;
   const clamp = (value, minimum = 0, maximum = 1) => Math.max(minimum, Math.min(maximum, Number(value) || 0));
+  const MUSIC_PLAYLIST = [
+    "assets/wild-hearth-hearth-meadow.wav",
+    "assets/wild-hearth-forest-watch.wav",
+    "assets/wild-hearth-bramble-alarm.wav",
+    "assets/wild-hearth-first-light.wav",
+  ];
 
   const EFFECTS = {
     collect: [[680, 0.08, "sine", 1.35]],
@@ -32,6 +38,7 @@
     constructor(settings = {}) {
       this.context = null;
       this.music = null;
+      this.musicTrackIndex = 0;
       this.lastEffectAt = {};
       this.settings = { muted: false, effectsVolume: 0.55, musicVolume: 0.22, ...settings };
     }
@@ -50,9 +57,10 @@
       if (!this.context) this.context = new Context();
       if (this.context.state === "suspended") this.context.resume();
       if (!this.music) {
-        this.music = new browserGlobal.Audio("assets/wild-hearth-title-sketch.wav");
-        this.music.loop = true;
+        this.music = new browserGlobal.Audio(MUSIC_PLAYLIST[this.musicTrackIndex]);
+        this.music.loop = false;
         this.music.preload = "auto";
+        this.music.addEventListener("ended", () => this.advanceMusic());
       }
       if (!this.settings.muted && this.settings.musicVolume > 0) this.startMusic();
       return true;
@@ -95,6 +103,14 @@
       this.music.volume = this.settings.musicVolume;
       const playback = this.music.play();
       if (playback && typeof playback.catch === "function") playback.catch(() => {});
+    }
+
+    advanceMusic() {
+      if (!this.music) return;
+      this.musicTrackIndex = (this.musicTrackIndex + 1) % MUSIC_PLAYLIST.length;
+      this.music.src = MUSIC_PLAYLIST[this.musicTrackIndex];
+      this.music.currentTime = 0;
+      this.startMusic();
     }
 
     stopMusic() {
