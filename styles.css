@@ -179,87 +179,8 @@ body.settings-dialog-open { overflow: hidden; }
   .settings-dialog .settings-run-actions { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
 
-/* The one-screen desktop test follows the approved map-first hierarchy: status
-   spans the top, the square meadow stays large, and Day Actions + Build share
-   the right dock. Smaller screens keep the established stacked presentation. */
-@media (min-width: 1000px) and (min-height: 620px) {
-  html,
-  body { height: 100%; }
-
-  body {
-    min-height: 0;
-    padding: 8px 0;
-    overflow: hidden;
-  }
-
-  .game-shell {
-    width: min(1220px,calc(100% - 16px));
-    height: 100%;
-    min-height: 0;
-    margin: 0 auto;
-    display: grid;
-    grid-template-columns: minmax(0,1fr) clamp(290px,31vw,370px);
-    grid-template-rows: auto auto minmax(0,1fr) auto;
-    grid-template-areas:
-      "header header"
-      "status status"
-      "board controls"
-      "board update";
-    gap: 8px 10px;
-  }
-
-  .game-header { grid-area: header; min-width: 0; min-height: 0; }
-  .topline { grid-area: status; min-width: 0; margin: 0; }
-  .game-board {
-    grid-area: board;
-    width: auto;
-    height: 100%;
-    min-width: 0;
-    min-height: 0;
-    max-width: 100%;
-    max-height: 100%;
-    margin: 0;
-    align-self: stretch;
-    justify-self: center;
-    border-width: 6px;
-    border-radius: 24px;
-  }
-  .control-panel {
-    grid-area: controls;
-    width: 100%;
-    height: 100%;
-    min-width: 0;
-    min-height: 0;
-    margin: 0;
-    display: grid;
-    grid-template-columns: minmax(0,1fr);
-    grid-auto-rows: max-content;
-    align-content: start;
-    gap: 8px;
-    overflow: auto;
-    border-radius: 18px;
-  }
-  .control-panel > * { grid-column: 1; min-width: 0; }
-  .control-panel .action-card { grid-template-columns: minmax(0,1fr) 112px; }
-  .control-panel .build-card {
-    width: 100%;
-    max-width: none;
-    inline-size: 100%;
-    max-inline-size: none;
-    justify-self: stretch;
-  }
-  .control-panel .build-list { max-inline-size: 100%; }
-  #event-log-wrap {
-    grid-area: update;
-    width: 100%;
-    max-width: none;
-    min-width: 0;
-    margin: 0;
-    padding: 7px 10px;
-    justify-content: flex-start;
-  }
-  #event-log-wrap p:last-child { text-align: left; }
-}
+/* One universal play order: map, Day Actions, then Build. Desktop widths may
+   widen those rails, but never move them beside the meadow. */
 
 .game-header { min-height: 60px; padding: 10px 14px; }
 .brand { min-width: 178px; gap: 8px; }.brand-mark { width: 31px; height: 31px; border-radius: 10px; }.brand strong { font-size: .9rem; }.brand .eyebrow { margin-bottom: 0; font-size: .55rem; }
