@@ -367,7 +367,7 @@ button[hidden], [hidden] { display: none !important; }
   max-height: min(760px, calc(100dvh - 28px));
   overflow: hidden;
 }
-.tech-dialog-body { flex: 1 1 auto; min-height: 0; }
+.tech-dialog-body { flex: 1 1 0; min-height: 0; }
 .tech-dialog .tech-branches,
 .tech-tree-stage { min-height: 0; }
 .tech-tree-stage { display: flex; flex-direction: column; }
@@ -394,4 +394,12 @@ button[hidden], [hidden] { display: none !important; }
 .tech-tree-stage.can-scroll-y .tech-scroll-hint { display: block; }
 @media (max-width: 700px) {
   .tech-dialog-panel { height: 92dvh; max-height: 92dvh; }
+}
+@media (min-width: 861px) {
+  .tech-dialog-body { grid-template-rows: minmax(0, 1fr); }
+  .tech-dialog .tech-branches,
+  .tech-tree-stage { height: 100%; overflow: hidden; }
+}
+@media (max-width: 860px) {
+  .tech-tree-stage { height: min(54dvh, 520px); }
 }

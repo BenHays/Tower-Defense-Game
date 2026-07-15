@@ -60,6 +60,7 @@
 
 - Use high-contrast generated cutouts for key enemies and towers, then render them as CSS backgrounds; keep the small Build and placement representations CSS-driven.
 - Keep the Talent Tree's dependency canvas horizontally expansive but give its viewport a fixed, two-axis scroll area so later branch rows remain reachable.
+- A scroll viewport needs a constrained parent as well as `overflow: auto`: desktop Talent Tree branches use a `minmax(0, 1fr)` grid row, while mobile gets an explicit viewport height.
 
 - Scout reserves only the day-placed watch post: construction and Scout placement reject overlaps, while enemies still target only real targetable buildings and Scout retains no health economy.
 - Keep the Talent Tree catalog declarative by branch: Hunting, Farming, Building, Nurturing, and Scouting use node dependencies, shared icon ids, and typed effects so combat and daytime actions stay generic; calculate 1, 2, 4, 8 Skill Point costs from each branch's purchase count.
