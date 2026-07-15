@@ -107,8 +107,8 @@ button[hidden], [hidden] { display: none !important; }
 .settings-launcher {
   appearance: none;
   display: inline-grid;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   padding: 0;
   border: 1px solid var(--line);
@@ -164,12 +164,20 @@ button[hidden], [hidden] { display: none !important; }
 }
 .settings-dialog .settings-card #utility-label { display: none !important; }
 .settings-dialog .settings-controls { width: 100%; padding: 12px; border: 1px solid rgba(73,104,67,.2); border-radius: 12px; background: rgba(255,253,248,.68); }
+.settings-dialog .settings-run-controls { width: 100%; padding-top: 11px; border-top: 1px solid rgba(73,104,67,.2); }
+.settings-dialog .settings-run-controls .eyebrow { margin: 0 0 7px; }
+.settings-dialog .settings-run-actions { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 6px; }
+.settings-dialog .settings-run-actions .quiet-button { justify-content: center; min-height: 36px; padding: 8px 6px; }
 .settings-dialog .settings-card #overlay-button,
 .settings-dialog .settings-card .preview-copy,
 .settings-dialog .settings-card .dawn-report,
 .settings-dialog .settings-card .speed-controls { width: 100%; max-width: none; }
 .settings-dialog .settings-card .preview-copy { min-height: 0; }
 body.settings-dialog-open { overflow: hidden; }
+
+@media (max-width: 430px) {
+  .settings-dialog .settings-run-actions { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
 
 /* The one-screen desktop test follows the approved map-first hierarchy: status
    spans the top, the square meadow stays large, and Day Actions + Build share

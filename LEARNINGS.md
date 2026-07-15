@@ -4,7 +4,7 @@
 
 - The no-timer day still needs a fixed action budget: normal days have two actions, and clearing, building, repairing, upgrading, and Scout placement each use one. XP is lifetime progress; the first Skill Point arrives at 10 XP and each later total-XP threshold doubles, while Talent learning spends points without an action.
 - Scout is fully automatic at night; player attention stays on daytime position, terrain, and building decisions rather than combat controls.
-- Keep the active dock in a stable order: Day Actions, then unlock-driven Build. Settings belongs behind a compact, explicitly labelled gear popup rather than reserving permanent play space; branding should never contain a hidden reset behavior.
+- Keep the active dock in a stable order: Day Actions, then unlock-driven Build. Settings belongs behind a compact, explicitly labelled gear popup rather than reserving permanent play space; branding should never contain a hidden reset behavior. Keep New seed, Save, Load, and Reset in that popup so the header only carries the seed, Talents, and a generous gear hit area.
 
 ## Hosting
 
