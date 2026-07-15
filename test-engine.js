@@ -66,6 +66,8 @@ assert.equal(Engine.dispatch(run, { type: "craftHatchet" }).ok, false, "one mate
 action(run, { type: "collectOpeningPickup", id: "starter-rock" });
 assert.equal(Engine.hasOpeningSupplies(run), true, "both map materials unlock the starter axe");
 action(run, { type: "craftHatchet" });
+assert.equal(Engine.toolPreview(run, "teepee", Engine.SHELTER_SITE.x, Engine.SHELTER_SITE.y).valid, true, "a valid opening shelter site previews as ready rather than locked");
+assert.equal(Engine.toolPreview(run, "teepee", 1, 3).valid, false, "a tree remains an invalid opening shelter site");
 assert.equal(Engine.dispatch(run, { type: "constructShelter", x: 1, y: 3 }).ok, false, "the shelter cannot be placed on a tree");
 action(run, { type: "constructShelter", ...Engine.SHELTER_SITE });
 assert.equal(run.hatchetCrafted, true, "the opening records the crafted starter hatchet");
@@ -167,8 +169,19 @@ v13Save.version = 13;
 v13Save.state.version = 13;
 v13Save.state.research = ["woodlandYield"];
 const migratedV13 = Engine.hydrate(v13Save);
-assert.equal(migratedV13.version, 16, "v13 saves migrate into the current roster version");
+assert.equal(migratedV13.version, 17, "v13 saves migrate into the current roster version");
 assert.deepEqual(migratedV13.research, ["woodlandYield"], "a migrated v13 save keeps its learned talents");
+const v16RubbleSave = JSON.parse(Engine.serialize(run));
+v16RubbleSave.version = 16;
+v16RubbleSave.state.version = 16;
+delete v16RubbleSave.state.woodPickups;
+v16RubbleSave.state.rubble = [{ x: centralBuildSite.x, y: centralBuildSite.y, health: 1 }];
+v16RubbleSave.state.actionLog.push({ type: "clear", x: centralBuildSite.x, y: centralBuildSite.y });
+const migratedV16 = Engine.hydrate(v16RubbleSave);
+assert.deepEqual(migratedV16.woodPickups, [], "legacy rubble does not turn into a retroactive wood reward");
+assert.equal("rubble" in migratedV16, false, "legacy rubble is removed when a v16 save loads");
+assert.equal(migratedV16.actionLog.some((action) => action.type === "clear" && action.x === centralBuildSite.x && action.y === centralBuildSite.y), false, "legacy rubble-clear actions are removed so replay remains valid without rubble");
+assert.doesNotThrow(() => Engine.replay(run.seed, migratedV16.actionLog), "a migrated v16 action log still replays after obsolete rubble clears are removed");
 assert.equal(run.resources.wood, 0, "building still spends the whole first wood bundle");
 assert.equal(run.actionPoints, 0);
 assert.equal(Engine.BUILDINGS.stickLauncher.attackRange, 1.75, "the basic launcher starts with a deliberately short range");
@@ -263,10 +276,73 @@ buildingRun.skillPoints = 4;
 buildingRun.skillPointsEarned = 4;
 action(buildingRun, { type: "research", nodeId: "hearthkeeping1" });
 action(buildingRun, { type: "research", nodeId: "reinforcedFrames" });
-assert.equal(buildingRun.buildings[0].maxHealth, 14, "Reinforced Frames adds maximum health to standing targetable structures");
+assert.equal(buildingRun.buildings[0].maxHealth, 14, "Reinforced Materials adds maximum health to standing structures");
 assert.equal(buildingRun.buildings[0].health, 14, "new frame protection is granted immediately instead of creating a damaged upgrade");
+assert.equal(Engine.hasBuildingUnlock(buildingRun, "fence"), true, "the combined Building talent unlocks Fence construction");
+assert.ok(Engine.unlockedBuildTypes(buildingRun).includes("fence"), "research-only structures enter the generic Build roster");
 action(buildingRun, { type: "research", nodeId: "barkArmor" });
 assert.equal(buildingRun.skillPoints, 0, "one Nurturing and two Building purchases consume 1 + 1 + 2 Skill Points");
+
+// Researchable structures are generic talent effects: Garden trades 2 wood and one action today for one protected bonus action at dawn.
+const gardenRun = Engine.createRun("TEST-GARDEN");
+constructShelter(gardenRun);
+gardenRun.levelIndex = 2;
+gardenRun.xp = 10;
+gardenRun.skillPoints = 1;
+gardenRun.skillPointsEarned = 1;
+assert.equal(Engine.dispatch(gardenRun, { type: "build", buildingType: "garden", ...centralBuildSite }).ok, false, "Garden construction is unavailable before its talent is learned");
+const gardenResearchActions = gardenRun.actionPoints;
+action(gardenRun, { type: "research", nodeId: "gardenStewardship" });
+assert.equal(gardenRun.actionPoints, gardenResearchActions, "Garden research spends Skill Points but no day action");
+assert.equal(Engine.hasBuildingUnlock(gardenRun, "garden"), true, "Garden Stewardship exposes the Garden through the shared research unlock path");
+assert.ok(Engine.unlockedBuildTypes(gardenRun).includes("garden"), "a researched Garden appears alongside level-unlocked structures");
+gardenRun.resources.wood = 2;
+gardenRun.actionPoints = 1;
+action(gardenRun, { type: "build", buildingType: "garden", ...centralBuildSite });
+const garden = gardenRun.buildings.find((building) => building.type === "garden");
+assert.ok(garden, "a researched Garden occupies its grass cell");
+assert.equal(Engine.isTargetableBuilding(garden), true, "a Garden can be threatened and must survive to pay off");
+assert.equal(Engine.isPassable(gardenRun, garden.x, garden.y), true, "a Garden does not become a path blocker");
+gardenRun.phase = "aftermath";
+gardenRun.aftermathTicks = 39;
+gardenRun.scout.x = gardenRun.scout.postX;
+gardenRun.scout.y = gardenRun.scout.postY;
+Engine.advanceTick(gardenRun);
+assert.equal(gardenRun.actionPoints, 3, "one living Garden adds one day action at dawn");
+gardenRun.resources.wood = 2;
+gardenRun.actionPoints = 1;
+action(gardenRun, { type: "build", buildingType: "garden", x: Engine.SHELTER_SITE.x - 2, y: Engine.SHELTER_SITE.y });
+gardenRun.phase = "aftermath";
+gardenRun.aftermathTicks = 39;
+gardenRun.scout.x = gardenRun.scout.postX;
+gardenRun.scout.y = gardenRun.scout.postY;
+Engine.advanceTick(gardenRun);
+assert.equal(gardenRun.actionPoints, 3, "the first Garden implementation caps the bonus at one action even if multiple Gardens live");
+garden.destroyed = true;
+gardenRun.buildings.find((building) => building.type === "garden" && building.id !== garden.id).destroyed = true;
+gardenRun.phase = "aftermath";
+gardenRun.aftermathTicks = 39;
+gardenRun.scout.x = gardenRun.scout.postX;
+gardenRun.scout.y = gardenRun.scout.postY;
+Engine.advanceTick(gardenRun);
+assert.equal(gardenRun.actionPoints, 2, "destroyed Gardens stop granting their dawn action");
+
+const fenceUnlockRun = Engine.createRun("TEST-FENCE-UNLOCK");
+constructShelter(fenceUnlockRun);
+fenceUnlockRun.levelIndex = 3;
+fenceUnlockRun.xp = 10;
+fenceUnlockRun.skillPoints = 1;
+fenceUnlockRun.skillPointsEarned = 1;
+assert.equal(Engine.dispatch(fenceUnlockRun, { type: "build", buildingType: "fence", ...centralBuildSite }).ok, false, "Fence construction is unavailable before Reinforced Materials");
+action(fenceUnlockRun, { type: "research", nodeId: "reinforcedFrames" });
+assert.equal(fenceUnlockRun.buildings[0].maxHealth, 14, "Reinforced Materials includes the teepee and every future structure in its health bonus");
+fenceUnlockRun.resources.wood = 1;
+fenceUnlockRun.actionPoints = 1;
+action(fenceUnlockRun, { type: "build", buildingType: "fence", ...centralBuildSite });
+const unlockedFence = fenceUnlockRun.buildings.find((building) => building.type === "fence");
+assert.equal(unlockedFence.maxHealth, 5, "the newly unlocked Fence also receives Reinforced Materials health");
+assert.equal(Engine.isTargetableBuilding(unlockedFence), false, "a Fence is not a normal closest-building target");
+assert.equal(Engine.isBreachableBlocker(unlockedFence), true, "a Fence is a dedicated breakable path blocker");
 
 // Forest remains dense, but every edge is a legal seeded spawn entry.
 assert.equal(Engine.isPassable(Engine.createRun("FOREST-PATH"), 0, 0), true);
@@ -427,7 +503,6 @@ assert.equal(arrowAirRun.projectiles[0].type, "arrow", "Arrow Shooters remain a 
 
 const vultureFlightRun = Engine.createRun("TEST-VULTURE-FLIGHT");
 constructShelter(vultureFlightRun);
-vultureFlightRun.rubble = [{ x: 1, y: 1, health: 9 }, { x: 2, y: 2, health: 9 }, { x: 3, y: 3, health: 9 }];
 vultureFlightRun.phase = "night";
 vultureFlightRun.encounter = { waves: [{ spawned: true }], spawned: 1 };
 vultureFlightRun.enemies = [{ id: "e-flying", type: "vulture", x: 0, y: 0, health: 18, maxHealth: 18, cooldown: 4, approachDelay: 0, statuses: {} }];
@@ -436,7 +511,7 @@ const vultureStartDistance = Math.hypot(teepee.x, teepee.y);
 Engine.advanceTick(vultureFlightRun);
 const flyingVulture = vultureFlightRun.enemies[0];
 assert.equal(flyingVulture.targetId, teepee.id, "a Vulture chooses the closest targetable structure directly");
-assert.ok(Math.hypot(flyingVulture.x - teepee.x, flyingVulture.y - teepee.y) < vultureStartDistance, "a Vulture advances over forest and rubble without ground pathing");
+assert.ok(Math.hypot(flyingVulture.x - teepee.x, flyingVulture.y - teepee.y) < vultureStartDistance, "a Vulture advances directly over terrain without ground pathing");
 
 // Potato Packing adds one short, strongest-only slow status without changing the basic Potato Gun contract.
 const slowRun = Engine.createRun("TEST-POTATO-SLOW");
@@ -545,41 +620,138 @@ Engine.advanceTick(guardianRun);
 assert.equal(guardianRun.scout.mode, "chasing");
 assert.ok(guardianRun.scout.x > guardianRun.scout.postX);
 
-// Rubble stays a hard blocker, but an enemy that cannot reach any live structure breaks the nearest reachable rubble instead of searching forever.
-const rubbleFallbackRun = Engine.createRun("TEST-RUBBLE-FALLBACK");
-constructShelter(rubbleFallbackRun);
-rubbleFallbackRun.rubble.push(
+// Fences shape ground routes first. They become attack targets only when they seal every approach to a live building.
+const fenceDetourRun = Engine.createRun("TEST-FENCE-DETOUR");
+constructShelter(fenceDetourRun);
+fenceDetourRun.levelIndex = 3;
+fenceDetourRun.xp = 10;
+fenceDetourRun.skillPoints = 1;
+fenceDetourRun.skillPointsEarned = 1;
+action(fenceDetourRun, { type: "research", nodeId: "reinforcedFrames" });
+fenceDetourRun.resources.wood = 1;
+fenceDetourRun.actionPoints = 1;
+action(fenceDetourRun, { type: "build", buildingType: "fence", x: Engine.SHELTER_SITE.x, y: Engine.SHELTER_SITE.y - 1 });
+const detourFence = fenceDetourRun.buildings.find((building) => building.type === "fence");
+fenceDetourRun.phase = "night";
+fenceDetourRun.encounter = { waves: [{ spawned: true }], spawned: 1 };
+fenceDetourRun.scout.x = fenceDetourRun.scout.postX = 0;
+fenceDetourRun.scout.y = fenceDetourRun.scout.postY = 0;
+fenceDetourRun.enemies = [{ id: "e-fence-detour", type: "raccoon", x: Engine.SHELTER_SITE.x, y: Engine.SHELTER_SITE.y - 2, health: 8, maxHealth: 8, cooldown: 0, approachDelay: 0, statuses: {} }];
+Engine.advanceTick(fenceDetourRun);
+assert.equal(fenceDetourRun.enemies[0].targetId, fenceDetourRun.buildings.find((building) => building.type === "teepee").id, "a ground enemy routes around an individual Fence instead of attacking it");
+assert.equal(detourFence.health, detourFence.maxHealth, "a usable detour keeps Fence health untouched");
+
+const fenceRingRun = Engine.createRun("TEST-FENCE-BREACH");
+constructShelter(fenceRingRun);
+fenceRingRun.levelIndex = 3;
+fenceRingRun.xp = 10;
+fenceRingRun.skillPoints = 1;
+fenceRingRun.skillPointsEarned = 1;
+action(fenceRingRun, { type: "research", nodeId: "reinforcedFrames" });
+fenceRingRun.resources.wood = 4;
+fenceRingRun.actionPoints = 4;
+[
   { x: Engine.SHELTER_SITE.x, y: Engine.SHELTER_SITE.y - 1 },
   { x: Engine.SHELTER_SITE.x + 1, y: Engine.SHELTER_SITE.y },
   { x: Engine.SHELTER_SITE.x, y: Engine.SHELTER_SITE.y + 1 },
   { x: Engine.SHELTER_SITE.x - 1, y: Engine.SHELTER_SITE.y },
-);
-rubbleFallbackRun.phase = "night";
-rubbleFallbackRun.encounter = { waves: [{ spawned: true }], spawned: 1 };
-rubbleFallbackRun.enemies = [{ id: "e-rubble", type: "boar", x: 0, y: 0, health: 10, maxHealth: 10, cooldown: 0, approachDelay: 0, statuses: {} }];
-assert.equal(Engine.closestReachableBuilding(rubbleFallbackRun, rubbleFallbackRun.enemies[0]), null, "a complete rubble ring has no direct building approach");
-assert.ok(Engine.closestReachableRubble(rubbleFallbackRun, rubbleFallbackRun.enemies[0]), "sealed rubble becomes the enemy's reachable fallback target");
-let rubbleGuard = 4000;
-while (["night", "aftermath"].includes(rubbleFallbackRun.phase) && rubbleGuard > 0) {
-  Engine.advanceTick(rubbleFallbackRun);
-  rubbleGuard -= 1;
-}
-assert.notEqual(rubbleGuard, 0, "breaking a legacy rubble entry always lets the night settle");
-assert.ok(rubbleFallbackRun.rubble.length < 4, "the enemy removes a health-less legacy rubble entry when it seals every structure");
+].forEach((site) => action(fenceRingRun, { type: "build", buildingType: "fence", ...site }));
+const breachProbe = { type: "boar", x: Engine.SHELTER_SITE.x, y: Engine.SHELTER_SITE.y - 2 };
+assert.equal(Engine.closestReachableBuilding(fenceRingRun, breachProbe), null, "a complete Fence ring has no normal ground approach to the teepee");
+const breach = Engine.closestReachableBreach(fenceRingRun, breachProbe);
+assert.ok(breach && breach.building.type === "fence", "a sealed route resolves to one deterministic Fence breach target");
+fenceRingRun.phase = "night";
+fenceRingRun.encounter = { waves: [{ spawned: true }], spawned: 1 };
+fenceRingRun.scout.x = fenceRingRun.scout.postX = 0;
+fenceRingRun.scout.y = fenceRingRun.scout.postY = 0;
+fenceRingRun.enemies = [{ id: "e-fence-breach", type: "boar", x: breach.approach.x, y: breach.approach.y, health: 15, maxHealth: 15, cooldown: 0, approachDelay: 0, statuses: {} }];
+Engine.advanceTick(fenceRingRun);
+assert.equal(fenceRingRun.enemies[0].targetId, breach.building.id, "a sealed ground enemy targets the selected Fence segment");
+breach.building.health = 1;
+fenceRingRun.enemies[0].cooldown = 0;
+Engine.advanceTick(fenceRingRun);
+assert.equal(breach.building.destroyed, true, "the selected Fence segment is destroyed by the breach attack");
+assert.equal(Engine.woodPickupAt(fenceRingRun, breach.building.x, breach.building.y), null, "a breached Fence does not refund wood");
+assert.equal(Engine.isPassable(fenceRingRun, breach.building.x, breach.building.y), true, "the destroyed segment becomes a usable ground route immediately");
+assert.ok(Engine.closestReachableBuilding(fenceRingRun, fenceRingRun.enemies[0])?.building.type === "teepee", "ground pathing recomputes through the new gap");
 
-const rubblePriorityRun = Engine.createRun("TEST-RUBBLE-PRIORITY");
-constructShelter(rubblePriorityRun);
-rubblePriorityRun.unlocks.push("stickLauncher");
-rubblePriorityRun.resources.wood = 2;
-rubblePriorityRun.actionPoints = 2;
-action(rubblePriorityRun, { type: "build", buildingType: "stickLauncher", ...centralBuildSite });
-const priorityTower = rubblePriorityRun.buildings.find((building) => building.type === "stickLauncher");
-rubblePriorityRun.rubble.push({ x: 0, y: 1 });
-rubblePriorityRun.phase = "night";
-rubblePriorityRun.encounter = { waves: [{ spawned: true }], spawned: 1 };
-rubblePriorityRun.enemies = [{ id: "e-priority", type: "raccoon", x: 0, y: 0, health: 5, maxHealth: 5, cooldown: 4, approachDelay: 0, statuses: {} }];
-Engine.advanceTick(rubblePriorityRun);
-assert.equal(rubblePriorityRun.enemies[0].targetId, priorityTower.id, "live structures remain a higher-priority target than nearby rubble");
+const fenceAirRun = Engine.createRun("TEST-FENCE-AIR");
+constructShelter(fenceAirRun);
+fenceAirRun.levelIndex = 3;
+fenceAirRun.xp = 10;
+fenceAirRun.skillPoints = 1;
+fenceAirRun.skillPointsEarned = 1;
+action(fenceAirRun, { type: "research", nodeId: "reinforcedFrames" });
+fenceAirRun.resources.wood = 4;
+fenceAirRun.actionPoints = 4;
+[
+  { x: Engine.SHELTER_SITE.x, y: Engine.SHELTER_SITE.y - 1 },
+  { x: Engine.SHELTER_SITE.x + 1, y: Engine.SHELTER_SITE.y },
+  { x: Engine.SHELTER_SITE.x, y: Engine.SHELTER_SITE.y + 1 },
+  { x: Engine.SHELTER_SITE.x - 1, y: Engine.SHELTER_SITE.y },
+].forEach((site) => action(fenceAirRun, { type: "build", buildingType: "fence", ...site }));
+fenceAirRun.phase = "night";
+fenceAirRun.encounter = { waves: [{ spawned: true }], spawned: 1 };
+fenceAirRun.enemies = [{ id: "e-fence-air", type: "vulture", x: 0, y: 0, health: 18, maxHealth: 18, cooldown: 0, approachDelay: 0, statuses: {} }];
+Engine.advanceTick(fenceAirRun);
+assert.equal(fenceAirRun.enemies[0].targetId, fenceAirRun.buildings.find((building) => building.type === "teepee").id, "air enemies ignore Fence routing and fly directly to targetable structures");
+
+// Destroyed structures leave recoverable wood, never accidental path blockers. Fence is the deliberate no-refund exception.
+const salvageRun = Engine.createRun("TEST-WOOD-SALVAGE");
+constructShelter(salvageRun);
+salvageRun.unlocks.push("stickLauncher");
+salvageRun.resources.wood = 2;
+salvageRun.actionPoints = 2;
+action(salvageRun, { type: "build", buildingType: "stickLauncher", ...centralBuildSite });
+const salvageTower = salvageRun.buildings.find((building) => building.type === "stickLauncher");
+salvageTower.health = 1;
+salvageRun.phase = "night";
+salvageRun.encounter = { waves: [{ spawned: true }], spawned: 1 };
+salvageRun.scout.x = salvageRun.scout.postX = 0;
+salvageRun.scout.y = salvageRun.scout.postY = 0;
+salvageRun.enemies = [{ id: "e-salvage", type: "boar", x: centralBuildSite.x, y: centralBuildSite.y - 1, health: 15, maxHealth: 15, cooldown: 0, approachDelay: 0, statuses: {} }];
+Engine.advanceTick(salvageRun);
+assert.equal(salvageTower.destroyed, true, "an enemy killing a normal structure removes the structure");
+const woodBundle = Engine.woodPickupAt(salvageRun, centralBuildSite.x, centralBuildSite.y);
+assert.deepEqual({ x: woodBundle.x, y: woodBundle.y, amount: woodBundle.amount }, { x: centralBuildSite.x, y: centralBuildSite.y, amount: 1 }, "each destroyed non-Fence structure leaves one wood bundle");
+const restoredSalvage = Engine.hydrate(Engine.serialize(salvageRun));
+assert.deepEqual(restoredSalvage.woodPickups, salvageRun.woodPickups, "wood bundles survive save/load exactly");
+assert.equal(Engine.checksum(restoredSalvage), Engine.checksum(salvageRun), "salvage state participates in deterministic checksums");
+assert.equal(Engine.isPassable(salvageRun, centralBuildSite.x, centralBuildSite.y), true, "wood salvage never blocks the route");
+assert.equal(Engine.validFootprint(salvageRun, "stickLauncher", centralBuildSite.x, centralBuildSite.y), true, "wood salvage never blocks construction");
+const woodBeforeCollect = salvageRun.resources.wood;
+const actionsBeforeCollect = salvageRun.actionPoints;
+assert.equal(Engine.dispatch(salvageRun, { type: "collectWoodPickup", id: woodBundle.id }).ok, false, "wood cannot be collected during the night");
+assert.equal(Engine.woodPickupAt(salvageRun, centralBuildSite.x, centralBuildSite.y)?.id, woodBundle.id, "a failed night collection leaves the wood bundle in place");
+salvageRun.phase = "day";
+action(salvageRun, { type: "collectWoodPickup", id: woodBundle.id });
+assert.equal(salvageRun.resources.wood, woodBeforeCollect + 1, "clicking a wood bundle awards one wood");
+assert.equal(salvageRun.actionPoints, actionsBeforeCollect, "collecting wood is free");
+assert.equal(Engine.woodPickupAt(salvageRun, centralBuildSite.x, centralBuildSite.y), null, "collected wood disappears from the grass");
+
+const autoSalvageRun = Engine.createRun("TEST-AUTO-SALVAGE");
+constructShelter(autoSalvageRun);
+autoSalvageRun.unlocks.push("stickLauncher");
+autoSalvageRun.resources.wood = 1;
+autoSalvageRun.actionPoints = 1;
+autoSalvageRun.woodPickups.push({ id: "wood-auto", x: centralBuildSite.x, y: centralBuildSite.y, amount: 1 });
+assert.equal(Engine.toolPreview(autoSalvageRun, "stickLauncher", centralBuildSite.x, centralBuildSite.y).valid, true, "a wood bundle under a build footprint counts toward affordability");
+action(autoSalvageRun, { type: "build", buildingType: "stickLauncher", ...centralBuildSite });
+assert.equal(autoSalvageRun.resources.wood, 0, "automatic salvage can fund the structure without losing the wood bundle");
+assert.equal(Engine.woodPickupAt(autoSalvageRun, centralBuildSite.x, centralBuildSite.y), null, "building on salvage auto-collects it");
+
+const teepeeLossRun = Engine.createRun("TEST-TEEPEE-NO-SALVAGE");
+constructShelter(teepeeLossRun);
+const teepeeTarget = teepeeLossRun.buildings.find((building) => building.type === "teepee");
+teepeeTarget.health = 1;
+teepeeLossRun.phase = "night";
+teepeeLossRun.encounter = { waves: [{ spawned: true }], spawned: 1 };
+teepeeLossRun.scout.x = teepeeLossRun.scout.postX = 0;
+teepeeLossRun.scout.y = teepeeLossRun.scout.postY = 0;
+teepeeLossRun.enemies = [{ id: "e-teepee-loss", type: "boar", x: teepeeTarget.x, y: teepeeTarget.y - 1, health: 15, maxHealth: 15, cooldown: 0, approachDelay: 0, statuses: {} }];
+Engine.advanceTick(teepeeLossRun);
+assert.equal(teepeeLossRun.phase, "lost", "teepee loss still ends the run immediately");
+assert.equal(teepeeLossRun.woodPickups.length, 0, "teepee loss never leaves salvage");
 
 // Defeats leave a short renderer-only marker instead of vanishing with no feedback.
 const remainsRun = Engine.createRun("TEST-REMAINS");
@@ -621,7 +793,7 @@ constructShelter(boarIntroRun);
 boarIntroRun.levelIndex = 4;
 action(boarIntroRun, { type: "endDay" });
 assert.deepEqual(boarIntroRun.encounter.units, ["boar"], "Level 5 guarantees a single Boar introduction");
-assert.deepEqual([Engine.ENEMIES.boar.health, Engine.ENEMIES.boar.moveSpeed], [15, 1.2], "the Boar is a durable, faster heavy target for the Potato Gun showcase");
+assert.deepEqual([Engine.ENEMIES.boar.health, Engine.ENEMIES.boar.moveSpeed], [15, 1.18], "the Boar is a durable, faster heavy target for the Potato Gun showcase");
 const boarMixRun = Engine.createRun("BOAR-MIX");
 constructShelter(boarMixRun);
 boarMixRun.levelIndex = 5;

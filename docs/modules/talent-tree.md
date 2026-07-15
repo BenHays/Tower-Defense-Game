@@ -12,12 +12,12 @@
 ## Collaboration
 
 - Use [`../talent-tree-workbench.md`](../talent-tree-workbench.md) to propose nodes in plain language. Once approved, translate the row into a typed, tested node in `talent-tree.js`.
-- A new node needs a stable id, branch, level gate, prerequisite(s), icon id, and one clear effect. Do not hand-enter a Skill Point price; branch pricing is calculated from purchased nodes.
+- A new node needs a stable id, branch, level gate, prerequisite(s), icon id, and clear effect list. Do not hand-enter a Skill Point price; branch pricing is calculated from purchased nodes. A node may combine a compatible passive and an `unlockBuilding` effect, such as Reinforced Materials giving +2 structure HP while unlocking Fence.
 
 ## Current paths
 
 - Hunting: Arrow Shooter conversion as the first Level 3 choice, then optional Stick Launcher damage/range, refit, and Potato slow.
-- Farming: more wood per harvested tree and stronger repairs.
-- Building: maximum HP and armor for targetable structures.
+- Farming: more wood per harvested tree, stronger repairs, and Garden Stewardship. Garden unlocks a Garden Plot whose survival earns +1 next-day action (initial cap +1 total).
+- Building: Reinforced Materials grants every structure +2 maximum HP and unlocks Fence; Bark Armor remains the later durability follow-up.
 - Nurturing: dawn recovery for standing structures; later homestead, animal, and plant care belong here.
 - Scouting: Scout damage and watch range.

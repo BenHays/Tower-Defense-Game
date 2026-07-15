@@ -65,6 +65,10 @@ function buildFirstTower(state, type) {
   }
 }
 
+function collectWoodSalvage(state) {
+  state.woodPickups.slice().forEach((pickup) => Engine.dispatch(state, { type: "collectWoodPickup", id: pickup.id }));
+}
+
 const PLAN_DEFINITIONS = [
   {
     id: "oneLauncher",
@@ -112,11 +116,13 @@ const PLAN_DEFINITIONS = [
       if (level === 3) {
         if (!patch && state.resources.wood < 1) harvestFirstTree(state);
         if (!patch) buildFirstTower(state, "potatoPatch");
+        if (state.actionPoints > 0 && state.resources.wood < 2) harvestFirstTree(state);
         return;
       }
       if (level === 4) {
         if (state.resources.wood < 2) harvestFirstTree(state);
         if (launcherCount < 2) buildFirstTower(state, "stickLauncher");
+        if (state.actionPoints > 0 && state.resources.wood < 2) harvestFirstTree(state);
         return;
       }
       if (patch && Engine.canUpgradePotatoPatch(state, patch)) {
@@ -137,6 +143,7 @@ function runPlan(definition, runSeed, runMaxLevel) {
       }
       Engine.dispatch(state, { type: "constructShelter", ...Engine.SHELTER_SITE });
     } else {
+      collectWoodSalvage(state);
       definition.chooseDayAction(state);
     }
     if (state.phase === "day") Engine.dispatch(state, { type: "endDay" });

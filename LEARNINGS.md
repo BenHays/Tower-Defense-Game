@@ -14,7 +14,7 @@
 ## Top-down expansion
 
 - Use an authored hidden square grid. The art hides the cells, while the engine gets valid placement, footprints, four-direction paths, and range calculations.
-- Trees are visually dense but walkable at a higher traversal cost; cleared ground is faster and buildable. This permits all-edge spawning without authored visible trails, while buildings and rubble remain hard blockers. If hard rubble seals every target, enemies break the nearest reachable rubble so the simulation can always settle.
+- Trees are visually dense but walkable at a higher traversal cost; cleared ground is faster and buildable. This permits all-edge spawning without authored visible trails, while only intentional blockers such as Fence can seal a ground route.
 - Keep map terrain fixed for now. The seed changes encounter composition, spawn edge, and arrival timing, not the world layout.
 
 ## Simulation
@@ -59,6 +59,7 @@
 ## Progression and occupancy
 
 - Use high-contrast generated cutouts for key enemies and towers, then render them as CSS backgrounds; keep the small Build and placement representations CSS-driven.
+- Keep generated animal cutouts in versioned, cache-busted asset URLs and preserve their existing entity classes, health bars, and animation hooks; visual upgrades then stay separate from deterministic combat logic.
 - Keep the Talent Tree's dependency canvas horizontally expansive but give its viewport a fixed, two-axis scroll area so later branch rows remain reachable.
 - A scroll viewport needs a constrained parent as well as `overflow: auto`: desktop Talent Tree branches use a `minmax(0, 1fr)` grid row, while mobile gets an explicit viewport height.
 - Compact long-lived Talent Trees by shrinking square node tracks and connector gaps first; preserve large-enough icons and the scroll viewport instead of hiding future depth.
@@ -79,3 +80,7 @@
 - Animations cannot live in a layer that the main render loop replaces every frame: place transient visual effects in a persistent overlay layer so CSS keyframes advance instead of restarting at their first pose.
 - Keep counter rules declarative in the enemy recipe: projectile damage multipliers, knockback multipliers, and status-damage multipliers let Boar immunity and Bear fire weakness work without tower-specific enemy conditionals. A reusable status tick can handle Burn damage over time while preserving deterministic replay.
 - Treat air as a target layer, not a separate combat loop: declarative tower target layers let Arrow Shooters stay flexible while Scarecrows specialize, and direct-flight enemies can bypass ground pathing without changing projectile resolution.
+- Keep research construction declarative: an `unlockBuilding` effect belongs beside related stat effects, so the Build strip and engine derive access from the same Talent catalog without mutating level unlocks.
+- Treat Fence as a non-targetable, breachable path blocker. Ground enemies seek normal routes first, then deterministically break a reachable Fence only when every route is sealed; destroyed Fence opens grass and returns no wood.
+- A Garden can reward survival with an action at dawn, but cap the first implementation at +1 total: two free general actions would overwhelm the two-action day economy before its risks are balanced.
+- Do not turn an ordinary tower death into accidental route control: a destroyed non-Fence structure leaves one visible, non-blocking wood bundle that is free to collect during day and auto-recovers beneath a new build. Fence remains the explicit no-refund breach tool.

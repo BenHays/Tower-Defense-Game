@@ -7,15 +7,15 @@ This is the collaboration sheet for the Talent Tree. Add ideas to **Proposal que
 - XP creates Skill Points at total-XP milestones: **10, 20, 40, 80, 160…**
 - Each branch prices itself: first purchase **1 SP**, then **2**, **4**, **8**, and so on.
 - Learning a talent never costs a day action.
-- Every talent needs one clear player-facing benefit, an icon id from [`talent-icons.js`](../talent-icons.js), and a sensible counter/progression purpose.
+- Every talent needs one clear player-facing benefit, an icon id from [`talent-icons.js`](../talent-icons.js), and a sensible counter/progression purpose. A foundation node may combine one related stat bonus with one construction unlock.
 
 ## Branch map
 
 | Branch | Job | Live examples |
 | --- | --- | --- |
 | Hunting | Make offensive towers hit harder, farther, or differently. | Stick Launcher damage, Arrow Shooter, Potato slow |
-| Farming | Improve harvesting and daytime upkeep. | More wood per tree, stronger repairs |
-| Building | Make structures tougher. | More maximum HP, armor |
+| Farming | Improve harvesting, daytime upkeep, and gardens. | More wood per tree, stronger repairs, Garden Plot |
+| Building | Make structures tougher and shape ground routes. | More maximum HP, Fence, armor |
 | Nurturing | Keep the homestead healthy over time. | Dawn regeneration; later animal/plant care fits here |
 | Scouting | Improve Scout’s night-watch effectiveness. | Damage and watch radius |
 
@@ -30,8 +30,9 @@ This is the collaboration sheet for the Talent Tree. Add ideas to **Proposal que
 | Potato Packing | Hunting | 4 | Potato Gun | Potato hits slow enemies | `potatoPacking` |
 | Woodland Yield | Farming | 2 | — | +1 wood per harvested tree | `woodlandYield` |
 | Field Mending | Farming | 3 | Woodland Yield | +1 HP per repair | `fieldMending` |
-| Reinforced Frames | Building | 4 | — | +2 maximum structure HP | `reinforcedFrames` |
-| Bark Armor | Building | 5 | Reinforced Frames | Heavy hits deal 1 less damage | `barkArmor` |
+| Garden Stewardship | Farming | 3 | — | Unlock Garden Plot; one living Garden grants +1 action at dawn (cap +1 total) | `gardenStewardship` |
+| Reinforced Materials | Building | 4 | — | +2 maximum HP to all structures; unlock Fence | `reinforcedFrames` |
+| Bark Armor | Building | 5 | Reinforced Materials | Heavy hits deal 1 less damage | `barkArmor` |
 | Hearthkeeping I | Nurturing | 3 | — | Structures regenerate 1 HP at dawn | `hearthkeeping` |
 | Scout Training I | Scouting | 2 | — | +1 Scout damage | `scoutTraining` |
 | Trail Sense | Scouting | 3 | Scout Training I | +0.5 Scout watch radius | `trailSense` |

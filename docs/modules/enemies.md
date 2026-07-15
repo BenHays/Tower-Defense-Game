@@ -8,7 +8,7 @@
 | Raccoon | 8 | First tower-pressure enemy; attacks the closest reachable targetable building. | Stick Launcher. |
 | Boar | 15 | Heavy Level 5 enemy. It takes **0 Stick Launcher or Arrow Shooter damage**. | Potato Gun. |
 | Bear | 30 | Slow, high-health siege enemy. Potato knockback is only 25% effective. | Campfire Burn; Bears take 2× Burn damage. |
-| Vulture | 18 | Airborne Level 11 siege enemy; flies directly to the closest targetable structure over terrain and rubble. | Scarecrow Tower; Arrow Shooters can assist. |
+| Vulture | 18 | Airborne Level 11 siege enemy; flies directly to the closest targetable structure over terrain. | Scarecrow Tower; Arrow Shooters can assist. |
 
 Enemies award XP when defeated and roll deterministic hide drops. Hides are visible inventory with no spending use until a later trade, food, or upgrade decision is designed.
 
@@ -27,4 +27,5 @@ Enemies award XP when defeated and roll deterministic hide drops. Hides are visi
 - Wave direction is deterministic per seed. The early edge bag rotates north, east, south, and west before an edge repeats.
 - From Level 7, waves can contain three enemies and arrive with 24–38 tick gaps. Earlier levels retain smaller, more readable groups.
 - Vultures occupy the air layer. Ground-only towers and Scout ignore them; Arrow Shooters can target both layers, while Scarecrow Towers target only air.
-- Rubble remains a route and construction blocker. If it seals every approach to a live structure, enemies break the nearest reachable rubble rather than waiting indefinitely.
+- Fences are route blockers, not normal building targets. Ground enemies first choose any reachable targetable structure; only a fully sealed route makes them breach one reachable Fence segment. A broken Fence leaves a passable gap. Vultures ignore Fence routing.
+- A destroyed non-Fence structure leaves one non-blocking wood bundle. It is a daytime player pickup, never an enemy target or route blocker.

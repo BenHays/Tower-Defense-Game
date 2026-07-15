@@ -19,6 +19,7 @@
     potatoPacking: { label: "Potato packing", parts: [{ tag: "path", d: "M16 19c-5 7-4 18 5 20 11 3 19-7 15-18-3-8-14-8-20-2Z" }, { tag: "path", d: "M24 18c-2-7 3-10 9-11-1 6-4 10-9 11ZM19 17c-5-4-7-1-9 2 4 2 7 2 9-2Z" }, { tag: "circle", cx: 22, cy: 29, r: 1.25, fill: "currentColor", stroke: "none" }, { tag: "circle", cx: 30, cy: 31, r: 1.25, fill: "currentColor", stroke: "none" }] },
     woodlandYield: { label: "Woodland yield", parts: [{ tag: "path", d: "M24 42V28M18 42h12M14 28h20L24 8 14 28ZM11 34h26L24 16 11 34Z" }] },
     fieldMending: { label: "Field mending", parts: [{ tag: "path", d: "M24 9v30M9 24h30" }, { tag: "path", d: "M13 13h22v22H13z" }] },
+    gardenStewardship: { label: "Garden stewardship", parts: [{ tag: "path", d: "M9 39h30M14 39V24M24 39V16M34 39V24" }, { tag: "path", d: "M12 24c3-6 8-6 12 0-5 4-8 4-12 0ZM22 16c3-6 8-6 12 0-5 4-8 4-12 0ZM26 24c3-6 8-6 12 0-5 4-8 4-12 0Z" }] },
     hearthkeeping: { label: "Hearthkeeping", parts: [{ tag: "path", d: "M9 24 24 10l15 14v16H9V24Z" }, { tag: "path", d: "M20 40V29h8v11M32 17v-7h5v12" }] },
     reinforcedFrames: { label: "Reinforced frames", parts: [{ tag: "path", d: "M10 10h28v28H10zM17 17h14v14H17zM10 10l7 7m21-7-7 7m7 21-7-7m-21 7 7-7" }] },
     barkArmor: { label: "Bark armor", parts: [{ tag: "path", d: "M24 7 39 13v10c0 10-6 16-15 19C15 39 9 33 9 23V13l15-6Z" }, { tag: "path", d: "M24 13v22M16 18l8 6 8-6M16 30l8 5 8-5" }] },

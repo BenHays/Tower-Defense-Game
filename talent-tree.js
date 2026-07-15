@@ -65,10 +65,18 @@
       requiresNodes: ["woodlandYield"], requiresUnlocks: [], effects: [{ kind: "repairAmount", target: "building", amount: 1 }],
       copy: "Prepare sturdier repair bundles from gathered materials.", completeCopy: "Each repair restores 1 additional structure HP.",
     },
+    gardenStewardship: {
+      id: "gardenStewardship", label: "Garden Stewardship", branch: "farming", tier: 1, icon: "gardenStewardship", requiredLevel: 3,
+      requiresNodes: [], requiresUnlocks: [], effects: [{ kind: "unlockBuilding", building: "garden" }],
+      copy: "Lay out a tended Garden that earns one extra day action at dawn while it survives.", completeCopy: "Garden Plots can be built. One living Garden grants 1 extra day action at dawn.",
+    },
     reinforcedFrames: {
-      id: "reinforcedFrames", label: "Reinforced Frames", branch: "building", tier: 1, icon: "reinforcedFrames", requiredLevel: 4,
-      requiresNodes: [], requiresUnlocks: [], effects: [{ kind: "maxHealth", target: "building", scope: "targetable", amount: 2 }],
-      copy: "Brace each standing structure with a tougher frame.", completeCopy: "Targetable structures gain 2 maximum HP and keep the added protection.",
+      id: "reinforcedFrames", label: "Reinforced Materials", branch: "building", tier: 1, icon: "reinforcedFrames", requiredLevel: 4,
+      requiresNodes: [], requiresUnlocks: [], effects: [
+        { kind: "maxHealth", target: "building", amount: 2 },
+        { kind: "unlockBuilding", building: "fence" },
+      ],
+      copy: "Brace every structure with stronger materials and learn to build a simple fence line.", completeCopy: "All structures gain 2 maximum HP. Fence segments are now buildable.",
     },
     barkArmor: {
       id: "barkArmor", label: "Bark Armor", branch: "building", tier: 2, icon: "barkArmor", requiredLevel: 5,

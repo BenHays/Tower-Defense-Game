@@ -8,7 +8,7 @@
 - Holding Level 2 unlocks Potato Patch; it can be planted at Level 3.
 - Holding Level 4 unlocks the Potato Gun conversion, so a mature patch is ready for the Level 5 Boar.
 - Level 2 reveals the first 1-Skill-Point choices: Scout Training I and Woodland Yield.
-- Level 3 reveals Arrowcraft as the first Hunting node (the first Skill Point normally arrives after this watch), plus its optional damage/range follow-ups, Field Mending, Hearthkeeping I, and Trail Sense. Level 4 continues those lanes with Quickcord and Reinforced Frames.
+- Level 3 reveals Arrowcraft as the first Hunting node (the first Skill Point normally arrives after this watch), plus its optional damage/range follow-ups, Garden Stewardship, Field Mending, Hearthkeeping I, and Trail Sense. Level 4 continues those lanes with Quickcord and Reinforced Materials, which unlocks Fence.
 - Level 5 has a guaranteed Boar showcase. A Potato Patch planted at Level 3 matures across two held nights and can convert into the Potato Gun before its counter role is required; Boars ignore Stick Launcher and Arrow Shooter shots.
 - Holding Level 6 unlocks the Campfire. Level 8 guarantees the first Bear, three levels after the Boar and with two full planning levels to build fire defense.
 - Holding Level 9 unlocks Scarecrow Tower. Level 10 is the air-defense planning window, and Level 11 guarantees the first Vulture; later levels fold Vultures into the seeded Threat Budget.

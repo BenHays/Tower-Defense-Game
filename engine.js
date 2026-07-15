@@ -11,12 +11,13 @@
   root.WildHearthEngine = engine;
 }(typeof globalThis !== "undefined" ? globalThis : this, function buildEngine(TechTree) {
   if (!TechTree) throw new Error("Wild Hearth Talent Tree did not load.");
-  const SAVE_VERSION = 16;
+  const SAVE_VERSION = 17;
   const TICK_RATE = 20;
   const SPEED_OPTIONS = [1, 2, 5];
   const FIRST_SKILL_POINT_XP = 10;
   const BOARD = { id: "hearth-meadow", label: "Hearth Meadow", width: 15, height: 15 };
   const STARTING_ACTIONS = 2;
+  const MAX_GARDEN_ACTION_BONUS = 1;
   const DEFAULT_SEED = "HEARTH-1042";
   const pathCaches = new WeakMap();
   const SHELTER_SITE = { x: Math.floor(BOARD.width / 2), y: Math.floor(BOARD.height / 2) };
@@ -89,7 +90,7 @@
       health: 15,
       damage: 2,
       attackSpeed: 0.72,
-      moveSpeed: 1.2,
+      moveSpeed: 1.18,
       attackRange: 0.82,
       collisionRadius: 0.44,
       targetRule: "closest-reachable-building",
@@ -216,6 +217,37 @@
       blocksPath: false,
       tags: ["garden", "growing"],
       maturityNights: 2,
+    },
+    garden: {
+      id: "garden",
+      label: "Garden plot",
+      footprint: { width: 1, height: 1 },
+      maxHealth: 4,
+      cost: { wood: 2 },
+      actionCost: 1,
+      role: "day action farm",
+      targetable: true,
+      blocksPath: false,
+      tags: ["garden", "farming", "action-economy"],
+      dawnActions: 1,
+      repairAmount: 2,
+      repairCost: { wood: 1 },
+    },
+    fence: {
+      id: "fence",
+      label: "Fence",
+      footprint: { width: 1, height: 1 },
+      maxHealth: 3,
+      cost: { wood: 1 },
+      actionCost: 1,
+      role: "route control",
+      targetable: false,
+      blocksPath: true,
+      breachable: true,
+      salvageWood: 0,
+      tags: ["defense", "barrier", "route-control"],
+      repairAmount: 2,
+      repairCost: { wood: 1 },
     },
     potatoGun: {
       id: "potatoGun",
@@ -513,6 +545,10 @@
   function activeBuildings(state) { return state.buildings.filter((building) => !building.destroyed); }
   function buildingBlocksPath(building) { return buildingRecipe(building.type)?.blocksPath !== false; }
   function isTargetableBuilding(building) { return buildingRecipe(building.type)?.targetable !== false; }
+  function isBreachableBlocker(building) {
+    const recipe = buildingRecipe(building.type);
+    return Boolean(recipe?.breachable && recipe.blocksPath !== false && !building.destroyed);
+  }
   function enemyLayer(enemy) { return enemyRecipe(enemy.type)?.layer || "ground"; }
   function towerCanTarget(towerRecipe, enemy) { return (towerRecipe.targetLayers || ["ground", "air"]).includes(enemyLayer(enemy)); }
   function unitStats(state, id) {
@@ -593,12 +629,12 @@
       && Math.round(state.scout.postY) === y;
   }
 
-  function hasRubble(state, x, y) {
-    return state.rubble.some((rubble) => rubble.x === x && rubble.y === y);
+  function woodPickupAt(state, x, y) {
+    return state.woodPickups.find((pickup) => pickup.x === x && pickup.y === y) || null;
   }
 
   function isPassable(state, x, y) {
-    if (!inBounds(x, y) || !["open", "tree", "cleared"].includes(terrainAt(state, x, y)) || hasRubble(state, x, y)) return false;
+    if (!inBounds(x, y) || !["open", "tree", "cleared"].includes(terrainAt(state, x, y))) return false;
     return !activeBuildings(state).some((building) => buildingBlocksPath(building) && buildingCells(building).some((cell) => cell.x === x && cell.y === y));
   }
 
@@ -730,26 +766,21 @@
       .sort((left, right) => left.cost - right.cost || String(left.building.id).localeCompare(String(right.building.id)))[0] || null;
   }
 
-  function closestReachableRubble(state, entity, recipeOverride) {
+  function closestReachableBreach(state, entity, recipeOverride) {
     const recipe = recipeOverride || (entity?.type ? enemyRecipe(entity.type) : ENEMIES.raccoon);
     const candidates = [];
-    state.rubble.forEach((rubble) => {
-      const approaches = [
-        { x: rubble.x, y: rubble.y - 1 },
-        { x: rubble.x + 1, y: rubble.y },
-        { x: rubble.x, y: rubble.y + 1 },
-        { x: rubble.x - 1, y: rubble.y },
-      ].filter((cell) => isPassable(state, cell.x, cell.y));
-      approaches.forEach((approach) => {
+    activeBuildings(state).filter(isBreachableBlocker).forEach((building) => {
+      approachCells(state, building).forEach((approach) => {
         const path = findPath(state, entity, approach, recipe);
         if (!path) return;
         const cost = path.slice(1).reduce((sum, cell) => sum + travelCost(state, cell.x, cell.y, recipe), 0);
-        candidates.push({ rubble, approach, path, cost });
+        candidates.push({ building, approach, path, cost });
       });
     });
     candidates.sort((left, right) => left.cost - right.cost
-      || left.rubble.y - right.rubble.y
-      || left.rubble.x - right.rubble.x
+      || String(left.building.id).localeCompare(String(right.building.id))
+      || left.building.y - right.building.y
+      || left.building.x - right.building.x
       || left.approach.y - right.approach.y
       || left.approach.x - right.approach.x);
     return candidates[0] || null;
@@ -764,6 +795,16 @@
   }
 
   function hasUnlock(state, unlock) { return state.unlocks.includes(unlock); }
+  function hasBuildingUnlock(state, type) {
+    return hasUnlock(state, type)
+      || TechTree.hasEffect(state, (effect) => effect.kind === "unlockBuilding" && effect.building === type);
+  }
+  function unlockedBuildTypes(state) {
+    return Object.values(BUILDINGS)
+      .filter((recipe) => !["teepee", "arrowShooter"].includes(recipe.id) && !recipe.conversionOnly)
+      .map((recipe) => recipe.id)
+      .filter((type) => hasBuildingUnlock(state, type));
+  }
   function addUnlock(state, unlock) {
     if (!hasUnlock(state, unlock)) state.unlocks.push(unlock);
   }
@@ -992,7 +1033,7 @@
       hatchetCrafted: false,
       shelterBuilt: false,
       buildings: [],
-      rubble: [],
+      woodPickups: [],
       scout: {
         ...clone(UNITS.scout),
         // Scout stays off-map until the opening shelter gives him a home.
@@ -1122,17 +1163,31 @@
     if (!recipe) return false;
     for (let row = y; row < y + recipe.footprint.height; row += 1) {
       for (let column = x; column < x + recipe.footprint.width; column += 1) {
-        if (!inBounds(column, row) || !isBuildableGrass(state, column, row) || hasRubble(state, column, row) || buildingAt(state, column, row) || scoutPostAt(state, column, row)) return false;
+        if (!inBounds(column, row) || !isBuildableGrass(state, column, row) || buildingAt(state, column, row) || scoutPostAt(state, column, row)) return false;
       }
     }
     return true;
+  }
+
+  function woodPickupsInFootprint(state, type, x, y) {
+    const recipe = buildingRecipe(type);
+    if (!recipe) return [];
+    return state.woodPickups.filter((pickup) => pickup.x >= x
+      && pickup.x < x + recipe.footprint.width
+      && pickup.y >= y
+      && pickup.y < y + recipe.footprint.height);
+  }
+
+  function woodPickupTotal(pickups) {
+    return pickups.reduce((total, pickup) => total + (pickup.amount || 0), 0);
   }
 
   function buildPreview(state, type, x, y) {
     const recipe = buildingRecipe(type);
     if (!recipe) return { valid: false, message: "Unknown building." };
     const valid = validFootprint(state, type, x, y);
-    const affordable = hasResources(state, recipe.cost);
+    const salvageWood = woodPickupTotal(woodPickupsInFootprint(state, type, x, y));
+    const affordable = Object.entries(recipe.cost).every(([resource, amount]) => (state.resources[resource] || 0) + (resource === "wood" ? salvageWood : 0) >= amount);
     const candidate = { id: "preview", type, x, y };
     const level = levelFor(state);
     const encounter = buildEncounter(state);
@@ -1148,14 +1203,15 @@
       routeCost: target?.cost || 0,
       terrain: terrainAt(state, x, y),
       cost: recipe.cost,
+      salvageWood,
       level: level.number,
     };
   }
 
   function toolPreview(state, type, x, y) {
     if (type === "clear") {
-      const valid = terrainAt(state, x, y) === "tree" || hasRubble(state, x, y);
-      return { type, valid, affordable: true, reason: valid ? "Harvest for 2 wood and one action." : "Choose a tree or rubble." };
+      const valid = terrainAt(state, x, y) === "tree";
+      return { type, valid, affordable: true, reason: valid ? "Harvest for 2 wood and one action." : "Choose a tree." };
     }
     if (type === "scout") {
       const valid = validScoutPost(state, x, y);
@@ -1163,12 +1219,16 @@
     }
     if (buildingRecipe(type)) {
       const preview = buildPreview(state, type, x, y);
+      // The opening shelter is a forced, free build rather than a discovered blueprint.
+      const unlocked = type === "teepee"
+        ? state.levelIndex === 0 && state.hatchetCrafted && !state.shelterBuilt
+        : hasBuildingUnlock(state, type);
       return {
         ...preview,
         type,
         siteValid: preview.valid,
-        valid: preview.valid && preview.affordable,
-        reason: !preview.valid ? "Build on unoccupied grass." : !preview.affordable ? `Need ${preview.cost.wood || 0} wood.` : "Ready to build.",
+        valid: preview.valid && preview.affordable && unlocked,
+        reason: !unlocked ? `${buildingRecipe(type).label} needs research or a level discovery.` : !preview.valid ? "Build on unoccupied grass." : !preview.affordable ? `Need ${preview.cost.wood || 0} wood.` : "Ready to build.",
       };
     }
     return { type, valid: false, affordable: false, reason: "Unknown tool." };
@@ -1193,6 +1253,14 @@
       pickup.collected = true;
       const nextStep = hasOpeningSupplies(state) ? "Both materials collected. Craft an axe." : `The ${pickup.type} is collected. Find the other starter material.`;
       return result(state, true, nextStep, action, shouldRecord);
+    }
+
+    if (action.type === "collectWoodPickup") {
+      const pickup = (state.woodPickups || []).find((item) => item.id === action.id);
+      if (!pickup) return result(state, false, "That wood bundle has already been collected.");
+      state.resources.wood += pickup.amount || 1;
+      state.woodPickups = state.woodPickups.filter((item) => item.id !== pickup.id);
+      return result(state, true, `Wood recovered: +${pickup.amount || 1} wood.`, action, shouldRecord);
     }
 
     if (action.type === "craftHatchet") {
@@ -1233,19 +1301,13 @@
 
     if (action.type === "clear") {
       const terrain = terrainAt(state, action.x, action.y);
-      if (terrain !== "tree" && !hasRubble(state, action.x, action.y)) return result(state, false, "Only a tree or rubble can be harvested there.");
-      if (terrain === "tree") {
-        if (!consumeAction(state)) return result(state, false, "Both day actions are spent.");
-        setTerrain(state, action.x, action.y, "cleared");
-        const harvestedWood = 2 + TechTree.effectValue(state, (effect) => effect.kind === "harvestWood", "amount");
-        state.resources.wood += harvestedWood;
-        invalidatePaths(state);
-        return result(state, true, `Tree harvested: +${harvestedWood} wood. One day action spent; the grass is now open.`, action, shouldRecord);
-      }
+      if (terrain !== "tree") return result(state, false, "Only a tree can be harvested there.");
       if (!consumeAction(state)) return result(state, false, "Both day actions are spent.");
-      state.rubble = state.rubble.filter((rubble) => !(rubble.x === action.x && rubble.y === action.y));
+      setTerrain(state, action.x, action.y, "cleared");
+      const harvestedWood = 2 + TechTree.effectValue(state, (effect) => effect.kind === "harvestWood", "amount");
+      state.resources.wood += harvestedWood;
       invalidatePaths(state);
-      return result(state, true, "Rubble cleared. The grass is open again.", action, shouldRecord);
+      return result(state, true, `Tree harvested: +${harvestedWood} wood. One day action spent; the grass is now open.`, action, shouldRecord);
     }
 
     if (action.type === "repair") {
@@ -1277,14 +1339,22 @@
     if (action.type === "build") {
       const recipe = buildingRecipe(action.buildingType);
       if (!recipe || ["teepee", "arrowShooter"].includes(action.buildingType) || recipe.conversionOnly) return result(state, false, "That building cannot be placed here.");
-      if (!hasUnlock(state, action.buildingType)) return result(state, false, `${recipe.label} has not been unlocked yet.`);
+      if (!hasBuildingUnlock(state, action.buildingType)) return result(state, false, `${recipe.label} needs research or a level discovery first.`);
       if (!validFootprint(state, action.buildingType, action.x, action.y)) return result(state, false, "That grass is blocked or occupied.");
-      if (!hasResources(state, recipe.cost)) return result(state, false, `Need ${recipe.cost.wood || 0} wood to build this.`);
+      const coveredWood = woodPickupsInFootprint(state, action.buildingType, action.x, action.y);
+      const recoveredWood = woodPickupTotal(coveredWood);
+      const affordable = Object.entries(recipe.cost).every(([resource, amount]) => (state.resources[resource] || 0) + (resource === "wood" ? recoveredWood : 0) >= amount);
+      if (!affordable) return result(state, false, `Need ${recipe.cost.wood || 0} wood to build this.`);
       if (!consumeActions(state, recipe.actionCost || 1)) return result(state, false, "Both day actions are spent.");
+      if (recoveredWood > 0) {
+        state.resources.wood += recoveredWood;
+        state.woodPickups = state.woodPickups.filter((pickup) => !coveredWood.some((covered) => covered.id === pickup.id));
+      }
       spendResources(state, recipe.cost);
       state.buildings.push(makeBuilding(state, `b-${state.nextEntityId++}`, action.buildingType, action.x, action.y));
       invalidatePaths(state);
-      return result(state, true, `${recipe.label} built. One day action spent.`, action, shouldRecord);
+      const salvageCopy = recoveredWood > 0 ? ` Recovered ${recoveredWood} wood from the grass.` : "";
+      return result(state, true, `${recipe.label} built. One day action spent.${salvageCopy}`, action, shouldRecord);
     }
 
     if (action.type === "upgradeLauncher") {
@@ -1405,23 +1475,15 @@
       captureReplaySnapshot(state, "lost");
       return;
     }
-    buildingCells(building).forEach((cell) => state.rubble.push({ x: cell.x, y: cell.y, health: 1 }));
+    const recipe = buildingRecipe(building.type);
+    const salvageWood = recipe.salvageWood ?? 1;
+    if (salvageWood > 0) state.woodPickups.push({ id: `wood-${building.id}`, x: building.x, y: building.y, amount: salvageWood });
     const report = currentNightTelemetry(state);
     if (report) report.buildingsLost += 1;
     invalidatePaths(state);
-    state.lastEvent = `The ${buildingRecipe(building.type).label.toLowerCase()} becomes rubble and blocks the ground.`;
-  }
-
-  function damageRubble(state, rubble, amount, source) {
-    const remainingHealth = (rubble.health ?? 1) - amount;
-    rubble.health = remainingHealth;
-    if (remainingHealth > 0) {
-      state.lastEvent = `${enemyRecipe(source.type).label} tears at the rubble.`;
-      return;
-    }
-    state.rubble = state.rubble.filter((item) => item !== rubble);
-    invalidatePaths(state);
-    state.lastEvent = `${enemyRecipe(source.type).label} breaks through the rubble.`;
+    state.lastEvent = salvageWood === 0
+      ? `The ${recipe.label.toLowerCase()} breaks, opening a gap.`
+      : `The ${recipe.label.toLowerCase()} falls. A wood bundle can be recovered at dawn.`;
   }
 
   function defeatEnemy(state, enemy, source) {
@@ -1687,12 +1749,12 @@
     const airborne = recipe.movement === "air";
     const target = airborne
       ? closestTargetableBuildingByDistance(state, enemy)
-      : closestReachableBuilding(state, enemy) || closestReachableRubble(state, enemy);
+      : closestReachableBuilding(state, enemy) || closestReachableBreach(state, enemy);
     if (!target) {
       enemy.intent = "searching";
       return;
     }
-    const targetId = target.building?.id || `rubble-${target.rubble.x}-${target.rubble.y}`;
+    const targetId = target.building.id;
     enemy.targetId = targetId;
     const closeEnough = distance(enemy, target.approach) <= recipe.attackRange;
     if (closeEnough) {
@@ -1700,8 +1762,7 @@
       enemy.cooldown = Math.max(0, enemy.cooldown - 1);
       if (enemy.cooldown === 0) {
         enemy.cooldown = Math.max(1, Math.round(TICK_RATE / recipe.attackSpeed));
-        if (target.building) damageBuilding(state, target.building, recipe.damage, enemy);
-        else damageRubble(state, target.rubble, recipe.damage, enemy);
+        damageBuilding(state, target.building, recipe.damage, enemy);
       }
       return;
     }
@@ -1757,12 +1818,18 @@
     return { sprouted, matured };
   }
 
+  function gardenActionBonus(state) {
+    const total = activeBuildings(state).reduce((sum, building) => sum + (buildingRecipe(building.type)?.dawnActions || 0), 0);
+    return Math.min(MAX_GARDEN_ACTION_BONUS, total);
+  }
+
   function startNextDay(state, completedLevel, completionCopy) {
     const dawnRestored = restoreAtDawn(state);
-    const gardenProgress = growPotatoPatchesAtDawn(state);
+    const potatoPatchProgress = growPotatoPatchesAtDawn(state);
+    const extraGardenActions = gardenActionBonus(state);
     state.levelIndex += 1;
     state.phase = "day";
-    state.actionPoints = STARTING_ACTIONS;
+    state.actionPoints = STARTING_ACTIONS + extraGardenActions;
     state.nightTick = 0;
     state.encounter = null;
     state.enemies = [];
@@ -1774,12 +1841,13 @@
     state.aftermathTicks = 0;
     const nextLevel = levelFor(state);
     const repairCopy = dawnRestored > 0 ? ` Hearthkeeping restores ${dawnRestored} structure HP.` : "";
-    const gardenCopy = gardenProgress.matured > 0
+    const potatoPatchCopy = potatoPatchProgress.matured > 0
       ? ` Potato Patch mature: it can become a Potato Gun when that conversion is unlocked.`
-      : gardenProgress.sprouted > 0
+      : potatoPatchProgress.sprouted > 0
         ? " Potato Patch grows through the night."
         : "";
-    state.lastEvent = `${completedLevel.title} held. ${completionCopy}${gardenCopy}${repairCopy} Level ${nextLevel.number}: ${nextLevel.title}. Two day actions are ready.`;
+    const gardenCopy = extraGardenActions > 0 ? ` Garden stewardship grants +${extraGardenActions} day action.` : "";
+    state.lastEvent = `${completedLevel.title} held. ${completionCopy}${potatoPatchCopy}${gardenCopy}${repairCopy} Level ${nextLevel.number}: ${nextLevel.title}. ${state.actionPoints} day actions are ready.`;
   }
 
   function settleAftermath(state) {
@@ -1874,17 +1942,32 @@
       });
       state.actionLog = migratedActions;
     }
+    if (version <= 16 && Array.isArray(state.actionLog)) {
+      const legacyTerrain = FIXED_TERRAIN.slice();
+      state.actionLog = state.actionLog.filter((action) => {
+        if (action.type !== "clear") return true;
+        if (!inBounds(action.x, action.y)) return false;
+        const index = action.y * BOARD.width + action.x;
+        if (legacyTerrain[index] !== "tree") return false;
+        legacyTerrain[index] = "cleared";
+        return true;
+      });
+    }
     state.buildings = Array.isArray(state.buildings) ? state.buildings.map((building) => ({
       ...building,
       growthNights: building.type === "potatoPatch" ? Math.max(0, Number(building.growthNights) || 0) : building.growthNights ?? null,
     })) : state.buildings;
+    if (version <= 16) {
+      state.woodPickups = [];
+      delete state.rubble;
+    }
     if (state.scout) state.scout.deployed = Boolean(state.shelterBuilt);
     return state;
   }
 
   function hydrate(serialized) {
     const parsed = typeof serialized === "string" ? JSON.parse(serialized) : serialized;
-    if (!parsed || !parsed.state || ![10, 11, 12, 13, 14, 15, SAVE_VERSION].includes(parsed.version)) throw new Error("This save belongs to a different version of Wild Hearth.");
+    if (!parsed || !parsed.state || ![10, 11, 12, 13, 14, 15, 16, SAVE_VERSION].includes(parsed.version)) throw new Error("This save belongs to a different version of Wild Hearth.");
     const state = parsed.version === SAVE_VERSION ? parsed.state : migrateLegacyState(parsed.state, parsed.version);
     if (state.version !== SAVE_VERSION) throw new Error("This save belongs to a different version of Wild Hearth.");
     if (!Array.isArray(state.terrain) || state.terrain.length !== BOARD.width * BOARD.height) throw new Error("This save has an invalid meadow.");
@@ -1894,6 +1977,7 @@
     if (!Array.isArray(state.openingPickups) || !OPENING_PICKUPS.every((definition) => state.openingPickups.some((pickup) => pickup.id === definition.id && pickup.type === definition.type && pickup.x === definition.x && pickup.y === definition.y && typeof pickup.collected === "boolean"))) throw new Error("This save has invalid starter materials.");
     if (!SPEED_OPTIONS.includes(state.speed)) throw new Error("This save has an invalid speed setting.");
     if (!state.resources || !Number.isFinite(state.resources.wood) || !Number.isFinite(state.resources.hides) || !Number.isFinite(state.xp) || !Number.isInteger(state.skillPoints) || !Number.isInteger(state.skillPointsEarned)) throw new Error("This save has an invalid progression state.");
+    if (!Array.isArray(state.woodPickups) || !state.woodPickups.every((pickup) => typeof pickup.id === "string" && inBounds(pickup.x, pickup.y) && Number.isFinite(pickup.amount) && pickup.amount > 0)) throw new Error("This save has invalid wood salvage.");
     if (!state.telemetry || !state.telemetry.total || !Array.isArray(state.telemetry.nightReports) || !Array.isArray(state.replaySnapshots) || !Array.isArray(state.remains)) throw new Error("This save has an invalid night record.");
     if (!state.buildings.every((building) => buildingRecipe(building.type) && Array.isArray(building.refits || []) && buildingRefits(building).every((refitId) => refitDefinition(building.type, refitId)))) throw new Error("This save has an invalid building refit.");
     if (!state.buildings.every((building) => building.type !== "potatoPatch" || (Number.isInteger(building.growthNights) && building.growthNights >= 0 && building.growthNights <= BUILDINGS.potatoPatch.maturityNights))) throw new Error("This save has an invalid Potato Patch.");
@@ -1938,7 +2022,7 @@
       kills: state.kills,
       terrain: state.terrain,
       buildings: state.buildings.map((building) => ({ id: building.id, type: building.type, x: building.x, y: building.y, health: building.health, maxHealth: building.maxHealth, refits: buildingRefits(building), growthNights: building.growthNights, destroyed: building.destroyed })),
-      rubble: state.rubble,
+      woodPickups: state.woodPickups,
       outcome: state.outcome,
       telemetry: { total: state.telemetry?.total || {}, nightReports: state.telemetry?.nightReports || [] },
       history: state.history,
@@ -1993,6 +2077,7 @@
     scoutPostAt,
     activeBuildings,
     isTargetableBuilding,
+    isBreachableBlocker,
     enemyLayer,
     towerCanTarget,
     isPassable,
@@ -2004,12 +2089,12 @@
     potatoPatchProgress,
     isPotatoPatchMature,
     canUpgradePotatoPatch,
-    hasRubble,
+    woodPickupAt,
     validFootprint,
     buildPreview,
     toolPreview,
     closestReachableBuilding,
-    closestReachableRubble,
+    closestReachableBreach,
     conditionFor,
     unitStats,
     buildingCombatStats,
@@ -2019,6 +2104,8 @@
     techNodesForBranch: TechTree.nodesForBranch,
     techEffects: TechTree.effectsFor,
     hasTechEffect: TechTree.hasEffect,
+    hasBuildingUnlock,
+    unlockedBuildTypes,
     hasBuildingUpgrade: TechTree.hasBuildingUpgrade,
     hasBuildingRefit: TechTree.hasBuildingRefit,
     telemetrySnapshot,

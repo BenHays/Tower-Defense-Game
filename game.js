@@ -117,6 +117,8 @@ const SCOUT_ARRIVAL_EFFECT_MS = 900;
 const BUILD_CARD_ICONS = {
   stickLauncher: "stick-launcher-icon",
   potatoPatch: "potato-patch-icon",
+  garden: "garden-icon",
+  fence: "fence-icon",
   potatoGun: "potato-gun-icon",
   campfire: "campfire-icon",
   scarecrow: "scarecrow-icon",
@@ -228,7 +230,7 @@ function buildCostCopy(recipe) {
 }
 
 function renderBuildList() {
-  const unlockedTools = state.unlocks.filter(isBuildTool);
+  const unlockedTools = Engine.unlockedBuildTypes(state).filter(isBuildTool);
   const signature = unlockedTools.join("|");
   if (isBuildTool(activeTool) && !unlockedTools.includes(activeTool)) activeTool = "none";
   if (signature === buildListSignature) return unlockedTools;
@@ -272,6 +274,7 @@ function dispatch(action, options = {}) {
   if (outcome.ok) {
     const effect = {
       collectOpeningPickup: "collect",
+      collectWoodPickup: "collect",
       craftHatchet: "craft",
       constructShelter: "build",
       clear: "harvest",
@@ -477,10 +480,10 @@ function beginNight() {
 function describeCell(x, y) {
   const pickup = Engine.openingPickupAt(state, x, y);
   if (pickup) return pickup.type === "stick" ? "Starter stick" : "Starter rock";
+  if (Engine.woodPickupAt(state, x, y)) return "Wood bundle, +1 wood";
   const building = Engine.buildingAt(state, x, y);
   if (building) return Engine.BUILDINGS[building.type].label;
   if (Engine.scoutPostAt(state, x, y)) return "Scout watch post";
-  if (Engine.hasRubble(state, x, y)) return "Rubble";
   const terrain = Engine.terrainAt(state, x, y);
   return terrain === "tree" ? "Tree" : terrain === "cleared" ? "Cleared grass" : "Open grass";
 }
@@ -538,8 +541,8 @@ function renderGrid() {
   const focusedBuilding = selectedBuilding();
   const scout = selectedScout();
   const chosen = selectedCell() || (focusedBuilding ? { x: focusedBuilding.x, y: focusedBuilding.y } : scout ? { x: Math.round(scout.x), y: Math.round(scout.y) } : null);
-  const pickupSignature = state.openingPickups.map((pickup) => `${pickup.id}:${pickup.collected}`).join(",");
-  const signature = [state.topologyVersion, state.phase, state.actionPoints, state.resources.wood, activeTool, hoverCell ? cellId(hoverCell.x, hoverCell.y) : "", chosen ? cellId(chosen.x, chosen.y) : "", planning, previewSignature, pickupSignature, state.rubble.map((item) => cellId(item.x, item.y)).join(",")].join("|");
+  const pickupSignature = state.openingPickups.map((pickup) => `${pickup.id}:${pickup.collected}`).concat(state.woodPickups.map((pickup) => `${pickup.id}:${pickup.x},${pickup.y}:${pickup.amount}`)).join(",");
+  const signature = [state.topologyVersion, state.phase, state.actionPoints, state.resources.wood, activeTool, hoverCell ? cellId(hoverCell.x, hoverCell.y) : "", chosen ? cellId(chosen.x, chosen.y) : "", planning, previewSignature, pickupSignature].join("|");
   if (signature === gridSignature) return;
   gridSignature = signature;
   for (let y = 0; y < Engine.BOARD.height; y += 1) {
@@ -575,9 +578,9 @@ function renderEntities() {
     fragment.append(ring);
   }
 
-  state.rubble.forEach((rubble) => {
-    const node = createNode("div", "entity rubble");
-    place(node, rubble.x, rubble.y);
+  state.woodPickups.forEach((pickup) => {
+    const node = createNode("div", "entity wood-salvage");
+    place(node, pickup.x, pickup.y);
     fragment.append(node);
   });
 
@@ -597,7 +600,7 @@ function renderEntities() {
     if (building.hitTicks > 0) node.classList.add("is-hit");
     if (building.type === "potatoPatch" && Engine.isPotatoPatchMature(building)) node.classList.add("is-mature");
     place(node, building.x, building.y);
-    if (recipe.targetable) addHealthBar(node, building, "building-health", true);
+    if (recipe.targetable || recipe.breachable) addHealthBar(node, building, "building-health", true);
     fragment.append(node);
   });
 
@@ -663,7 +666,8 @@ function renderPreview() {
   }
   const recipe = Engine.BUILDINGS[activeTool];
   const route = preview.routeCost ? ` Route cost ${preview.routeCost.toFixed(1)}; forest slows enemies.` : "";
-  elements.previewCopy.textContent = `${recipe.label} is ready here. It takes 1 day action.${route}`;
+  const salvage = preview.salvageWood > 0 ? ` It recovers ${preview.salvageWood} wood from this grass.` : "";
+  elements.previewCopy.textContent = `${recipe.label} is ready here. It takes 1 day action.${salvage}${route}`;
 }
 
 function techAmount(value) {
@@ -685,6 +689,10 @@ function techEffectSummary(definition) {
     if (effect.kind === "dawnRepair") return `+${techAmount(effect.amount)} HP / DAWN`;
     if (effect.kind === "maxHealth") return `+${techAmount(effect.amount)} STRUCTURE HP`;
     if (effect.kind === "armor") return `-${techAmount(effect.amount)} HEAVY-HIT DMG`;
+    if (effect.kind === "unlockBuilding") {
+      const label = Engine.BUILDINGS[effect.building]?.label || effect.building;
+      return `UNLOCK ${label.toUpperCase()}`;
+    }
     if (effect.kind === "unlockBuildingUpgrade") return "UNLOCK ARROW REFIT";
     if (effect.kind === "unlockBuildingRefit") return "UNLOCK QUICKCORD";
     if (effect.kind === "onHitStatus" && effect.status === "movementSlow") return "POTATO SLOW";
@@ -1067,6 +1075,12 @@ function clickCell(x, y) {
       }
       render();
     }
+    return;
+  }
+  const woodPickup = Engine.woodPickupAt(state, x, y);
+  if (woodPickup && !isBuildTool(activeTool)) {
+    selected = { kind: "cell", x, y };
+    dispatch({ type: "collectWoodPickup", id: woodPickup.id });
     return;
   }
   const occupied = Engine.buildingAt(state, x, y);

@@ -2,7 +2,7 @@
 
 ## Live now
 
-- Day is untimed and starts with two day actions.
+- Day is untimed and starts with two day actions. One living Garden raises the next dawn to three actions; the first Garden implementation caps this at +1 total.
 - Harvesting a tree, building a defense, converting a mature patch, repairing, and placing Scout each use one action.
 - XP is permanent progress: the first Skill Point arrives at 10 XP, then thresholds double to 20, 40, 80, and beyond. Talent learning spends Skill Points and does not use a day action.
 - Level 1 begins with a clickable stick and rock in the starting clearing. Both pickups are free. **Craft axe** becomes available after both are collected and uses one action; **Place shelter** then uses the second action on any unoccupied grass cell. The guided pair unlocks every normal control. **End day** stays disabled until the teepee exists.
@@ -24,6 +24,6 @@
 
 - There is one authored map. Seeds vary encounters, not terrain.
 - A level message should only explain the current objective or a new unlock.
-- Talent learning is strategic and Skill Point-only; construction remains the physical use of day actions.
+- Talent learning is strategic and Skill Point-only; construction remains the physical use of day actions. A researched construction unlock appears in Build once and can then be built repeatedly with wood and actions.
 - The teepee is the sole zero-cost building, earned through the second of two guided opening actions rather than granted on map load.
 - Night speed is a player preference, not a turn state: it survives day/night changes and save/load.

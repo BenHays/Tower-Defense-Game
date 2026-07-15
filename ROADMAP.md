@@ -21,12 +21,13 @@ This roadmap protects the core loop: use the day to shape a small homestead, the
 ## Core decisions — agreed
 
 - **Untimed day:** daylight ends only when the player chooses **End day**.
-- **Two actions:** normal days have two actions. Harvesting a tree, constructing or upgrading a tower, repairing, moving Scout, and clearing rubble each take one. Level 1 spends those two actions on Craft Hatchet then Construct Shelter.
-- **Grass placement:** any unoccupied `open` or `cleared` grass cell can hold a defense. Trees, water, rubble, and buildings block placement by default. Harvesting a tree earns wood and opens its grass cell; it is not a prerequisite for every defense.
+- **Two actions:** normal days have two actions. Harvesting a tree, constructing or upgrading a tower, repairing, and moving Scout each take one. Level 1 spends those two actions on Craft Hatchet then Construct Shelter.
+- **Grass placement:** any unoccupied `open` or `cleared` grass cell can hold a defense. Trees, water, and buildings block placement by default. Harvesting a tree earns wood and opens its grass cell; it is not a prerequisite for every defense.
+- **Structure salvage:** an enemy-destroyed non-Fence structure leaves one non-blocking wood bundle. Daytime collection is free, and placing a new structure on its cell automatically recovers the wood. The teepee ends the run and Fence is the no-refund route-control exception.
 - **Map scale:** the single authored map is a 15×15 meadow with a small centered clearing and a dense outer forest. Enemies can spawn from any usable perimeter cell.
 - **Scout:** a mobile melee final line. His watch radius stays centered on the daytime post; he chases, bites, and returns automatically.
 - **Stick Launcher:** the first fixed tower. It costs 2 wood and one action, has 8 health, short 2.25-cell reach, 1 damage, and fires once every 2 seconds at the nearest enemy in range.
-- **Talent Tree:** enemies and cleared nights award XP, which creates Skill Points at 10, 20, 40, 80, and later doubling total-XP thresholds. Learning costs Skill Points but no day action. Scout Training I, Arrowcraft, Hearthkeeping I, and Potato Packing are distinct early choices; there are no meat, pelt, food, or Scout-health maintenance systems.
+- **Talent Tree:** enemies and cleared nights award XP, which creates Skill Points at 10, 20, 40, 80, and later doubling total-XP thresholds. Learning costs Skill Points but no day action. A research node can combine a related stat bonus and a building unlock; researched builds join the Build strip and can then be constructed repeatedly with wood and day actions. Scout Training I, Arrowcraft, Hearthkeeping I, Garden Stewardship, and Reinforced Materials are distinct early choices; there are no meat, pelt, food, or Scout-health maintenance systems.
 - **Dawn recovery:** Hearthkeeping I restores 1 HP at dawn to each surviving targetable building, capped at its maximum. It does not revive destroyed buildings.
 - **Refit rule:** upgrading a Stick Launcher into an Arrow Shooter costs 4 wood and one action, then restores the new Arrow Shooter to full health.
 - **Enemy schedule:** the first Boar is guaranteed on Level 5. New families appear no more than once every three levels; their counter must be researchable/buildable at least two levels before its guaranteed debut.
@@ -52,7 +53,7 @@ Later difficulty modes will multiply this budget: Easy 0.8×, Medium 1.0×, Hard
 ## Delivered engine foundation
 
 - Dependency-free, fixed-tick browser simulation with deterministic seeds, save/load, replay checkpoints, night telemetry, and a headless test runner.
-- Hidden square board, weighted forest movement, route-cost placement preview, shortest reachable-building targeting, building destruction, and rubble.
+- Hidden square board, weighted forest movement, route-cost placement preview, shortest reachable-building targeting, building destruction, and non-blocking wood salvage.
 - Day-only actions, automatic Scout combat, a persistent 1×/2×/5× playback preference, optional building/enemy health bars, and no end-of-night popup.
 - Stable one-click map input, outline-only placement feedback, selected unit/building combat stats, and no Scout health UI.
 - Visible projectiles, recoil, hit flashes, brief defeat remains, and deterministic raccoon pacing: staggered groups rotate across seeded forest edges.
@@ -86,12 +87,19 @@ The **Potato Patch** is the deliberate setup for the next distinct defense after
 | --- | --- |
 | Setup | 1-wood Potato Patch, two held nights, then 3 wood and 1 action |
 | Health | 8 |
-| Damage | 3 |
+| Damage | 4 |
 | Tempo | Slow — one shot about every 2.2 seconds |
 | Range | 3 cells |
 | Extra | Knocks the target back one cell on hit; Potato Packing adds a short non-stacking slow |
 
 Its job is not crowd control or a universal replacement for launchers. It gives the player a deliberate answer to a tough approach, while the Stick Launcher remains cheap steady pressure.
+
+## Delivered research structures
+
+- **Garden Stewardship** is a Farming Level 3 Talent. It unlocks the 2-wood, one-action **Garden Plot**. Gardens are targetable but do not block paths; one surviving Garden grants **+1 action at dawn**. The initial implementation caps the bonus at +1 total so action economy does not double from multiple plots.
+- **Reinforced Materials** is the first Building Talent on Level 4. It gives **+2 maximum HP to every structure**, including new non-targetable structures, and unlocks the 1-wood, one-action **Fence**.
+- **Fence** is route control, not a standard defensive target. Ground enemies use any available route around a Fence. If Fence segments seal every route to a targetable building, an enemy selects a deterministic reachable segment, breaks it, and continues through the immediate gap. Fence destruction drops no wood; air enemies ignore it.
+- The generic `unlockBuilding` Talent effect is now live. Garden and Fence are the first research-gated Build-strip structures; existing level-based counter recipes remain on their established discovery timing while they are migrated deliberately rather than destabilizing the early tutorial.
 
 ### Future Talent Tree branches
 
@@ -161,9 +169,10 @@ Every module should use the same four headings: **Live now**, **Proposed next**,
 
 ## Next implementation order
 
-1. Validate Scout Training, Arrowcraft, Hearthkeeping I, Potato Packing, and extra-launcher choices across deterministic Medium seeds and player testing.
-2. Validate the guaranteed Level 5 Boar, Potato Gun slow, and Arrow Shooter refit rule across deterministic Medium seeds.
-3. Tune grouped multi-angle pressure so the first Boar is readable but forces a dedicated counter.
-4. Implement the Level 6 Hivecraft / Level 8 enemy pairing only after the Boar counter loop is stable.
-5. Implement the Level 11 Mushroom Launcher pairing only after Honeyed and Warmth are readable in telemetry and art.
-6. Add Easy, Hard, and Very Hard as Threat Budget multipliers after Medium is balanced.
+1. Playtest Garden cost, +1-action cap, health, and target priority across deterministic Medium seeds; decide whether a later Farming node may raise the cap.
+2. Playtest Fence health, breach choice, and route pressure around a Garden before adjusting its wood cost or adding segments/adjacency art.
+3. Migrate existing optional construction recipes from level-only discovery to explicit researched blueprints without making the first Stick Launcher unreachable before the first Skill Point.
+4. Validate the guaranteed Level 5 Boar, Potato Gun slow, and Arrow Shooter refit rule across deterministic Medium seeds.
+5. Implement the Level 6 Hivecraft / Level 8 enemy pairing only after the Boar counter loop is stable.
+6. Implement the Level 11 Mushroom Launcher pairing only after Honeyed and Warmth are readable in telemetry and art.
+7. Add Easy, Hard, and Very Hard as Threat Budget multipliers after Medium is balanced.
