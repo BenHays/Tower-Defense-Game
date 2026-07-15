@@ -64,6 +64,7 @@
 - Compact long-lived Talent Trees by shrinking square node tracks and connector gaps first; preserve large-enough icons and the scroll viewport instead of hiding future depth.
 
 - Scout reserves only the day-placed watch post: construction and Scout placement reject overlaps, while enemies still target only real targetable buildings and Scout retains no health economy.
+- Scout begins off-map during the forced shelter opening, then takes a deterministic adjacent post beside the player-chosen shelter. Keep the entrance as a renderer-only persistent-overlay effect so its movement can finish without changing saves or combat state.
 - Keep the Talent Tree catalog declarative by branch: Hunting, Farming, Building, Nurturing, and Scouting use node dependencies, shared icon ids, and typed effects so combat and daytime actions stay generic; calculate 1, 2, 4, 8 Skill Point costs from each branch's purchase count.
 - Render that declarative tech data as one two-axis-scrollable dependency canvas. Nodes should spend their space on an icon and small cost badge, while the detail pane carries the longer explanation.
 - Roll hide drops from a seed, level id, and enemy id rather than runtime randomness. Saves and replay checksums can then reproduce rewards exactly.

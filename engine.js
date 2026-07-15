@@ -588,7 +588,9 @@
   }
 
   function scoutPostAt(state, x, y) {
-    return Math.round(state.scout.postX) === x && Math.round(state.scout.postY) === y;
+    return Boolean(state.scout.deployed)
+      && Math.round(state.scout.postX) === x
+      && Math.round(state.scout.postY) === y;
   }
 
   function hasRubble(state, x, y) {
@@ -606,6 +608,23 @@
 
   function validScoutPost(state, x, y) {
     return isPassable(state, x, y) && !buildingAt(state, x, y);
+  }
+
+  function scoutPostBesideShelter(state, x, y) {
+    // Keep Scout in the same readable lower-left relationship to the shelter
+    // when possible, then use the remaining adjacent cells as deterministic
+    // fallbacks for player-chosen opening locations.
+    const candidates = [
+      { x: x - 1, y: y + 1 },
+      { x: x + 1, y: y + 1 },
+      { x: x - 1, y: y - 1 },
+      { x: x + 1, y: y - 1 },
+      { x: x - 1, y },
+      { x: x + 1, y },
+      { x, y: y + 1 },
+      { x, y: y - 1 },
+    ];
+    return candidates.find((candidate) => validScoutPost(state, candidate.x, candidate.y)) || null;
   }
 
   function travelCost(state, x, y, recipe) {
@@ -976,10 +995,12 @@
       rubble: [],
       scout: {
         ...clone(UNITS.scout),
-        x: SCOUT_POST.x,
+        // Scout stays off-map until the opening shelter gives him a home.
+        x: -1,
         y: SCOUT_POST.y,
-        postX: SCOUT_POST.x,
+        postX: -1,
         postY: SCOUT_POST.y,
+        deployed: false,
         cooldown: 0,
         targetId: null,
         mode: "idle",
@@ -1191,8 +1212,17 @@
       if (!consumeAction(state)) return result(state, false, "Both day actions are spent.");
       state.buildings.push(makeTeepee(state, action.x, action.y));
       state.shelterBuilt = true;
+      const scoutPost = scoutPostBesideShelter(state, action.x, action.y);
+      if (!scoutPost) throw new Error("A shelter must have an adjacent Scout post.");
+      state.scout.x = scoutPost.x;
+      state.scout.y = scoutPost.y;
+      state.scout.postX = scoutPost.x;
+      state.scout.postY = scoutPost.y;
+      state.scout.deployed = true;
+      state.scout.targetId = null;
+      state.scout.mode = "idle";
       invalidatePaths(state);
-      return result(state, true, "Shelter complete. Both opening actions are spent; start the first watch.", action, shouldRecord);
+      return result(state, true, "Shelter complete. Scout has arrived beside it; start the first watch.", action, shouldRecord);
     }
 
     if (action.type === "research") {
@@ -1232,6 +1262,7 @@
     }
 
     if (action.type === "scout") {
+      if (!state.scout.deployed) return result(state, false, "Scout arrives when the shelter is built.");
       if (!validScoutPost(state, action.x, action.y)) return result(state, false, "Scout needs an unoccupied open cell.");
       if (!consumeAction(state)) return result(state, false, "Both day actions are spent.");
       state.scout.x = action.x;
@@ -1847,6 +1878,7 @@
       ...building,
       growthNights: building.type === "potatoPatch" ? Math.max(0, Number(building.growthNights) || 0) : building.growthNights ?? null,
     })) : state.buildings;
+    if (state.scout) state.scout.deployed = Boolean(state.shelterBuilt);
     return state;
   }
 
@@ -1857,6 +1889,8 @@
     if (state.version !== SAVE_VERSION) throw new Error("This save belongs to a different version of Wild Hearth.");
     if (!Array.isArray(state.terrain) || state.terrain.length !== BOARD.width * BOARD.height) throw new Error("This save has an invalid meadow.");
     if (typeof state.hatchetCrafted !== "boolean" || typeof state.shelterBuilt !== "boolean" || !Array.isArray(state.buildings)) throw new Error("This save has an invalid shelter state.");
+    if (!state.scout || !Number.isFinite(state.scout.x) || !Number.isFinite(state.scout.y) || !Number.isFinite(state.scout.postX) || !Number.isFinite(state.scout.postY)) throw new Error("This save has an invalid Scout state.");
+    if (typeof state.scout.deployed !== "boolean") state.scout.deployed = Boolean(state.shelterBuilt);
     if (!Array.isArray(state.openingPickups) || !OPENING_PICKUPS.every((definition) => state.openingPickups.some((pickup) => pickup.id === definition.id && pickup.type === definition.type && pickup.x === definition.x && pickup.y === definition.y && typeof pickup.collected === "boolean"))) throw new Error("This save has invalid starter materials.");
     if (!SPEED_OPTIONS.includes(state.speed)) throw new Error("This save has an invalid speed setting.");
     if (!state.resources || !Number.isFinite(state.resources.wood) || !Number.isFinite(state.resources.hides) || !Number.isFinite(state.xp) || !Number.isInteger(state.skillPoints) || !Number.isInteger(state.skillPointsEarned)) throw new Error("This save has an invalid progression state.");
@@ -1913,6 +1947,7 @@
         y: state.scout.y,
         postX: state.scout.postX,
         postY: state.scout.postY,
+        deployed: state.scout.deployed,
         mode: state.scout.mode,
       },
     });

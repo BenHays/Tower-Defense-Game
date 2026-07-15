@@ -111,6 +111,9 @@ let buildListSignature = "";
 let harvestEffect = null;
 let harvestTimer = null;
 const HARVEST_EFFECT_MS = 1600;
+let scoutArrivalEffect = null;
+let scoutArrivalTimer = null;
+const SCOUT_ARRIVAL_EFFECT_MS = 900;
 const BUILD_CARD_ICONS = {
   stickLauncher: "stick-launcher-icon",
   potatoPatch: "potato-patch-icon",
@@ -318,6 +321,25 @@ function clearHarvestEffect() {
   harvestTimer = null;
   harvestEffect = null;
   elements.effectLayer.replaceChildren();
+}
+
+function clearScoutArrivalEffect() {
+  if (scoutArrivalTimer) window.clearTimeout(scoutArrivalTimer);
+  scoutArrivalTimer = null;
+  scoutArrivalEffect = null;
+  elements.effectLayer.querySelector(".scout-arrival")?.remove();
+}
+
+function startScoutArrivalEffect(x, y) {
+  clearScoutArrivalEffect();
+  scoutArrivalEffect = { x, y };
+  const effect = createNode("div", "entity scout scout-arrival is-idle");
+  place(effect, x, y);
+  elements.effectLayer.append(effect);
+  scoutArrivalTimer = window.setTimeout(() => {
+    clearScoutArrivalEffect();
+    render();
+  }, SCOUT_ARRIVAL_EFFECT_MS);
 }
 
 function startHarvestEffect(x, y) {
@@ -532,7 +554,7 @@ function addLabel(node, text) {
 
 function renderEntities() {
   const fragment = document.createDocumentFragment();
-  if (planning && state.phase === "day") {
+  if (planning && state.phase === "day" && state.scout.deployed) {
     const scoutStats = Engine.unitStats(state, "scout");
     const ring = createNode("div", "range-ring");
     const diameter = ((scoutStats.attackRange * 2 + 1) / Engine.BOARD.width) * 100;
@@ -579,10 +601,12 @@ function renderEntities() {
     fragment.append(node);
   });
 
-  const scout = createNode("div", `entity scout is-${state.scout.mode || "idle"}`);
-  if (selectedScout()) scout.classList.add("is-selected");
-  place(scout, state.scout.x, state.scout.y);
-  fragment.append(scout);
+  if (state.scout.deployed && !scoutArrivalEffect) {
+    const scout = createNode("div", `entity scout is-${state.scout.mode || "idle"}`);
+    if (selectedScout()) scout.classList.add("is-selected");
+    place(scout, state.scout.x, state.scout.y);
+    fragment.append(scout);
+  }
 
   state.enemies.forEach((enemy) => {
     const node = createNode("div", `entity enemy ${enemy.type}`);
@@ -1034,10 +1058,11 @@ function clickCell(x, y) {
       return;
     }
     if (activeTool === "teepee") {
-      const outcome = dispatch({ type: "constructShelter", x, y });
+      const outcome = dispatch({ type: "constructShelter", x, y }, { render: false });
       if (outcome.ok) {
         activeTool = "none";
         selected = { kind: "building", id: "b-teepee" };
+        startScoutArrivalEffect(state.scout.x, state.scout.y);
       }
       render();
     }
@@ -1050,7 +1075,7 @@ function clickCell(x, y) {
     render();
     return;
   }
-  if (activeTool === "none" && Math.round(state.scout.x) === x && Math.round(state.scout.y) === y) {
+  if (activeTool === "none" && state.scout.deployed && Math.round(state.scout.x) === x && Math.round(state.scout.y) === y) {
     selected = { kind: "scout" };
     render();
     return;
@@ -1088,6 +1113,7 @@ function clickCell(x, y) {
 
 function resetRun(seed) {
   clearHarvestEffect();
+  clearScoutArrivalEffect();
   clearSkillPointToast();
   state = Engine.createRun(seed || state.seed);
   observedSkillPointsEarned = state.skillPointsEarned || 0;
@@ -1130,6 +1156,7 @@ function loadGame() {
     hoverCell = null;
     accumulator = 0;
     clearHarvestEffect();
+    clearScoutArrivalEffect();
     gridSignature = "";
     techSignature = "";
     activeTechId = null;

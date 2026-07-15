@@ -43,6 +43,7 @@ assert.deepEqual(Object.keys(Engine.ENEMIES), ["mouse", "raccoon", "boar", "bear
 assert.equal(run.shelterBuilt, false);
 assert.equal(run.hatchetCrafted, false);
 assert.equal(Engine.hasShelter(run), false);
+assert.equal(run.scout.deployed, false, "Scout begins off-map until the shelter is placed");
 assert.equal(run.buildings.length, 0);
 assert.deepEqual(run.openingPickups.map((pickup) => ({ id: pickup.id, collected: pickup.collected })), [
   { id: "starter-stick", collected: false },
@@ -72,6 +73,8 @@ assert.equal(run.shelterBuilt, true);
 assert.equal(Engine.hasShelter(run), true);
 assert.equal(run.buildings[0].type, "teepee");
 assert.deepEqual([run.buildings[0].x, run.buildings[0].y], [Engine.SHELTER_SITE.x, Engine.SHELTER_SITE.y], "the player may choose the centered grass cell for the shelter");
+assert.equal(run.scout.deployed, true, "placing the shelter deploys Scout");
+assert.equal(Math.max(Math.abs(run.scout.x - run.buildings[0].x), Math.abs(run.scout.y - run.buildings[0].y)), 1, "Scout's first watch post is beside the chosen shelter");
 assert.equal(run.resources.wood, 0, "the shelter is the only free build");
 assert.equal(run.actionPoints, 0, "crafting the hatchet and shelter each use one opening action");
 const playerPlacedShelterRun = Engine.createRun("PLAYER-PLACED-SHELTER");
@@ -80,6 +83,7 @@ action(playerPlacedShelterRun, { type: "craftHatchet" });
 const playerShelterSite = { x: Engine.SHELTER_SITE.x - 2, y: Engine.SHELTER_SITE.y - 1 };
 action(playerPlacedShelterRun, { type: "constructShelter", ...playerShelterSite });
 assert.deepEqual([playerPlacedShelterRun.buildings[0].x, playerPlacedShelterRun.buildings[0].y], [playerShelterSite.x, playerShelterSite.y], "the player can place the shelter on any valid grass in the opening");
+assert.equal(Math.max(Math.abs(playerPlacedShelterRun.scout.x - playerShelterSite.x), Math.abs(playerPlacedShelterRun.scout.y - playerShelterSite.y)), 1, "Scout follows the player-selected shelter rather than using a fixed map post");
 action(run, { type: "endDay" });
 assert.equal(run.encounter.threatBudget, 1);
 assert.deepEqual(run.encounter.units, ["mouse"]);
