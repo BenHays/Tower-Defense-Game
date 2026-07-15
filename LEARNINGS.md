@@ -11,6 +11,11 @@
 - Keep the deployed version dependency-free: copy the existing browser assets into `dist/` and serve them through the platform asset binding, so each tester retains an isolated browser-local save.
 - A Cloudflare static Worker must point its `assets.directory` at `dist/`; deploying `.` uploads `node_modules` and fails the 25 MiB asset limit before the game can be published.
 - The `name` in `wrangler.jsonc` must exactly match the live Cloudflare Worker (`tdgame`); otherwise a successful build targets a different Worker and the public URL stays stale.
+- Keep soundtrack source deterministic and editable: render original WAV cues from a dependency-free script, listen through a standalone preview page, and only integrate phase transitions after the individual cues are approved.
+
+## Audio
+
+- Avoid sustained pseudo-random noise beds in music cues. They read as static rather than atmosphere in browser playback; use pitched pads, sparse bells, and deliberate percussion instead.
 
 ## Top-down expansion
 

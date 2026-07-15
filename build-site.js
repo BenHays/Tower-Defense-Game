@@ -3,7 +3,7 @@ const { resolve } = require("node:path");
 
 const root = __dirname;
 const dist = resolve(root, "dist");
-const files = ["index.html", "styles.css", "engine.js", "audio.js", "game.js", "simulate.js", "talent-icons.js", "talent-tree.js", "talent-icons.html"];
+const files = ["index.html", "styles.css", "engine.js", "audio.js", "game.js", "simulate.js", "talent-icons.js", "talent-tree.js", "talent-icons.html", "soundtrack-preview.html"];
 
 const worker = `export default {
   async fetch(request, env) {

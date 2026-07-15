@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Wild Hearth — Soundtrack Preview</title>
+    <style>
+      :root { color-scheme: dark; font-family: Georgia, "Times New Roman", serif; background: #15241d; color: #f8f1df; }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; background: radial-gradient(circle at top, #3d674c 0%, #1d3326 42%, #101d16 100%); }
+      main { width: min(960px, calc(100% - 32px)); margin: 0 auto; padding: 56px 0 72px; }
+      .eyebrow { color: #efc875; font: 700 0.72rem/1.2 system-ui, sans-serif; letter-spacing: 0.16em; text-transform: uppercase; }
+      h1 { margin: 8px 0 12px; font-size: clamp(2.3rem, 6vw, 4.6rem); letter-spacing: -0.045em; }
+      .intro { max-width: 680px; color: #d7e1cf; font: 1.06rem/1.55 system-ui, sans-serif; }
+      .note { margin: 28px 0; padding: 14px 16px; border-left: 3px solid #efc875; background: rgb(15 31 21 / 0.48); color: #d4dfca; font: 0.9rem/1.45 system-ui, sans-serif; }
+      .tracks { display: grid; gap: 14px; }
+      article { padding: 22px; border: 1px solid rgb(242 226 179 / 0.25); border-radius: 16px; background: linear-gradient(135deg, rgb(43 76 55 / 0.96), rgb(22 43 31 / 0.96)); box-shadow: 0 18px 46px rgb(0 0 0 / 0.22); }
+      article:nth-child(2) { background: linear-gradient(135deg, #26324c, #192336); }
+      article:nth-child(3) { background: linear-gradient(135deg, #4a3131, #2d1d23); }
+      article:nth-child(4) { background: linear-gradient(135deg, #5b5632, #2f3923); }
+      h2 { margin: 0; font-size: 1.5rem; }
+      p { margin: 7px 0 16px; color: #e2ead9; font: 0.95rem/1.45 system-ui, sans-serif; }
+      .tag { display: inline-block; margin: 0 0 11px; padding: 4px 8px; border-radius: 999px; background: rgb(248 241 223 / 0.13); color: #f5d98f; font: 700 0.68rem/1 system-ui, sans-serif; letter-spacing: 0.1em; text-transform: uppercase; }
+      audio { width: 100%; accent-color: #efc875; }
+      footer { margin-top: 38px; color: #b6c6af; font: 0.82rem/1.45 system-ui, sans-serif; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="eyebrow">Original Wild Hearth audio</div>
+      <h1>Soundtrack preview</h1>
+      <p class="intro">Four cues for the homestead’s day-to-night rhythm. Each is an original composition using a broad folk-fantasy palette of plucked strings, woodwind-like lead, soft pads, bells, and frame drum.</p>
+      <div class="note">These tracks use general late-1990s fantasy-RPG qualities as a mood reference, but do not recreate music from any existing game.</div>
+      <section class="tracks" aria-label="Soundtrack tracks">
+        <article>
+          <span class="tag">Day / Hearth</span>
+          <h2>Hearth Meadow</h2>
+          <p>Warm, patient planning music for the clearing, harvesting, and construction.</p>
+          <audio controls preload="metadata" src="assets/wild-hearth-hearth-meadow.wav">Your browser cannot play this audio.</audio>
+        </article>
+        <article>
+          <span class="tag">Night / Watch</span>
+          <h2>Forest Watch</h2>
+          <p>Low strings, muted frame drum, and cautious woodwind calls for the invasion phase.</p>
+          <audio controls preload="metadata" src="assets/wild-hearth-forest-watch.wav">Your browser cannot play this audio.</audio>
+        </article>
+        <article>
+          <span class="tag">Danger</span>
+          <h2>Bramble Alarm</h2>
+          <p>A tighter, urgent cue for when the homestead is under pressure.</p>
+          <audio controls preload="metadata" src="assets/wild-hearth-bramble-alarm.wav">Your browser cannot play this audio.</audio>
+        </article>
+        <article>
+          <span class="tag">Dawn / Survived</span>
+          <h2>First Light</h2>
+          <p>A brief relief stinger for the moment the night ends safely.</p>
+          <audio controls preload="metadata" src="assets/wild-hearth-first-light.wav">Your browser cannot play this audio.</audio>
+        </article>
+      </section>
+      <footer>Preview only: the gameplay audio director still uses the existing music track until you approve the tracks and we wire in transitions.</footer>
+    </main>
+  </body>
+</html>

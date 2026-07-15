@@ -47,6 +47,16 @@ Regenerate it after changing the source score:
 node scripts/render-title-sketch.js
 ```
 
+## Soundtrack preview
+
+[`soundtrack-preview.html`](soundtrack-preview.html) is a listen-first page for four original gameplay cues: **Hearth Meadow** (day), **Forest Watch** (night), **Bramble Alarm** (danger), and **First Light** (dawn). They use a broad folk-fantasy palette without reproducing any existing game's music. These WAVs are intentionally separate from the current gameplay director until their transitions are approved.
+
+Regenerate the preview tracks after changing the source score:
+
+```sh
+node scripts/render-soundtrack.js
+```
+
 ## Shared testing
 
 The game can be published as a Codex Site for browser-based playtesting. The hosted build has no environment variables or server-side game state; each tester's save remains in their own browser.
